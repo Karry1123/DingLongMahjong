@@ -5,9 +5,51 @@
  * - POST /api/game/step      牌局时序步进
  * - POST /api/settle         终局筹码结算
  */
+import { ref } from 'vue'
 
 // 开发环境走 Vite /api 代理；生产环境由 Vercel 构建变量指定 Render 域名。
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+const WAKE_MESSAGE = '云端计算引擎唤醒中，首次加载约需数十秒，请稍候...'
+const slowRequests = new Set()
+let requestSequence = 0
+export const cloudWakeMessage = ref('')
+
+/** 等待 Render 冷启动时给出提示；失败或超时后释放加载状态。 */
+export async function fetchWithWakeNotice(url, options = {}, timings = {}) {
+  const wakeDelayMs = timings.wakeDelayMs ?? 2000
+  const timeoutMs = timings.timeoutMs ?? 90000
+  const requestId = ++requestSequence
+  const controller = new AbortController()
+  const callerSignal = options.signal
+  const abortFromCaller = () => controller.abort(callerSignal.reason)
+  if (callerSignal?.aborted) abortFromCaller()
+  else callerSignal?.addEventListener('abort', abortFromCaller, { once: true })
+
+  let timedOut = false
+  const wakeTimer = setTimeout(() => {
+    slowRequests.add(requestId)
+    cloudWakeMessage.value = WAKE_MESSAGE
+  }, wakeDelayMs)
+  const timeoutTimer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } catch (error) {
+    if (timedOut) throw new Error('云端计算引擎响应超时，请稍后重试')
+    if (!isAbortError(error) && error instanceof TypeError) {
+      throw new Error('云端计算引擎暂时无法连接，请检查网络后重试')
+    }
+    throw error
+  } finally {
+    clearTimeout(wakeTimer)
+    clearTimeout(timeoutTimer)
+    callerSignal?.removeEventListener('abort', abortFromCaller)
+    slowRequests.delete(requestId)
+    if (slowRequests.size === 0) cloudWakeMessage.value = ''
+  }
+}
 
 /**
  * 是否为请求取消（AbortController / fetch AbortError）。
@@ -64,7 +106,7 @@ export async function getRecommendDecision(payload, options = {}) {
     discarded_tiles: payload.discarded_tiles ?? [],
   }
 
-  const res = await fetch(`${API_BASE}/api/recommend`, {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/recommend`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -120,7 +162,7 @@ export async function calculateHuPoints(payload, options = {}) {
     is_dealer: payload.is_dealer ?? false,
   }
 
-  const res = await fetch(`${API_BASE}/api/calculate-hu`, {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/calculate-hu`, {
     signal: options.signal,
     method: 'POST',
     headers: {
@@ -170,7 +212,7 @@ export async function postGameStep(state, event, options = {}) {
     event,
   }
 
-  const res = await fetch(`${API_BASE}/api/game/step`, {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/game/step`, {
     signal: options.signal,
     method: 'POST',
     headers: {
@@ -192,7 +234,7 @@ export async function postGameStep(state, event, options = {}) {
  * @param {{ dealer_seat: string }} payload
  */
 export async function postAutoDeal(payload, options = {}) {
-  const res = await fetch(`${API_BASE}/api/game/auto-deal`, {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/game/auto-deal`, {
     signal: options.signal,
     method: 'POST',
     headers: {
@@ -212,7 +254,7 @@ export async function postAutoDeal(payload, options = {}) {
  * @param {object} payload
  */
 export async function postSettle(payload, options = {}) {
-  const res = await fetch(`${API_BASE}/api/settle`, {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/settle`, {
     signal: options.signal,
     method: 'POST',
     headers: {
@@ -237,7 +279,7 @@ export async function postSettle(payload, options = {}) {
  * }} payload
  */
 export async function postGameRecord(payload, options = {}) {
-  const res = await fetch(`${API_BASE}/api/game/record`, {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/game/record`, {
     signal: options.signal,
     method: 'POST',
     headers: {

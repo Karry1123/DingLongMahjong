@@ -7,13 +7,19 @@ def test_health_and_vercel_cors():
     client = TestClient(app)
     assert client.get("/health").json() == {"status": "ok"}
 
-    headers = {
-        "Origin": "https://mahjong-preview-123.vercel.app",
-        "Access-Control-Request-Method": "POST",
-    }
-    response = client.options("/api/recommend", headers=headers)
-    assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == headers["Origin"]
+    for origin in (
+        "https://ding-long-mahjong.vercel.app",
+        "https://mahjong-preview-123.vercel.app",
+    ):
+        headers = {
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        }
+        for path in ("/api/recommend", "/api/game/auto-deal"):
+            response = client.options(path, headers=headers)
+            assert response.status_code == 200
+            assert response.headers["access-control-allow-origin"] == origin
 
     denied = client.options("/api/recommend", headers={
         **headers, "Origin": "https://mahjong.vercel.app.evil.example",

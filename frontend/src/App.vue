@@ -24,7 +24,7 @@ import PlayerWorkbench from './components/PlayerWorkbench.vue'
 import { usePvEAutomation } from './composables/usePvEAutomation.js'
 import PvECircleSummary from './components/PvECircleSummary.vue'
 import { useGameSession } from './composables/useGameSession.js'
-import { getRecommendDecision, isAbortError } from './services/api.js'
+import { cloudWakeMessage, getRecommendDecision, isAbortError } from './services/api.js'
 import { relativeOpponents, tileLabel } from './constants/tiles.js'
 import { DEALER_SEAT, windLabel } from './utils/seatLayout.js'
 import { createSoundEngine } from './utils/soundEngine.js'
@@ -124,15 +124,21 @@ const {
 } = session
 
 const activeUiMode = ref('')
+const pveStartLoading = ref(false)
 const { status: aiStatus, announcement: aiAnnouncement, thinkingSeat: aiThinkingSeat, busy: aiActionBusy, error: aiError, retry: retryAI } = usePvEAutomation(session)
 
 async function choosePveMode() {
+  if (pveStartLoading.value) return
+  pveStartLoading.value = true
+  analyzeError.value = ''
   try {
     if (!soundMuted.value) soundEngine.unlock()
     await startPveGame()
     activeUiMode.value = 'PVE'
   } catch (e) {
     analyzeError.value = e?.message || String(e)
+  } finally {
+    pveStartLoading.value = false
   }
 }
 
@@ -1269,13 +1275,15 @@ async function onReset(clearHistory = false) {
       <h1 class="mt-3 text-4xl font-bold text-amber-50 sm:text-5xl">选择对局模式</h1>
       <p class="mt-3 max-w-xl text-sm leading-6 text-teal-100/70">使用实时净 EV 辅助练习，或进入全景沙盘自由推演。</p>
       <div class="mt-9 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
-        <button class="rounded-3xl border border-amber-300/60 bg-amber-400/15 p-7 text-left transition hover:-translate-y-1 hover:bg-amber-400/25" @click="choosePveMode">
+        <button class="rounded-3xl border border-amber-300/60 bg-amber-400/15 p-7 text-left transition hover:-translate-y-1 hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading" @click="choosePveMode">
           <span class="text-2xl">人机对战</span><span class="mt-2 block text-sm text-amber-100/70">带 EV 辅助 · 三家 AI 自主决策</span>
         </button>
-        <button class="rounded-3xl border border-teal-300/35 bg-teal-900/40 p-7 text-left transition hover:-translate-y-1 hover:bg-teal-800/50" @click="chooseSandboxMode">
+        <button class="rounded-3xl border border-teal-300/35 bg-teal-900/40 p-7 text-left transition hover:-translate-y-1 hover:bg-teal-800/50 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading" @click="chooseSandboxMode">
           <span class="text-2xl text-teal-50">全景上帝视角沙盘</span><span class="mt-2 block text-sm text-teal-100/65">自定义牌局 · 手动推演四方行动</span>
         </button>
       </div>
+      <p v-if="pveStartLoading" class="mt-5 text-sm text-teal-100" role="status">正在连接云端计算引擎并初始化对局…</p>
+      <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
       <p v-if="errorMsg" class="mt-5 text-sm text-rose-200">{{ errorMsg }}</p>
     </section>
     <div v-else>
@@ -1288,6 +1296,7 @@ async function onReset(clearHistory = false) {
       <p class="mt-2 text-sm text-teal-200/75">
         {{ gameMode === 'PVE' ? '牌墙自动发牌 · 三家 AI 自主决策 · 实时 EV 辅助切牌' : '先录入起手（庄 14 / 闲 13）→ 开始对局 → 按串行时序推演' }}
       </p>
+      <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
     </header>
 
     <main class="mx-auto flex flex-col gap-6" :class="gameMode === 'PVE' ? ['max-w-7xl min-h-[calc(100vh+18rem)]', showActionPrompt ? 'pb-72' : 'pb-24'] : 'max-w-6xl pb-16'">
