@@ -1,0 +1,78 @@
+{
+  "recommendationView": {
+    "count": 6,
+    "fourthBottom": 746,
+    "viewport": 768,
+    "internalScroll": 0
+  },
+  "desktop": {
+    "left": {
+      "x": 72.5,
+      "y": 330,
+      "width": 726.125,
+      "height": 308,
+      "top": 330,
+      "right": 798.625,
+      "bottom": 638,
+      "left": 72.5
+    },
+    "right": {
+      "x": 814.625,
+      "y": 330,
+      "width": 537.875,
+      "height": 534,
+      "top": 330,
+      "right": 1352.5,
+      "bottom": 864,
+      "left": 814.625
+    },
+    "editors": []
+  },
+  "mobile": {
+    "stacked": true,
+    "overflow": false
+  },
+  "northDiscard": {
+    "elapsed": 3035,
+    "requests": [
+      {
+        "url": "http://localhost:8000/api/game/step",
+        "seat": "E",
+        "event": {
+          "actor_seat": "E",
+          "event_type": "DISCARD",
+          "tile": "N"
+        },
+        "start": 2086.5,
+        "duration": 9.799999999813735,
+        "status": 200
+      },
+      {
+        "url": "http://localhost:8000/api/recommend",
+        "seat": "S",
+        "start": 2106.5999999996275,
+        "duration": 112.5,
+        "status": 200
+      },
+      {
+        "url": "http://localhost:8000/api/game/step",
+        "seat": "E",
+        "event": {
+          "actor_seat": "S",
+          "event_type": "DISCARD",
+          "tile": "1p"
+        },
+        "start": 5107.5,
+        "duration": 4.5,
+        "status": 200
+      }
+    ],
+    "errors": []
+  },
+  "secondRound": {
+    "self": "自家 · 北风\n累计 0 分",
+    "lowerSeat": "下家 · 东风 庄\n0 分",
+    "dealer": "第 1 圈 · 当前庄家：下家 · 东风\n累计积分：\n自家 0\n· 下家 0\n· 对家 0\n· 上家 0\n返回主页\n第 1 巡\n本巡第 1 手 · 累计 0 张\n权=E\nPLAYING\n\n🟢 下家/东风/庄家行动中\n\n点击手牌或右侧 EV 推荐切牌；摸牌由牌墙自动完成\n\n已推演 0 步\n\n阶段 行动权 · 东风出牌 (WAITING)"
+  },
+  "browserErrors": []
+}

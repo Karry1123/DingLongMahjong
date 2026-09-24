@@ -1,0 +1,189 @@
+{
+  "table": {
+    "top": {
+      "x": 319,
+      "y": 97,
+      "width": 787,
+      "height": 214,
+      "top": 97,
+      "right": 1106,
+      "bottom": 311,
+      "left": 319
+    },
+    "left": {
+      "x": 101.5,
+      "y": 327,
+      "width": 493,
+      "height": 201,
+      "top": 327,
+      "right": 594.5,
+      "bottom": 528,
+      "left": 101.5
+    },
+    "right": {
+      "x": 830.5,
+      "y": 327,
+      "width": 493,
+      "height": 201,
+      "top": 327,
+      "right": 1323.5,
+      "bottom": 528,
+      "left": 830.5
+    },
+    "center": {
+      "x": 610.5,
+      "y": 327,
+      "width": 204,
+      "height": 230,
+      "top": 327,
+      "right": 814.5,
+      "bottom": 557,
+      "left": 610.5
+    },
+    "self": {
+      "x": 80.5,
+      "y": 594,
+      "width": 1264,
+      "height": 769,
+      "top": 594,
+      "right": 1344.5,
+      "bottom": 1363,
+      "left": 80.5
+    },
+    "hand": {
+      "x": 105.5,
+      "y": 947,
+      "width": 666.921875,
+      "height": 67,
+      "top": 947,
+      "right": 772.421875,
+      "bottom": 1014,
+      "left": 105.5
+    },
+    "prompt": {
+      "x": 80.5,
+      "y": 1051,
+      "width": 716.921875,
+      "height": 312,
+      "top": 1051,
+      "right": 797.421875,
+      "bottom": 1363,
+      "left": 80.5
+    },
+    "promptPosition": "relative",
+    "topWidth": 787,
+    "numberTile": "四\n筒",
+    "stripTile": "三\n条",
+    "duplicate": false,
+    "sideColumns": 11,
+    "sideRows": 1,
+    "tileWidth": 35,
+    "rotation": "matrix(0, 1, -1, 0, -17.5, -24.5)",
+    "sideways": "5s"
+  },
+  "growth": {
+    "left": {
+      "x": 101.5,
+      "y": 327,
+      "width": 493,
+      "height": 259,
+      "top": 327,
+      "right": 594.5,
+      "bottom": 586,
+      "left": 101.5
+    },
+    "right": {
+      "x": 830.5,
+      "y": 327,
+      "width": 493,
+      "height": 259,
+      "top": 327,
+      "right": 1323.5,
+      "bottom": 586,
+      "left": 830.5
+    },
+    "rows": 2,
+    "tiles": 14
+  },
+  "thirdRow": {
+    "top": 327,
+    "rows": 3
+  },
+  "gangs": {
+    "count": 3,
+    "rows": 1,
+    "right": 579.5,
+    "seatRight": 594.5
+  },
+  "visible": {
+    "handTop": 644,
+    "promptBottom": 1060,
+    "viewport": 1100
+  },
+  "narrow": {
+    "handBottom": 1438.5,
+    "promptTop": 1471.5,
+    "overflow": false
+  },
+  "responsive": [
+    {
+      "width": 960,
+      "leftWidth": 427.5,
+      "rightWidth": 427.5,
+      "sameTop": true,
+      "overflow": false
+    },
+    {
+      "width": 1100,
+      "leftWidth": 493,
+      "rightWidth": 493,
+      "sameTop": true,
+      "overflow": false
+    },
+    {
+      "width": 1280,
+      "leftWidth": 493,
+      "rightWidth": 493,
+      "sameTop": true,
+      "overflow": false
+    }
+  ],
+  "decisionViewports": [
+    {
+      "width": 1366,
+      "height": 768,
+      "heroTop": 16,
+      "fourthBottom": 432,
+      "panelHeight": 425,
+      "riverTileWidth": 33,
+      "meldTileWidth": 33,
+      "viewport": 768,
+      "overflow": false
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "heroTop": 271,
+      "fourthBottom": 687,
+      "panelHeight": 425,
+      "riverTileWidth": 33,
+      "meldTileWidth": 33,
+      "viewport": 1080,
+      "overflow": false
+    }
+  ],
+  "settlement": [
+    {
+      "tile": "5s",
+      "label": "五条",
+      "width": 56,
+      "height": 40
+    },
+    {
+      "tile": "5m",
+      "label": "五万 · 胡",
+      "width": 56,
+      "height": 40
+    }
+  ]
+}

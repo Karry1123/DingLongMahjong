@@ -1,0 +1,36 @@
+# Local configuration and credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Frontend
+node_modules/
+dist/
+.vite/
+
+# Backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+logs/
+*.log
+backend/data/game_logs/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
+
+# Scratch files and generated media
+backend/_*.txt
+backend/visual-tests.log
+*.mp4
+*.mov
+*.wav
+*.psd
