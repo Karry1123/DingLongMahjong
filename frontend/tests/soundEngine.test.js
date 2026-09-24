@@ -51,3 +51,56 @@ test('speech uses each role, keeps only the latest pending call, and obeys mute 
   assert.ok(cancelled >= 1)
   engine.stop()
 })
+
+test('first user gesture primes speech and delayed Chinese voices are used', () => {
+  const spoken = []
+  const listeners = new Map()
+  let voices = []
+  class Utterance { constructor(text) { this.text = text } }
+  const browser = {
+    SpeechSynthesisUtterance: Utterance,
+    speechSynthesis: {
+      speak: (utterance) => spoken.push(utterance),
+      cancel: () => {},
+      resume: () => {},
+      getVoices: () => voices,
+      addEventListener: (event, cb) => listeners.set(event, cb),
+      removeEventListener: (event) => listeners.delete(event),
+    },
+  }
+  const engine = createSoundEngine(browser)
+  engine.unlock()
+  assert.equal(spoken.length, 1)
+  assert.equal(spoken[0].volume, 0)
+  engine.playAction({ action: 'DISCARD', tile: '9p', seat: 'S', selfSeat: 'E' })
+  assert.equal(spoken.length, 1)
+  voices = [{ name: 'Yunxi', lang: 'zh-CN' }]
+  listeners.get('voiceschanged')()
+  assert.equal(spoken[1].text, '九筒')
+  assert.equal(spoken[1].voice, voices[0])
+  engine.stop(true)
+  assert.equal(listeners.size, 0)
+})
+
+test('missing speech API falls back without throwing', () => {
+  let tones = 0
+  class AudioContext {
+    state = 'running'
+    currentTime = 0
+    destination = {}
+    createOscillator() {
+      return { frequency: {}, connect() { return this }, start() { tones++ }, stop() {} }
+    }
+    createGain() {
+      return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() { return this } }
+    }
+    close() {}
+  }
+  const engine = createSoundEngine({ AudioContext })
+  assert.doesNotThrow(() => {
+    engine.unlock()
+    engine.playAction({ action: 'PONG', seat: 'W', selfSeat: 'E' })
+    engine.stop()
+  })
+  assert.equal(tones, 2)
+})

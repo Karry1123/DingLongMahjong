@@ -63,6 +63,7 @@ def apply_step_event(state: HandRequest, event: StepEvent) -> HandRequest:
             meld=event.meld,
             claimed_tile=event.tile,
             provider_seat=event.provider_seat or event.meld.provider_seat,
+            claimed_discard_index=event.claimed_discard_index,
         )
     elif event.event_type == "PASS":
         # 过牌不改牌面，仅推进时序
@@ -274,6 +275,7 @@ def _apply_meld(
     meld: Meld,
     claimed_tile: str | None,
     provider_seat: str | None,
+    claimed_discard_index: int | None = None,
 ) -> None:
     meld_tiles = list(meld.tiles)
     claimed = claimed_tile or _guess_claimed_tile(meld)
@@ -345,6 +347,7 @@ def _apply_meld(
     provider = _remove_from_river(
         data, claimed, provider_seat=provider_seat, actor_seat=actor,
         chi=meld.meld_type == MeldType.CHI,
+        claimed_discard_index=claimed_discard_index,
     )
     meld_data = meld.model_dump()
     meld_data["provider_seat"] = provider
@@ -436,9 +439,9 @@ def _guess_claimed_tile(meld: Meld) -> str | None:
 
 def _remove_from_river(
     data: dict, tile: str, *, provider_seat: str | None,
-    actor_seat: str, chi: bool,
+    actor_seat: str, chi: bool, claimed_discard_index: int | None = None,
 ) -> str:
-    """只扣事件绑定的供牌者牌河末张，绝不扫描同名历史弃牌。"""
+    """只扣事件绑定的供牌者；末张错位时须有响应窗口的原始位置。"""
     rivers = {data["seat_wind"]: list(data["discards"])}
     rivers.update({o["seat_wind"]: list(o["discards"]) for o in data["opponents"]})
     if provider_seat is None:
@@ -448,9 +451,15 @@ def _remove_from_river(
     if chi and next_seat(provider_seat) != actor_seat:
         raise ValueError("吃牌只能取直接上家刚打出的牌")
     river = rivers[provider_seat]
-    if not river or river[-1] != tile:
+    if claimed_discard_index is not None:
+        if claimed_discard_index >= len(river) or river[claimed_discard_index] != tile:
+            raise ValueError(f"供牌方 {provider_seat} 原响应位置不是 {tile!r}")
+        # 仅供牌方的明确响应位置可兜底；同名历史牌不能凭牌名模糊取走。
+        river.pop(claimed_discard_index)
+    elif river and river[-1] == tile:
+        river.pop()
+    else:
         raise ValueError(f"供牌方 {provider_seat} 牌河末张不是 {tile!r}")
-    river.pop()
     if provider_seat == data["seat_wind"]:
         data["discards"] = river
     else:

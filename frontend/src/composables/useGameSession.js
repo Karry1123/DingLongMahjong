@@ -1743,6 +1743,7 @@ export function useGameSession(initial = {}) {
       try {
         pushSnapshot()
         didPush = true
+        const meldSource = historyStack.value.at(-1).roundState
         logTurn('executeOpponentMeld:before', {
           seat,
           meldType,
@@ -1866,20 +1867,19 @@ export function useGameSession(initial = {}) {
         loading.value = false
 
         try {
-          const snap = historyStack.value[historyStack.value.length - 1]
           const prePayload = {
-            hand_tiles: [...snap.roundState.handTiles],
-            melds: snap.roundState.melds.map((m) => ({
+            hand_tiles: [...meldSource.handTiles],
+            melds: meldSource.melds.map((m) => ({
               ...m,
               meld_type: m.meld_type,
               tiles: [...m.tiles],
             })),
-            discards: [...snap.roundState.discards],
-            dealer_tile: snap.roundState.dealerTile,
-            is_dealer: snap.roundState.isDealer,
-            seat_wind: snap.roundState.seatWind,
-            round_wind: snap.roundState.roundWind,
-            opponents: snap.roundState.opponents.map((o) => ({
+            discards: [...meldSource.discards],
+            dealer_tile: meldSource.dealerTile,
+            is_dealer: meldSource.isDealer,
+            seat_wind: meldSource.seatWind,
+            round_wind: meldSource.roundWind,
+            opponents: meldSource.opponents.map((o) => ({
               seat_wind: o.seat_wind,
               is_dealer: !!o.is_dealer,
               melds: (o.melds || []).map((m) => ({
@@ -1896,14 +1896,17 @@ export function useGameSession(initial = {}) {
             event_type: 'MELD',
             tile: claimed || tiles[0] || null,
             provider_seat: provider,
+            claimed_discard_index: provider ? responseDiscardIndex(meldSource, provider, claimed) : null,
             meld: { meld_type: meldType, tiles: [...tiles], claimed_tile: claimed || null, provider_seat: provider || null },
           }))
         } catch (e) {
         if (epoch !== sessionEpoch) return
           console.warn('[executeOpponentMeld] 后端同步失败，保留本地', e)
-          errorMsg.value = e?.message
-            ? `${e.message}（本地已代录副露）`
-            : '后端同步失败（本地已代录副露）'
+          if (!recoverProviderSyncError(e)) {
+            errorMsg.value = e?.message
+              ? `${e.message}（本地已代录副露）`
+              : '后端同步失败（本地已代录副露）'
+          }
         }
 
         return lastStepResult.value
@@ -2232,6 +2235,7 @@ export function useGameSession(initial = {}) {
       try {
         pushSnapshot()
         didPush = true
+        const meldSource = historyStack.value.at(-1).roundState
         logTurn('applySelfMeld:before', { meldType, claimed, tiles, isKong })
 
         const provider = lastDiscardSeat.value
@@ -2307,20 +2311,19 @@ export function useGameSession(initial = {}) {
 
         // 同步后端
         try {
-          const snap = historyStack.value[historyStack.value.length - 1]
           const prePayload = {
-            hand_tiles: [...snap.roundState.handTiles],
-            melds: snap.roundState.melds.map((m) => ({
+            hand_tiles: [...meldSource.handTiles],
+            melds: meldSource.melds.map((m) => ({
               ...m,
               meld_type: m.meld_type,
               tiles: [...m.tiles],
             })),
-            discards: [...snap.roundState.discards],
-            dealer_tile: snap.roundState.dealerTile,
-            is_dealer: snap.roundState.isDealer,
-            seat_wind: snap.roundState.seatWind,
-            round_wind: snap.roundState.roundWind,
-            opponents: snap.roundState.opponents.map((o) => ({
+            discards: [...meldSource.discards],
+            dealer_tile: meldSource.dealerTile,
+            is_dealer: meldSource.isDealer,
+            seat_wind: meldSource.seatWind,
+            round_wind: meldSource.roundWind,
+            opponents: meldSource.opponents.map((o) => ({
               seat_wind: o.seat_wind,
               is_dealer: !!o.is_dealer,
               melds: (o.melds || []).map((m) => ({
@@ -2337,6 +2340,7 @@ export function useGameSession(initial = {}) {
             event_type: 'MELD',
             tile: claimed,
             provider_seat: provider,
+            claimed_discard_index: responseDiscardIndex(meldSource, provider, claimed),
             meld: { meld_type: meldType, tiles: [...tiles], claimed_tile: claimed || null, provider_seat: provider || null },
           }))
           if (result.updated_state) {
@@ -2357,7 +2361,7 @@ export function useGameSession(initial = {}) {
             const expect = isKong
               ? 13 - 3 * roundState.melds.length
               : 14 - 3 * roundState.melds.length
-            if (apiHand.length === expect) {
+            if (apiHand.length === expect && roundState.handTiles.length === expect) {
               roundState.handTiles = sortHandTiles(
                 apiHand,
                 roundState.dealerTile,
@@ -2365,23 +2369,29 @@ export function useGameSession(initial = {}) {
               )
             }
           }
-          if (isKong || result.action_phase === 'DRAW') {
+          if (!isKong && result.action_phase === 'DRAW') {
             await awaitCurrentSession(epoch, enterKongReplaceDraw(result))
-          } else {
+          } else if (!isKong) {
             takeTurnAfterMeld(result)
           }
         } catch (e) {
         if (epoch !== sessionEpoch) return
           console.warn('[applySelfMeld] 后端同步失败，保留本地副露', e)
-          errorMsg.value = e?.message
-            ? `${e.message}（本地已副露${isKong ? '，请补牌' : '，请切牌'}）`
-            : '后端同步失败（本地已副露）'
+          if (!recoverProviderSyncError(e)) {
+            errorMsg.value = e?.message
+              ? `${e.message}（本地已副露${isKong ? '，请补牌' : '，请切牌'}）`
+              : '后端同步失败（本地已副露）'
+          }
         }
 
-        applyHandSort({ keepDrawn: false })
+        applyHandSort({
+          keepDrawn: isKong && roundState.handTiles.length === 14 - 3 * (roundState.melds?.length || 0),
+        })
         if (isKong) {
           currentTurnSeat.value = roundState.seatWind
-          currentPhase.value = 'WAITING'
+          const discardNeed = 14 - 3 * (roundState.melds?.length || 0)
+          currentPhase.value = roundState.handTiles.length === discardNeed
+            ? 'MY_TURN_DISCARD' : 'WAITING'
         } else {
           const need2 = 14 - 3 * (roundState.melds?.length || 0)
           if (roundState.handTiles.length === need2) {
@@ -2473,6 +2483,7 @@ export function useGameSession(initial = {}) {
       try {
         pushSnapshot()
         didPush = true
+        const kongSource = historyStack.value.at(-1).roundState
         logTurn('applySelfKong:before', { kind, face })
 
         let hand = sanitizeTileList(roundState.handTiles)
@@ -2511,20 +2522,19 @@ export function useGameSession(initial = {}) {
         }))
 
         try {
-          const snap = historyStack.value[historyStack.value.length - 1]
           const prePayload = {
-            hand_tiles: [...snap.roundState.handTiles],
-            melds: snap.roundState.melds.map((m) => ({
+            hand_tiles: [...kongSource.handTiles],
+            melds: kongSource.melds.map((m) => ({
               ...m,
               meld_type: m.meld_type,
               tiles: [...m.tiles],
             })),
-            discards: [...snap.roundState.discards],
-            dealer_tile: snap.roundState.dealerTile,
-            is_dealer: snap.roundState.isDealer,
-            seat_wind: snap.roundState.seatWind,
-            round_wind: snap.roundState.roundWind,
-            opponents: snap.roundState.opponents.map((o) => ({
+            discards: [...kongSource.discards],
+            dealer_tile: kongSource.dealerTile,
+            is_dealer: kongSource.isDealer,
+            seat_wind: kongSource.seatWind,
+            round_wind: kongSource.roundWind,
+            opponents: kongSource.opponents.map((o) => ({
               seat_wind: o.seat_wind,
               is_dealer: !!o.is_dealer,
               melds: (o.melds || []).map((m) => ({
@@ -2555,7 +2565,7 @@ export function useGameSession(initial = {}) {
               }))
             }
             const expect = 13 - 3 * roundState.melds.length
-            if (apiHand.length === expect) {
+            if (apiHand.length === expect && roundState.handTiles.length === expect) {
               roundState.handTiles = sortHandTiles(
                 apiHand,
                 roundState.dealerTile,
@@ -2617,6 +2627,29 @@ export function useGameSession(initial = {}) {
   }
 
   /** 仅从当前出牌方牌河末尾取牌；不得搜索其他座位或旧弃牌。 */
+  function responseDiscardIndex(snapshot, providerSeat, claimed) {
+    const river = providerSeat === snapshot.seatWind
+      ? snapshot.discards
+      : snapshot.opponents.find((o) => o.seat_wind === providerSeat)?.discards
+    if (!river?.length || river.at(-1) !== claimed) {
+      throw new Error('供牌方原响应位置已失效')
+    }
+    return river.length - 1
+  }
+
+  function recoverProviderSyncError(error) {
+    const message = error?.message || String(error)
+    if (gameMode.value !== 'PVE' || !/供牌方.*(?:牌河末张|原响应位置)/.test(message)) return false
+    // 步进 API 是无状态的；本地已持有完整桌面，下一步请求会提交这份全量局面。
+    toHandRequestPayload()
+    errorMsg.value = ''
+    lastStepResult.value = {
+      ...lastStepResult.value,
+      note: '副露已完成；后续动作将携当前全桌局面继续校验',
+    }
+    return true
+  }
+
   function removeClaimedFromRiver(claimed, providerSeat) {
     if (!isResponseWindow.value || lastStepResult.value?._pending_add_kong) {
       throw new Error('当前没有可副露的出牌响应窗口')

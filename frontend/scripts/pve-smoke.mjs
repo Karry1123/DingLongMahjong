@@ -91,18 +91,24 @@ try {
     const work = document.querySelector('[aria-label="自家操作工作台"]');
     const left = work.querySelector('[aria-label="自家手牌与副露"]').getBoundingClientRect();
     const right = work.querySelector('[aria-label="实时 EV 推荐"]').getBoundingClientRect();
+    const hand = work.querySelector('.pve-self-hand').getBoundingClientRect();
+    const meld = work.querySelector('.compact-melds').getBoundingClientRect();
     const text = document.body.innerText;
-    return {left: left.toJSON(), right: right.toJSON(), editors: ['添加副露','清空副露','清空重选','选牌键盘'].filter(t => text.includes(t))};
+    return {left: left.toJSON(), right: right.toJSON(), hand: hand.toJSON(), meld: meld.toJSON(), editors: ['添加副露','清空副露','清空重选','选牌键盘'].filter(t => text.includes(t))};
   })()`)
   assert.deepEqual(desktop.editors, [])
   assert.ok(desktop.right.x >= desktop.left.right)
   assert.ok(Math.abs(desktop.left.y - desktop.right.y) < 2)
+  assert.ok(desktop.hand.top >= desktop.right.top && desktop.hand.top < desktop.meld.top)
   await mkdir('tests/artifacts', { recursive: true })
   await evaluate(`document.querySelector('[aria-label="自家操作工作台"]').scrollIntoView({block:'start'})`)
   await sleep(100)
   let shot = await command('Page.captureScreenshot', { format: 'png' })
   await writeFile('tests/artifacts/pve-desktop.png', Buffer.from(shot.data, 'base64'))
   await evaluate(`window.__pveStart = performance.now(); document.querySelector('[aria-label="手牌槽位"] button[title="打出 北"]').click()`)
+  await until(() => evaluate(`!!document.querySelector('[aria-label="自家牌河"]')`))
+  const selfOrder = await evaluate(`(() => {const work=document.querySelector('[aria-label="自家操作工作台"]');const hand=work.querySelector('.pve-self-hand').getBoundingClientRect();const meld=work.querySelector('.compact-melds').getBoundingClientRect();const river=work.querySelector('[aria-label="自家牌河"]').getBoundingClientRect();return {hand:hand.top, meld:meld.top, river:river.top}})()`)
+  assert.ok(selfOrder.hand < selfOrder.meld && selfOrder.meld < selfOrder.river)
   await until(() => evaluate(`document.querySelector('[data-seat="S"] .thinking-indicator')?.textContent.includes('思考中')`))
   assert.equal(await evaluate(`document.querySelector('[data-seat="S"] [aria-label="弃牌"]').children.length`), 0)
   await until(() => evaluate(`document.querySelector('[data-seat="S"] [aria-label="弃牌"]').children.length > 0`))
@@ -124,15 +130,29 @@ try {
   assert.match(secondRound.lowerSeat, /下家 · 东风.*庄/)
   assert.match(secondRound.dealer, /当前庄家：下家 · 东风/)
   await command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false })
-  await sleep(100)
+  await sleep(400)
   const mobile = await evaluate(`(() => {
-    const left = document.querySelector('[aria-label="自家手牌与副露"]').getBoundingClientRect();
-    const right = document.querySelector('[aria-label="实时 EV 推荐"]').getBoundingClientRect();
-    return { stacked: right.y >= left.bottom, overflow: document.documentElement.scrollWidth > innerWidth };
+    const box = (selector) => document.querySelector(selector).getBoundingClientRect().toJSON();
+    return {
+      shell: box('.pve-portrait-shell'),
+      board: box('.pve-table'),
+      hand: box('[aria-label="自家手牌与副露"]'),
+      recommend: box('[aria-label="实时 EV 推荐"]'),
+      viewport: {width: innerWidth, height: innerHeight},
+      pageScroll: {width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight},
+      rotated: getComputedStyle(document.querySelector('.pve-portrait-shell')).transform !== 'none',
+      visibleHandTiles: (() => {const hand=document.querySelector('[aria-label="自家手牌与副露"]').getBoundingClientRect(); return [...document.querySelectorAll('[aria-label="手牌槽位"] button[role="listitem"]')].filter(el => {const r=el.getBoundingClientRect();return r.left >= hand.left && r.right <= hand.right && r.top >= hand.top && r.bottom <= hand.bottom && getComputedStyle(el.querySelector('.tile-face')).display !== 'none'}).length})(),
+    };
   })()`)
-  assert.ok(mobile.stacked)
-  assert.equal(mobile.overflow, false)
-  await evaluate(`document.querySelector('[aria-label="自家操作工作台"]').scrollIntoView({block:'start'})`)
+  assert.ok(mobile.rotated)
+  assert.ok(mobile.pageScroll.width <= mobile.viewport.width)
+  assert.ok(mobile.pageScroll.height <= mobile.viewport.height)
+  assert.equal(mobile.visibleHandTiles, 13)
+  for (const key of ['board', 'hand', 'recommend']) {
+    assert.ok(mobile[key].left >= -1 && mobile[key].right <= mobile.viewport.width + 1, `${key} horizontal overflow`)
+    assert.ok(mobile[key].top >= -1 && mobile[key].bottom <= mobile.viewport.height + 1, `${key} vertical overflow`)
+  }
+  await sleep(400)
   shot = await command('Page.captureScreenshot', { format: 'png' })
   await writeFile('tests/artifacts/pve-mobile.png', Buffer.from(shot.data, 'base64'))
   assert.deepEqual(errors, [])

@@ -28,6 +28,9 @@ import { cloudWakeMessage, getRecommendDecision, isAbortError } from './services
 import { relativeOpponents, tileLabel } from './constants/tiles.js'
 import { DEALER_SEAT, windLabel } from './utils/seatLayout.js'
 import { createSoundEngine } from './utils/soundEngine.js'
+import appInfo from '../package.json'
+
+const appVersion = `v${appInfo.version}`
 
 // ---------------------------------------------------------------------------
 // 会话状态（单一真相源）
@@ -40,7 +43,7 @@ watch([soundMuted, soundVolume], () => {
   soundEngine.setVolume(soundVolume.value / 100)
   soundEngine.setMuted(soundMuted.value)
 }, { immediate: true })
-onUnmounted(() => soundEngine.stop())
+onUnmounted(() => soundEngine.stop(true))
 const session = useGameSession({ onAction: soundEngine.playAction })
 const {
   roundState,
@@ -1183,6 +1186,7 @@ async function onOpponentMeld(payload) {
  * ActionPrompt：过 → passCall；吃碰 → applySelfMeld 切牌；明杠 → 副露后补牌再切；胡 → acknowledgeHu
  */
 async function onActionSelected(payload) {
+  analyzeError.value = ''
   const type = payload.action_type
   const provider =
     lastDiscardSeat.value ||
@@ -1269,6 +1273,7 @@ async function onReset(clearHistory = false) {
 <template>
   <div
     class="min-h-screen bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 px-4 py-8 sm:px-6 sm:py-10"
+    :class="gameMode === 'PVE' && activeUiMode === 'PVE' ? 'pve-portrait-shell' : ''"
   >
     <section v-if="!activeUiMode" class="mx-auto flex min-h-[75vh] max-w-5xl flex-col items-center justify-center text-center">
       <p class="text-sm font-semibold tracking-[0.25em] text-amber-300">台州麻将 · 实战练习</p>
@@ -1286,7 +1291,7 @@ async function onReset(clearHistory = false) {
       <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
       <p v-if="errorMsg" class="mt-5 text-sm text-rose-200">{{ errorMsg }}</p>
     </section>
-    <div v-else>
+    <div v-else :class="gameMode === 'PVE' ? 'pve-session-view' : ''">
     <header class="mb-8 text-center">
       <h1
         class="text-3xl font-semibold tracking-wide text-amber-50 sm:text-4xl"
@@ -1299,7 +1304,7 @@ async function onReset(clearHistory = false) {
       <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
     </header>
 
-    <main class="mx-auto flex flex-col gap-6" :class="gameMode === 'PVE' ? ['max-w-7xl min-h-[calc(100vh+18rem)]', showActionPrompt ? 'pb-72' : 'pb-24'] : 'max-w-6xl pb-16'">
+    <main class="mx-auto flex flex-col gap-6" :class="gameMode === 'PVE' ? ['pve-game-main', 'max-w-7xl min-h-[calc(100vh+18rem)]', showActionPrompt ? 'pb-72' : 'pb-24'] : 'max-w-6xl pb-16'">
       <!-- ========== 顶部全局轮次状态条 ========== -->
       <section
         class="rounded-2xl border p-4 shadow-lg transition-colors duration-300 sm:p-5"
@@ -1540,76 +1545,13 @@ async function onReset(clearHistory = false) {
       />
 
       <PlayerWorkbench :pve="gameMode === 'PVE'">
-      <header v-if="gameMode === 'PVE'" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/30 bg-teal-950 px-4 py-3 text-amber-50" aria-label="自家信息">
+      <template #heading><header v-if="gameMode === 'PVE'" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/30 bg-teal-950 px-4 py-3 text-amber-50 lg:col-span-2" aria-label="自家信息">
         <b>自家 · {{ windLabel(seatWind) }}风 <span v-if="seatWind === dealerSeat" class="text-amber-300">庄家</span></b>
         <span>累计 {{ cumulativeScores[seatWind] || 0 }} 分</span>
-      </header>
-      <div v-if="gameMode === 'PVE' && selfDiscards.length" class="rounded-xl border border-teal-700/40 p-2.5" aria-label="自家牌河">
-        <p class="mb-1 text-xs text-teal-200">自家牌河</p>
-        <DiscardRiver :tiles="selfDiscards" compact />
-      </div>
-      <MeldBar
-        :read-only="gameMode === 'PVE'"
-        :compact="gameMode === 'PVE'"
-        :dealer-tile="dealerTile"
-        v-model="melds"
-        :hand-tiles="handTiles"
-        :discarded-tiles="selfDiscards"
-        :extra-occupied="meldBarExtra"
-        :class="
-          isPlaying && !selfPanelFocused
-            ? 'pointer-events-none opacity-75'
-            : isSetup
-              ? 'opacity-90'
-              : ''
-        "
-      />
-
-      <!-- 自摸醒目横幅 -->
-      <SelfWinBanner
-        v-if="canSelfWin && selfWinInfo && !loading"
-        class="mb-3"
-        :info="selfWinInfo"
-        :disabled="loading"
-        @declare="onDeclareSelfWin"
-        @dismiss="onDismissSelfWin"
-      />
-
-      <!-- 暗杠 / 补杠入口（待切时） -->
-      <div
-        v-if="
-          isPlaying &&
-          (handReadyToDiscard || isMyDiscardTurn) &&
-          selfGangCandidates.length &&
-          !loading &&
-          !showActionPrompt
-        "
-        class="mb-3 flex flex-wrap gap-2"
-        aria-label="暗杠补杠操作"
-      >
-        <button
-          v-for="(g, gi) in selfGangCandidates"
-          :key="`${g.action_type}-${g.tile}-${gi}`"
-          type="button"
-          class="inline-flex items-center gap-2 rounded-xl border border-violet-400/55 bg-violet-950/75 px-3.5 py-2.5 text-sm font-semibold text-violet-50 shadow-md transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-900/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
-          @click="onDeclareSelfKong(g)"
-        >
-          <span>
-            {{ g.action_type === 'bu_gang' ? '宣布补杠' : '宣布暗杠' }}：{{
-              tileLabel(g.tile)
-            }}
-          </span>
-          <span class="rounded-md bg-violet-500/30 px-1.5 py-0.5 text-[11px] font-bold text-amber-100">
-            预估胡头 +{{ g.est_hu_bonus }}
-          </span>
-          <span class="text-[11px] font-medium text-violet-200/80">
-            EV {{ Number(g.ev_score) >= 0 ? '+' : '' }}{{ Number(g.ev_score).toFixed(1) }}
-          </span>
-        </button>
-      </div>
-
+      </header></template>
       <!-- SETUP：点击移除；PLAYING：仅自家行动权可切 -->
       <HandBar
+        class="pve-self-hand"
         :wall-driven="gameMode === 'PVE'"
         v-model="handTiles"
         v-model:auto-sort="autoSortEnabled"
@@ -1645,6 +1587,68 @@ async function onReset(clearHistory = false) {
         "
         @manual-sort="manualSortHand"
       />
+
+      <MeldBar
+        :read-only="gameMode === 'PVE'"
+        :compact="gameMode === 'PVE'"
+        :dealer-tile="dealerTile"
+        v-model="melds"
+        :hand-tiles="handTiles"
+        :discarded-tiles="selfDiscards"
+        :extra-occupied="meldBarExtra"
+        :class="
+          isPlaying && !selfPanelFocused
+            ? 'pointer-events-none opacity-75'
+            : isSetup
+              ? 'opacity-90'
+              : ''
+        "
+      />
+      <div v-if="gameMode === 'PVE' && selfDiscards.length" class="rounded-xl border border-teal-700/40 p-2.5" aria-label="自家牌河">
+        <p class="mb-1 text-xs text-teal-200">自家牌河</p>
+        <DiscardRiver :tiles="selfDiscards" compact />
+      </div>
+
+      <SelfWinBanner
+        v-if="canSelfWin && selfWinInfo && !loading"
+        class="mb-3"
+        :info="selfWinInfo"
+        :disabled="loading"
+        @declare="onDeclareSelfWin"
+        @dismiss="onDismissSelfWin"
+      />
+
+      <div
+        v-if="
+          isPlaying &&
+          (handReadyToDiscard || isMyDiscardTurn) &&
+          selfGangCandidates.length &&
+          !loading &&
+          !showActionPrompt
+        "
+        class="mb-3 flex flex-wrap gap-2"
+        aria-label="暗杠补杠操作"
+      >
+        <button
+          v-for="(g, gi) in selfGangCandidates"
+          :key="`${g.action_type}-${g.tile}-${gi}`"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-xl border border-violet-400/55 bg-violet-950/75 px-3.5 py-2.5 text-sm font-semibold text-violet-50 shadow-md transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-900/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+          @click="onDeclareSelfKong(g)"
+        >
+          <span>
+            {{ g.action_type === 'bu_gang' ? '宣布补杠' : '宣布暗杠' }}：{{
+              tileLabel(g.tile)
+            }}
+          </span>
+          <span class="rounded-md bg-violet-500/30 px-1.5 py-0.5 text-[11px] font-bold text-amber-100">
+            预估胡头 +{{ g.est_hu_bonus }}
+          </span>
+          <span class="text-[11px] font-medium text-violet-200/80">
+            EV {{ Number(g.ev_score) >= 0 ? '+' : '' }}{{ Number(g.ev_score).toFixed(1) }}
+          </span>
+        </button>
+      </div>
 
       <ActionPrompt
         v-if="showActionPrompt && gameMode === 'PVE'"
@@ -1773,5 +1777,6 @@ async function onReset(clearHistory = false) {
     />
     <PvECircleSummary v-if="gameMode === 'PVE' && showRoundSummaryModal" :round-count="roundCount" :scores="cumulativeScores" :seat-wind="seatWind" @continue="onContinuePveCircle" @exit="onExitPve" />
     </div>
+    <footer class="app-version-footer mt-4 text-center text-xs text-teal-200/55" aria-label="当前版本">{{ appVersion }}</footer>
   </div>
 </template>

@@ -39,6 +39,8 @@ from .mapper import preprocess_hand
 from .scoring import (
     DEFAULT_BASE_HU,
     MAX_PAYMENT_PER_PLAYER,
+    MING_GANG_SIMPLE_HU,
+    MING_GANG_TERMINAL_HONOR_HU,
     PONG_SIMPLE_HU,
     PONG_TERMINAL_HONOR_HU,
     _is_terminal_or_honor,
@@ -282,6 +284,24 @@ def evaluate_call_decision(
 
     if not scores:
         raise ValueError("无任何可评估动作")
+
+    # 三张暗刻面对外部第四张时，碰后仍须切掉余下那张；明杠则锁定更高
+    # 底胡并获得岭上补张。嵌套抽样 EV 对这一次额外摸牌可能低估，按
+    # 明杠与明刻的固定胡差给出可解释的结构下界。
+    if Counter(hand_tiles)[disc] == 3:
+        pong = next((s for s in scores if s.action.action_type == ActionType.PONG), None)
+        kong = next((s for s in scores if s.action.action_type == ActionType.MING_GANG), None)
+        if pong and kong and pong.net_ev > float("-inf") and kong.net_ev > float("-inf"):
+            terminal = _is_terminal_or_honor(_logical_tile(disc, dealer_tile))
+            pong_hu = PONG_TERMINAL_HONOR_HU if terminal else PONG_SIMPLE_HU
+            kong_hu = MING_GANG_TERMINAL_HONOR_HU if terminal else MING_GANG_SIMPLE_HU
+            hu_weight = 1.0 if shanten_now <= 1 else 0.85
+            floor_gap = ((kong_hu - pong_hu) * _PONG_HU_EV_SCALE
+                         * (1.15 if is_dealer else 1.0) * hu_weight
+                         + _PASS_DRAW_TURN_BASE * 0.35)
+            if kong.net_ev < pong.net_ev + floor_gap:
+                kong.net_ev = pong.net_ev + floor_gap
+                kong.note += f"；绝张暗刻相对碰牌锁定+{kong_hu - pong_hu}胡并获得岭上补张"
 
     best = max(scores, key=lambda s: s.net_ev)
     reason = _build_reason(best, scores, shanten_now)
@@ -555,7 +575,14 @@ def _evaluate_call_ev(
         )
         # 开杠损失门清：按向听折现扣机会成本
         ev -= _MENQING_HARD_HU_COST * hard_hu_discount
-        return ev, f"明杠后补张再切；{hard_note}"
+        face = _logical_tile(discarded_tile, dealer_tile)
+        hu = (MING_GANG_TERMINAL_HONOR_HU if _is_terminal_or_honor(face)
+              else MING_GANG_SIMPLE_HU)
+        # 与碰的固定底胡使用同一尺度。杠分已经锁定，岭上补张 EV 则由上面的
+        # 枚举独立计算；否则会把明杠误判为一次没有底胡的普通副露。
+        hu_weight = 1.0 if shanten_before <= 1 else 0.85
+        ev += hu * _PONG_HU_EV_SCALE * (1.15 if is_dealer else 1.0) * hu_weight
+        return ev, f"明杠锁定+{hu}底胡，岭上补张再切；{hard_note}"
 
     # 吃/碰后立即待切
     result = calculate_best_discards(

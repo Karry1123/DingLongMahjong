@@ -531,6 +531,10 @@ class StepEvent(BaseModel):
     provider_seat: SeatWind | None = Field(
         None, description="MELD/PASS 所响应的最近出牌方；同名历史弃牌不得替代",
     )
+    claimed_discard_index: int | None = Field(
+        None, ge=0,
+        description="MELD 响应窗口中供牌方弃牌的原始位置，用于安全处理后续时序追加",
+    )
     meld: Optional[Meld] = Field(
         None,
         description="MELD 时的副露结构；其它事件应为 null",

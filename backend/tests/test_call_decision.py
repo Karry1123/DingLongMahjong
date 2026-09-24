@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from app.core.action_generator import (
     Action,
@@ -113,6 +114,42 @@ class TestHuPriority(unittest.TestCase):
 
 
 class TestPassVsCallEv(unittest.TestCase):
+    def test_fourth_terminal_tile_prefers_ming_gang_over_pong(self):
+        """暗刻遇外部绝张：明杠的 16 胡与岭上补张应压过 4 胡明刻。"""
+        hand = ["1m"] * 3 + [
+            "2m", "3m", "4m", "4p", "5p", "6p", "7s", "8s", "9s", "N",
+        ]
+        actions = get_available_actions(
+            hand_tiles=hand, melds=[], discarded_tile="1m",
+            provider_seat="S", player_seat="E", dealer_tile="5p",
+        )
+        decision = evaluate_call_decision(
+            available_actions=actions, hand_tiles=hand, melds=[],
+            opponents=[], dealer_tile="5p", seat_wind="E", round_wind="E",
+            is_dealer=False, discarded_tile="1m", discarded_tiles=["1m"],
+        )
+        scores = {c.action.action_type: c.net_ev for c in decision.candidates}
+        self.assertEqual(decision.recommended_action.action_type, ActionType.MING_GANG)
+        self.assertGreater(scores[ActionType.MING_GANG], scores[ActionType.PONG] + 12)
+        self.assertIn("+16底胡", decision.candidates[0].note)
+
+    def test_fourth_tile_kong_stays_ahead_when_rinshan_sample_is_low(self):
+        hand = ["1m"] * 3 + [
+            "2m", "3m", "4m", "4p", "5p", "6p", "7s", "8s", "9s", "N",
+        ]
+        actions = get_available_actions(
+            hand_tiles=hand, melds=[], discarded_tile="1m",
+            provider_seat="S", player_seat="E", dealer_tile="5p",
+        )
+        with patch("app.core.call_decision.evaluate_rinshan_then_discard", return_value=-500):
+            decision = evaluate_call_decision(
+                available_actions=actions, hand_tiles=hand, melds=[],
+                opponents=[], dealer_tile="5p", seat_wind="E", round_wind="E",
+                is_dealer=False, discarded_tile="1m", discarded_tiles=["1m"],
+            )
+        scores = {c.action.action_type: c.net_ev for c in decision.candidates}
+        self.assertGreater(scores[ActionType.MING_GANG], scores[ActionType.PONG] + 30)
+
     def test_pong_fan_respects_dragons_seat_and_round_wind(self):
         self.assertEqual(_pong_yakuhai_fan("C", "N", "W", "E"), 1)
         self.assertEqual(_pong_yakuhai_fan("F", "N", "W", "E"), 1)

@@ -171,6 +171,60 @@ test('self add-kong upgrades the existing meld and returns to discard after tail
   assert.equal(s.currentPhase.value, 'MY_TURN_DISCARD')
 })
 
+async function westNineKongFixture() {
+  const s = await fixture()
+  s.roundState.dealerTile = '5p'
+  s.roundState.handTiles = ['9s', '9s', '9s', '1s', '2s', '3s', '4s', '5s', '6s', '7s', '8s', 'E', 'F']
+  for (const o of s.roundState.opponents) o.hand_tiles = []
+  const west = s.roundState.opponents.find((o) => o.seat_wind === 'W')
+  west.hand_tiles = ['9s', '1m', '2m', '3m', '4m', '5m', '6m', '7m', '8m', '9m', '1p', '2p', '3p', '4p']
+  s.currentTurnSeat.value = 'W'
+  s.currentPhase.value = 'WAITING'
+  return s
+}
+
+test('west nine-sou discard and self ming-kong send the original river snapshot', async () => {
+  const s = await westNineKongFixture()
+  const baseFetch = globalThis.fetch
+  let meldRequest
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith('/game/step')) {
+      const payload = JSON.parse(options.body)
+      if (payload.event.event_type === 'MELD') meldRequest = payload
+    }
+    return baseFetch(url, options)
+  }
+  await s.opponentDiscardTile('W', '9s')
+  assert.equal(s.lastDiscardSeat.value, 'W')
+  assert.equal(s.roundState.opponents.find((o) => o.seat_wind === 'W').discards.at(-1), '9s')
+  await s.applySelfMeld({ meld_type: 'ming_gang', tiles: ['9s','9s','9s','9s'], claimed_tile: '9s', provider_seat: 'W' })
+  assert.equal(meldRequest.event.actor_seat, 'E')
+  assert.equal(meldRequest.event.provider_seat, 'W')
+  assert.equal(meldRequest.event.claimed_discard_index, 0)
+  assert.equal(meldRequest.opponents.find((o) => o.seat_wind === 'W').discards.at(-1), '9s')
+  assert.equal(meldRequest.hand_tiles.filter((tile) => tile === '9s').length, 3)
+  assert.equal(s.roundState.melds[0].provider_seat, 'W')
+  assert.equal(s.roundState.opponents.find((o) => o.seat_wind === 'W').discards.length, 0)
+  assert.equal(s.errorMsg.value, '')
+})
+
+test('a stale provider validation response keeps the completed PvE meld without a raw red error', async () => {
+  const s = await westNineKongFixture()
+  const baseFetch = globalThis.fetch
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith('/game/step') && JSON.parse(options.body).event.event_type === 'MELD') {
+      return { ok: false, status: 400, json: async () => ({ detail: "供牌方 W 牌河末张不是 '9s'" }) }
+    }
+    return baseFetch(url, options)
+  }
+  await s.opponentDiscardTile('W', '9s')
+  await s.applySelfMeld({ meld_type: 'ming_gang', tiles: ['9s','9s','9s','9s'], claimed_tile: '9s', provider_seat: 'W' })
+  assert.equal(s.errorMsg.value, '')
+  assert.match(s.lastStepResult.value.note, /当前全桌局面继续校验/)
+  assert.equal(s.roundState.opponents.find((o) => o.seat_wind === 'W').discards.length, 0)
+  assert.equal(s.currentPhase.value, 'MY_TURN_DISCARD')
+})
+
 test('three AI turns return control to the human, drawing exactly once per seat', async () => {
   const s = await fixture()
   const seen = []

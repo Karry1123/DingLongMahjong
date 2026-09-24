@@ -27,7 +27,23 @@ export function createSoundEngine(browser = globalThis) {
   let activeUtterance = null
   let pending = null
   let speechTimeout = null
+  let voiceWaitTimer = null
+  let voiceWaitExpired = false
+  let primingUtterance = null
+  let speechUnlocked = false
   const synth = browser.speechSynthesis
+  let voices = []
+
+  function refreshVoices() {
+    try { voices = synth?.getVoices?.() || [] } catch { voices = [] }
+    if (voices.length) {
+      clearTimeout(voiceWaitTimer)
+      voiceWaitTimer = null
+      pump()
+    }
+  }
+  synth?.addEventListener?.('voiceschanged', refreshVoices)
+  refreshVoices()
 
   function setVolume(value) {
     volume = Math.min(1, Math.max(0, Number(value) || 0))
@@ -36,6 +52,7 @@ export function createSoundEngine(browser = globalThis) {
       clearTimeout(speechTimeout)
       activeUtterance = null
       speaking = false
+      primingUtterance = null
       synth?.cancel?.()
     }
     return volume
@@ -48,18 +65,53 @@ export function createSoundEngine(browser = globalThis) {
       synth?.cancel?.()
       speaking = false
       activeUtterance = null
+      primingUtterance = null
     }
     return muted
   }
-  function unlock() {
+  function unlockAudio() {
     const AudioContext = browser.AudioContext || browser.webkitAudioContext
     if (!context && AudioContext) context = new AudioContext()
     if (context?.state === 'suspended') void context.resume().catch(() => {})
   }
+  function unlock() {
+    unlockAudio()
+    // iOS / WebView requires speak() itself to run in the first user gesture.
+    if (!speechUnlocked && synth?.speak && browser.SpeechSynthesisUtterance && !muted && volume > 0) {
+      try {
+        primingUtterance = new browser.SpeechSynthesisUtterance('。')
+        primingUtterance.lang = 'zh-CN'
+        primingUtterance.volume = 0
+        primingUtterance.onend = () => { primingUtterance = null }
+        primingUtterance.onerror = () => { primingUtterance = null }
+        synth.speak(primingUtterance)
+        synth.resume?.()
+        speechUnlocked = true
+      } catch { primingUtterance = null }
+    }
+  }
+  function fallbackCue() {
+    // A distinct two-tone cue still announces an action on devices without TTS.
+    try {
+      unlockAudio()
+      if (!context) return
+      const now = context.currentTime
+      for (const [offset, frequency] of [[0, 660], [0.13, 880]]) {
+        const oscillator = context.createOscillator()
+        const gain = context.createGain()
+        oscillator.frequency.value = frequency
+        gain.gain.setValueAtTime(Math.max(0.001, volume * 0.12), now + offset)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.11)
+        oscillator.connect(gain).connect(context.destination)
+        oscillator.start(now + offset)
+        oscillator.stop(now + offset + 0.12)
+      }
+    } catch { /* No audio output is available on this device. */ }
+  }
   function tap(win = false) {
     if (muted || volume === 0) return
     try {
-      unlock()
+      unlockAudio()
       if (!context) return
       const now = context.currentTime
       if (!win) {
@@ -97,7 +149,16 @@ export function createSoundEngine(browser = globalThis) {
     } catch { /* AudioContext can be unavailable or blocked; speech remains usable. */ }
   }
   function pump() {
-    if (speaking || !pending || muted || volume === 0 || !synth || !browser.SpeechSynthesisUtterance) return
+    if (speaking || !pending || muted || volume === 0) return
+    if (!synth?.speak || !browser.SpeechSynthesisUtterance) {
+      pending = null
+      fallbackCue()
+      return
+    }
+    if (!voices.length && !voiceWaitExpired) {
+      if (!voiceWaitTimer) voiceWaitTimer = setTimeout(() => { voiceWaitExpired = true; voiceWaitTimer = null; pump() }, 700)
+      return
+    }
     const { text, profile } = pending
     pending = null
     const utterance = new browser.SpeechSynthesisUtterance(text)
@@ -105,9 +166,12 @@ export function createSoundEngine(browser = globalThis) {
     utterance.pitch = profile.pitch
     utterance.rate = profile.rate
     utterance.volume = volume
-    const voices = synth.getVoices?.() || []
     const chinese = voices.filter((voice) => /^zh(?:-|_)/i.test(voice.lang))
     utterance.voice = chinese.find((voice) => profile.voice.test(voice.name)) || chinese[0] || null
+    if (primingUtterance) {
+      try { synth.cancel() } catch { /* Ignore a stale primer. */ }
+      primingUtterance = null
+    }
     speaking = true
     activeUtterance = utterance
     const done = () => {
@@ -118,10 +182,10 @@ export function createSoundEngine(browser = globalThis) {
       pump()
     }
     utterance.onend = done
-    utterance.onerror = done
+    utterance.onerror = () => { fallbackCue(); done() }
     // Some browsers never deliver onend after a tab loses focus.
-    speechTimeout = setTimeout(() => { synth.cancel(); done() }, 2500)
-    try { synth.speak(utterance) } catch { done() }
+    speechTimeout = setTimeout(() => { synth.cancel(); fallbackCue(); done() }, 3500)
+    try { synth.speak(utterance); synth.resume?.() } catch { fallbackCue(); done() }
   }
   function playAction({ action, tile, seat, selfSeat }) {
     if (muted || volume === 0) return
@@ -131,12 +195,18 @@ export function createSoundEngine(browser = globalThis) {
     pending = { text, profile: voiceProfileForSeat(selfSeat, seat) }
     pump()
   }
-  function stop() {
+  function stop(dispose = false) {
     pending = null
     clearTimeout(speechTimeout)
+    clearTimeout(voiceWaitTimer)
+    voiceWaitTimer = null
+    voiceWaitExpired = false
+    if (dispose) synth?.removeEventListener?.('voiceschanged', refreshVoices)
     synth?.cancel?.()
     speaking = false
     activeUtterance = null
+    primingUtterance = null
+    speechUnlocked = false
     void context?.close?.()
     context = null
     clickBuffer = null

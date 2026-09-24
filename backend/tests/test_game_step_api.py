@@ -71,6 +71,38 @@ class TestGameStepApi(unittest.TestCase):
     def setUpClass(cls):
         cls.client = TestClient(app)
 
+    def test_self_ming_gang_from_west_uses_bound_discard_position(self):
+        hand = ["9s"] * 3 + ["1m", "2m", "3m", "4m", "5m", "6m", "1p", "2p", "3p", "E"]
+        payload = _base_state_13(
+            hand_tiles=hand,
+            opponents=[
+                {"seat_wind": "S", "is_dealer": False, "melds": [], "discards": []},
+                {"seat_wind": "W", "is_dealer": True, "melds": [], "discards": ["2p", "9s", "3p"]},
+                {"seat_wind": "N", "is_dealer": False, "melds": [], "discards": ["7p"]},
+            ],
+            event={
+                "actor_seat": "E", "event_type": "MELD", "tile": "9s",
+                "provider_seat": "W", "claimed_discard_index": 1,
+                "meld": {"meld_type": "ming_gang", "tiles": ["9s"] * 4,
+                         "claimed_tile": "9s", "provider_seat": "W"},
+            },
+        )
+        response = self.client.post("/api/game/step", json=payload)
+        self.assertEqual(response.status_code, 200, response.text)
+        after = response.json()["updated_state"]
+        west = next(o for o in after["opponents"] if o["seat_wind"] == "W")
+        north = next(o for o in after["opponents"] if o["seat_wind"] == "N")
+        self.assertEqual(west["discards"], ["2p", "3p"])
+        self.assertEqual(north["discards"], ["7p"])
+        self.assertEqual(after["hand_tiles"], hand[3:])
+        self.assertEqual(after["melds"][0]["provider_seat"], "W")
+        self.assertEqual(response.json()["action_phase"], "DRAW")
+
+        payload["event"]["claimed_discard_index"] = 0
+        wrong = self.client.post("/api/game/step", json=payload)
+        self.assertEqual(wrong.status_code, 400)
+        self.assertIn("原响应位置", wrong.json()["detail"])
+
     def test_chi_claims_only_bound_provider_river_tail_when_two_rivers_match(self):
         state = _base_state_13(
             discards=["7p"],
