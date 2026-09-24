@@ -20,6 +20,7 @@ venv/
 logs/
 *.log
 backend/data/game_logs/
+frontend/tests/artifacts/
 
 # Editors and OS
 .DS_Store

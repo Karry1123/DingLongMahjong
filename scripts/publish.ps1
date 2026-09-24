@@ -25,6 +25,7 @@ if ($LASTEXITCODE -ne 0) { throw "Staged changes failed git diff --check" }
 $tracked = @(git -c "safe.directory=$trustedDirectory" ls-files --cached)
 $forbidden = @($tracked | Where-Object {
     $_ -match '(^|/)(\.env(\.local|\.[^/]+\.local)?|node_modules|\.venv|venv|dist|__pycache__|game_logs)(/|$)' -or
+    $_ -match '(^|/)tests/artifacts(/|$)' -or
     $_ -match '\.(pem|key|mp4|mov|wav|psd)$'
 })
 if ($forbidden.Count -gt 0) {
