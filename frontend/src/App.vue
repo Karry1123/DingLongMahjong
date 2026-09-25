@@ -32,30 +32,6 @@ import { DEALER_SEAT, windLabel } from './utils/seatLayout.js'
 import { createSoundEngine } from './utils/soundEngine.js'
 import appInfo from '../package.json'
 
-const isPortrait = ref(false)
-let orientationQuery
-function updateOrientation() {
-  const mediaPortrait = orientationQuery?.matches
-  const legacyPortrait = typeof window.orientation === 'number'
-    ? Math.abs(window.orientation) % 180 === 0
-    : null
-  isPortrait.value = typeof mediaPortrait === 'boolean'
-    ? mediaPortrait
-    : legacyPortrait ?? window.innerHeight > window.innerWidth
-}
-if (typeof window !== 'undefined') {
-  orientationQuery = window.matchMedia?.('(orientation: portrait)')
-  updateOrientation()
-  window.addEventListener('resize', updateOrientation, { passive: true })
-  window.addEventListener('orientationchange', updateOrientation, { passive: true })
-  orientationQuery?.addEventListener?.('change', updateOrientation)
-  onUnmounted(() => {
-    window.removeEventListener('resize', updateOrientation)
-    window.removeEventListener('orientationchange', updateOrientation)
-    orientationQuery?.removeEventListener?.('change', updateOrientation)
-  })
-}
-
 const appVersion = `v${appInfo.version}`
 
 // ---------------------------------------------------------------------------
@@ -1341,7 +1317,6 @@ async function onReset(clearHistory = false) {
 </script>
 
 <template>
-  <div class="game-landscape-container" :class="{ 'is-portrait-rotated': isPortrait && gameMode === 'PVE' && activeUiMode === 'PVE' }">
   <div
     class="min-h-screen bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 px-4 py-8 sm:px-6 sm:py-10"
     :class="gameMode === 'PVE' && activeUiMode === 'PVE' ? 'pve-portrait-shell' : ''"
@@ -1869,33 +1844,4 @@ async function onReset(clearHistory = false) {
     </div>
     <footer class="app-version-footer mt-4 text-center text-xs text-teal-200/55" aria-label="当前版本">{{ appVersion }}</footer>
   </div>
-  </div>
 </template>
-
-<style>
-.game-landscape-container {
-  min-height: 100vh;
-}
-
-@media (max-width: 768px) {
-  .game-landscape-container.is-portrait-rotated {
-    position: fixed;
-    z-index: 1;
-    top: 0;
-    left: 100vw;
-    width: 100vh;
-    height: 100vw;
-    overflow: hidden;
-    transform: rotate(90deg);
-    transform-origin: top left;
-  }
-
-  .game-landscape-container.is-portrait-rotated > div {
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    overflow: auto;
-    box-sizing: border-box;
-  }
-}
-</style>
