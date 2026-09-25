@@ -246,6 +246,8 @@ def fetch_game_record(game_id: str) -> dict:
 class ThreatRequest(BaseModel):
     dealer_tile: str
     wall_count: int = Field(ge=0)
+    turn_count: int | None = Field(default=None, ge=1)
+    self_discards: list[str] = Field(default_factory=list)
     opponents: list[PlayerState] = Field(default_factory=list, max_length=3)
 
 
@@ -255,6 +257,7 @@ def opponent_threats(request: ThreatRequest) -> dict:
 
     try:
         return {"threats": assess_opponent_threats(
-            request.opponents, request.dealer_tile, request.wall_count)}
+            request.opponents, request.dealer_tile, request.wall_count,
+            turn_count=request.turn_count, self_discards=request.self_discards)}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

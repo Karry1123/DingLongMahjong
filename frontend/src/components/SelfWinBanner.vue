@@ -14,6 +14,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  modal: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['declare', 'dismiss'])
@@ -48,6 +52,8 @@ const paymentNote = computed(
     class="relative overflow-hidden rounded-2xl border-2 border-amber-300/90 bg-gradient-to-br from-rose-700 via-amber-600 to-yellow-500 p-4 shadow-2xl shadow-rose-900/50 sm:p-5"
     aria-live="assertive"
     aria-label="自摸和牌提醒"
+    :role="modal ? 'dialog' : undefined"
+    :aria-modal="modal ? 'true' : undefined"
   >
     <div
       class="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/20 blur-2xl"
@@ -64,7 +70,7 @@ const paymentNote = computed(
           自摸达成
         </p>
         <h2 class="mt-1 text-xl font-black tracking-wide text-amber-50 sm:text-2xl">
-          已达成自摸和牌！预估
+          {{ modal ? '自摸和牌！预估' : '已达成自摸和牌！预估' }}
           <span class="text-yellow-100">{{ finalHu }}</span>
           胡（{{ hardLabel }}）
         </h2>
@@ -78,11 +84,11 @@ const paymentNote = computed(
       <div class="flex flex-shrink-0 flex-wrap gap-2">
         <button
           type="button"
-          class="rounded-xl bg-amber-50 px-5 py-3 text-base font-black text-rose-800 shadow-lg transition hover:scale-[1.03] hover:bg-white active:scale-95 disabled:opacity-50"
+          class="min-h-11 cursor-pointer rounded-xl bg-amber-50 px-5 py-3 text-base font-black text-rose-800 shadow-lg transition hover:scale-[1.03] hover:bg-white active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="disabled"
           @click="emit('declare')"
         >
-          宣告自摸和牌
+          {{ modal ? '确认和牌并结算' : '宣告自摸和牌' }}
         </button>
         <button
           type="button"

@@ -272,6 +272,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
     class="w-full rounded-2xl border border-teal-700/40 bg-teal-950/50 p-5 sm:p-6 shadow-xl backdrop-blur-sm transition-[box-shadow,opacity] duration-300"
     :class="[
       wallDriven ? 'max-w-none' : 'max-w-2xl',
+      wallDriven ? 'pve-stable-hand' : '',
       turnFocused
         ? 'ring-2 ring-emerald-500 shadow-lg opacity-100'
         : isDiscardReady
@@ -285,7 +286,10 @@ function tileButtonClass(item, { drawn = false } = {}) {
         <h2 class="text-lg font-semibold tracking-wide text-amber-50">
           手牌（{{ tiles.length }}/{{ capacity }}）
         </h2>
-        <p class="mt-0.5 text-xs text-teal-300/70">
+        <p v-if="wallDriven" class="pve-hand-caption mt-0.5 text-xs text-teal-300/80">
+          {{ isDiscardReady ? (disabled ? '等待响应 · 手牌只读' : '切牌阶段 · 点击手牌打出') : '等待摸牌 · 手牌只读' }}
+        </p>
+        <p v-else class="mt-0.5 text-xs text-teal-300/70">
           <template v-if="setupMode">
             开局录入：点击牌面
             <span class="font-medium text-amber-200/90">移除</span>
@@ -356,6 +360,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
 
     <div
       class="flex flex-wrap items-end gap-1.5 sm:gap-2"
+      :class="wallDriven ? 'pve-hand-anchor' : ''"
       role="list"
       aria-label="手牌槽位"
     >
@@ -433,7 +438,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
 
       <div
         v-if="splitHand.drawn"
-        class="ml-2 flex border-l border-dashed border-sky-400/40 pl-3 sm:ml-3 sm:pl-4"
+        class="pve-drawn-slot ml-2 flex border-l border-dashed border-sky-400/40 pl-3 sm:ml-3 sm:pl-4"
       >
         <button
           :key="splitHand.drawn.uid"
@@ -487,6 +492,11 @@ function tileButtonClass(item, { drawn = false } = {}) {
 </template>
 
 <style scoped>
+.pve-stable-hand { position: relative; }
+.pve-stable-hand .hand-move-move,
+.pve-stable-hand .hand-move-enter-active,
+.pve-stable-hand .hand-move-leave-active { transition: none !important; }
+
 .hand-champ-glow {
   animation: champ-glow 1.8s ease-in-out infinite;
   box-shadow:

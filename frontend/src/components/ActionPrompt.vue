@@ -351,7 +351,7 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
   <Teleport to="body" :disabled="inline">
     <div
       class="action-prompt-wrap flex w-full"
-      :class="inline ? (dock ? 'action-prompt-docked relative h-full justify-start p-0' : 'relative justify-start pt-4 pb-2') : 'pointer-events-none fixed inset-x-0 bottom-0 z-50 justify-center p-3 sm:p-5'"
+      :class="inline ? (dock ? 'action-prompt-docked relative justify-center p-0' : 'relative justify-start pt-4 pb-2') : 'pointer-events-none fixed inset-x-0 bottom-0 z-50 justify-center p-3 sm:p-5'"
       role="dialog"
       :aria-modal="inline ? undefined : 'true'"
       aria-label="副露与和牌决策"
@@ -414,7 +414,7 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
               >
                 荐
               </span>
-              <span class="text-base font-bold tracking-wide sm:text-lg">
+              <span class="action-label text-base font-bold tracking-wide sm:text-lg">
                 {{ actionLabel(row.action.action_type) }}
               </span>
               <span v-if="previewMeld(row.action).length" class="action-meld-preview flex flex-nowrap justify-center gap-0.5">
@@ -437,18 +437,22 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
 </template>
 
 <style scoped>
-.action-prompt-docked .action-prompt-panel { max-width:none; height:100%; display:flex; flex-direction:column; animation:none; }
-.action-prompt-docked .action-prompt-panel > header { padding:8px 12px; }
-.action-prompt-docked .action-prompt-panel > div:last-child { min-height:0; overflow-y:auto; padding:8px 12px; }
+.action-prompt-docked { height:auto; overflow:visible; }
+.action-prompt-docked .action-prompt-panel { max-width:none; height:auto; overflow:visible; display:flex; flex-direction:column; border-radius:16px; border-color:rgba(251,191,36,.45); background:rgba(3,46,43,.9); box-shadow:0 12px 32px rgba(0,20,20,.55); animation:none; }
+.action-prompt-docked .action-prompt-panel > header { display:block; padding:7px 14px; background:transparent; }
+.action-prompt-docked .action-prompt-panel > header > p:first-of-type { display:none; }
+.action-prompt-docked .action-prompt-panel > header > div:last-child { margin:0; justify-content:center; font-size:.85rem; line-height:1.2; }
+.action-prompt-docked .action-prompt-panel > header > div:last-child > span:nth-child(2) { height:26px; width:22px; font-size:.75rem; }
+.action-prompt-docked .action-prompt-panel > div:last-child { height:auto; min-height:0; overflow:visible; padding:8px 12px 10px; }
 .action-prompt-docked .hu-banner, .action-prompt-docked .pass-banner,
 .action-prompt-docked .action-prompt-panel > div:last-child > p:last-child { display:none; }
-.action-prompt-docked [aria-label="可选响应动作"] { display:grid; grid-template-columns:repeat(auto-fit,minmax(86px,1fr)); gap:8px; }
-.action-prompt-docked [aria-label="可选响应动作"] button { min-width:0; padding:6px 3px; gap:2px; }
+.action-prompt-docked [aria-label="可选响应动作"] { display:flex; flex-wrap:nowrap; justify-content:center; gap:8px; height:auto; }
+.action-prompt-docked [aria-label="可选响应动作"] button { min-width:80px; height:40px; min-height:40px; flex:1 1 0; flex-direction:row; justify-content:center; padding:4px 12px; gap:2px; border-radius:999px; white-space:nowrap; }
+.action-prompt-docked [aria-label="可选响应动作"] button > span:first-child,
+.action-prompt-docked [aria-label="可选响应动作"] button .action-meld-preview { display:none; }
+.action-prompt-docked [aria-label="可选响应动作"] button > span:not(.action-shortcut):not(.action-meld-preview) { font-size:15px; line-height:1; }
 .action-prompt-docked [aria-label="可选响应动作"] button[data-action="pass"] { order:99; }
 .action-prompt-docked header p:last-child { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-@media (min-width:1024px) and (max-width:1279px) {
-  .action-prompt-docked .action-prompt-panel > header > p:first-of-type { display:none; }
-}
 .action-prompt-panel {
   animation: prompt-rise 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

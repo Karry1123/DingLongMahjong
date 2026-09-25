@@ -20,3 +20,18 @@ export function northDiscardDeal() {
   }
   throw new Error('No north discard fixture')
 }
+
+/** East starts with a legal self-drawn winning hand for settlement UI tests. */
+export function selfWinDeal() {
+  const deck = ALL_TILES.flatMap((tile) => Array(4).fill(tile))
+  const dealer_tile = '6p'
+  const eastHand = ['1m', '1m', '1m', '2m', '2m', '2m', '3m', '3m', '3m', '4m', '4m', '4m', '5m', '5m']
+  for (const tile of [dealer_tile, ...eastHand]) {
+    const index = deck.indexOf(tile)
+    if (index < 0) throw new Error(`Missing fixture tile ${tile}`)
+    deck.splice(index, 1)
+  }
+  const hands = { E: eastHand }
+  for (const seat of ['S', 'W', 'N']) hands[seat] = deck.splice(0, 13)
+  return { dealer_tile, hands, dealer_seat: 'E', first_turn_seat: 'E', wall_tiles: deck, wall_count: deck.length }
+}

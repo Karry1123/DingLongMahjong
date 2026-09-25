@@ -15,28 +15,31 @@ def _is_middle(tile: str) -> bool:
 
 def assess_opponent_threats(
     opponents: Sequence[PlayerState | dict], dealer_tile: str, wall_count: int,
+    turn_count: int | None = None, self_discards: Sequence[str] = (),
 ) -> list[dict]:
-    """Use public signals only; an estimated probability never triggers a warning alone."""
+    """Classify one current warning per opponent from public table information."""
     public = [PlayerState.model_validate(source) for source in opponents]
     results = []
-    visible_discards = Counter(tile for player in public for tile in player.discards)
+    visible_discards = Counter(self_discards)
+    visible_discards.update(tile for player in public for tile in player.discards)
+    visible_discards.update(tile for player in public for meld in player.melds for tile in meld.tiles)
+    round_turn = turn_count if turn_count is not None else max((len(p.discards) for p in public), default=0) + 1
     for player in public:
         meld_count = len(player.melds)
-        probability = estimate_tenpai_probability(player, dealer_tile=dealer_tile)
+        probability = estimate_tenpai_probability(player, turn_count=round_turn, dealer_tile=dealer_tile)
         recent = player.discards[-2:]
         consecutive_fresh_middle = (
             len(recent) == 2
             and all(_is_middle(tile) and visible_discards[tile] == 1 for tile in recent)
         )
-        if wall_count > 55:
+        if wall_count > 55 or round_turn <= 4:
             level, reason = "safe", "early_round"
-        elif wall_count <= 25:
-            level, reason = "high", "late_round"
-        elif meld_count >= 3:
-            level, reason = "warn", "many_melds"
-        elif wall_count <= 50 and meld_count >= 2:
-            level = "warn"
-            reason = "discard_pattern" if wall_count < 50 and consecutive_fresh_middle else "many_melds"
+        elif probability >= 0.8 or meld_count >= 3 or (meld_count >= 2 and wall_count <= 50):
+            level, reason = "high", "high_tenpai"
+        elif consecutive_fresh_middle:
+            level, reason = "warn", "fresh_middle"
+        elif meld_count >= 1:
+            level, reason = "warn", "new_meld"
         else:
             level, reason = "safe", "steady"
         results.append({"seat_wind": player.seat_wind, "probability": round(probability, 3),

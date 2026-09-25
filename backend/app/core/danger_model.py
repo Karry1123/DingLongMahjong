@@ -69,7 +69,9 @@ def estimate_tile_danger(
 
     own_count = list(hand_tiles or ()).count(tile)
     appeared_public = max(0, _appeared_count(tile, rem_tiles) - own_count)
-    danger = _base_danger(tile, rem_tiles, dealer_tile)
+    # Rem also subtracts our concealed hand. For a discard, that copy has not
+    # appeared on the table and must not make a live honor look "seen".
+    danger = _base_danger(tile, rem_tiles, dealer_tile, appeared_public)
     danger = _apply_sequence_wall_discount(danger, tile, rem_tiles)
     danger = _apply_dye_modifier(danger, tile, opponent, dealer_tile)
 
@@ -85,13 +87,14 @@ def estimate_tile_danger(
 
 def _base_danger(
     tile: str, rem_tiles: Mapping[str, int], dealer_tile: str,
+    appeared_public: int,
 ) -> float:
     appeared = _appeared_count(tile, rem_tiles)
 
     if _is_honor(tile):
-        if appeared >= 2:
+        if appeared_public >= 2:
             return BASE_HONOR_DEAD
-        if appeared == 1:
+        if appeared_public == 1:
             # 见过 1 张：介于生熟之间
             return (BASE_HONOR_LIVE + BASE_HONOR_DEAD) / 2.0
         return BASE_HONOR_LIVE

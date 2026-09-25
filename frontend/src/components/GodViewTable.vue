@@ -46,6 +46,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'close',
   'discard-tile',
   'select-self-gang',
   'move-joker',
@@ -185,6 +186,17 @@ function meldLabel(m) {
 </script>
 
 <template>
+  <Teleport to="body">
+    <button
+      type="button"
+      class="god-view-return"
+      aria-label="返回模式选择"
+      @click="emit('close')"
+    >
+      <span aria-hidden="true">←</span>
+      <span>返回模式选择</span>
+    </button>
+  </Teleport>
   <section
     class="god-view overflow-hidden rounded-2xl border border-teal-600/40 bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-950 shadow-xl"
     aria-label="上帝视角沙盘"
@@ -513,3 +525,33 @@ function meldLabel(m) {
     </div>
   </section>
 </template>
+
+<style scoped>
+.god-view-return {
+  position: fixed;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(24px, env(safe-area-inset-left));
+  z-index: 120;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 215, 0, .35);
+  border-radius: 999px;
+  background: rgba(15, 32, 28, .75);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.god-view-return:hover { border-color: rgba(255, 215, 0, .7); background: rgba(28, 64, 52, .9); }
+.god-view-return:active { transform: scale(.96); }
+.god-view-return:focus-visible { outline: 2px solid #fbbf24; outline-offset: 3px; }
+.god-view-return span:first-child { font-size: 20px; line-height: 1; }
+@media (prefers-reduced-motion: reduce) { .god-view-return { transition: none; } }
+</style>

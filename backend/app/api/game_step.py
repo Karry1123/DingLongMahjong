@@ -105,6 +105,14 @@ def resolve_phase(state: HandRequest, event: StepEvent) -> GameStepResponse:
 
     if event.event_type == "DISCARD":
         assert event.tile is not None
+        if event.tile == state.dealer_tile:
+            return GameStepResponse(
+                next_turn_seat=next_seat(actor),
+                need_self_action=False,
+                action_phase="WAIT",
+                call_decision=None,
+                updated_state=state,
+            )
         if actor != self_seat:
             actions = get_available_actions(
                 hand_tiles=state.hand_tiles,
@@ -281,6 +289,8 @@ def _apply_meld(
     claimed = claimed_tile or _guess_claimed_tile(meld)
     if meld.claimed_tile and claimed_tile and meld.claimed_tile != claimed_tile:
         raise ValueError("副露 claimed_tile 与响应事件 tile 不一致")
+    if claimed == data.get("dealer_tile"):
+        raise ValueError("台州规则：打出的财神不可吃、碰、杠或捉铳")
 
     # —— 暗杠：自家扣手牌；对手仅记录公开副露（代录，无暗手）——
     if meld.meld_type == MeldType.AN_GANG:

@@ -71,6 +71,38 @@ class TestGameStepApi(unittest.TestCase):
     def setUpClass(cls):
         cls.client = TestClient(app)
 
+    def test_discarded_god_tile_enters_river_without_response_window(self):
+        next_by_actor = {"E": "S", "S": "W", "W": "N", "N": "E"}
+        for actor, next_actor in next_by_actor.items():
+            with self.subTest(actor=actor):
+                payload = _base_state_14() if actor == "E" else _base_state_13()
+                payload["dealer_tile"] = "5m"
+                payload["event"] = {"actor_seat": actor, "event_type": "DISCARD", "tile": "5m"}
+                response = self.client.post("/api/game/step", json=payload)
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result["action_phase"], "WAIT")
+                self.assertFalse(result["need_self_action"])
+                self.assertIsNone(result["call_decision"])
+                self.assertEqual(result["next_turn_seat"], next_actor)
+                after = result["updated_state"]
+                river = after["discards"] if actor == "E" else next(
+                    item["discards"] for item in after["opponents"] if item["seat_wind"] == actor
+                )
+                self.assertEqual(river[-1], "5m")
+
+    def test_discarded_god_tile_cannot_be_claimed_by_manual_meld(self):
+        payload = _base_state_13(dealer_tile="5m")
+        payload["opponents"][-1]["discards"] = ["5m"]
+        payload["event"] = {
+            "actor_seat": "E", "event_type": "MELD", "tile": "5m", "provider_seat": "N",
+            "meld": {"meld_type": "pong", "tiles": ["5m"] * 3,
+                     "claimed_tile": "5m", "provider_seat": "N"},
+        }
+        response = self.client.post("/api/game/step", json=payload)
+        self.assertEqual(response.status_code, 400, response.text)
+        self.assertIn("打出的财神不可", response.json()["detail"])
+
     def test_self_ming_gang_from_west_uses_bound_discard_position(self):
         hand = ["9s"] * 3 + ["1m", "2m", "3m", "4m", "5m", "6m", "1p", "2p", "3p", "E"]
         payload = _base_state_13(

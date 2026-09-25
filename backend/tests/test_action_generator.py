@@ -54,6 +54,18 @@ class TestChiKamichaOnly(unittest.TestCase):
         assert_chi_provider_is_kamicha("N", "E")  # 不上抛
 
 
+class TestDiscardedGodTile(unittest.TestCase):
+    def test_dead_god_tile_has_no_claim_or_ron(self):
+        hand = ["5m", "5m", "3m", "4m", "1p", "2p", "3p", "4p", "5p", "6p", "7s", "8s", "9s"]
+        for provider in ("N", "S", "W"):
+            with self.subTest(provider=provider):
+                actions = get_available_actions(
+                    hand_tiles=hand, melds=[], discarded_tile="5m",
+                    provider_seat=provider, player_seat="E", dealer_tile="5m",
+                )
+                self.assertEqual(_types(actions), {ActionType.PASS.value})
+
+
 class TestJokerNotInGang(unittest.TestCase):
     """百搭不入杠：不得用「得」充第 4 张明杠。"""
 

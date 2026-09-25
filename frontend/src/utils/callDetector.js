@@ -48,7 +48,7 @@ export function detectTableResponses({
   godView = false,
 }) {
   const tile = discardedTile
-  if (!providerSeat || !tile) {
+  if (!providerSeat || !tile || tile === dealerTile) {
     return {
       hasResponse: false,
       hasCatchWin: false,

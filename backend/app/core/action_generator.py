@@ -86,6 +86,10 @@ def get_available_actions(
     if provider_seat == player_seat:
         raise ValueError("不能响应自己的出牌")
 
+    # 死财神舍牌直接入河，其他玩家不能吃、碰、杠或捉铳。
+    if discarded_tile == dealer_tile:
+        return [Action(action_type=ActionType.PASS, provider_seat=provider_seat)]
+
     meld_list = list(melds or [])
     actions: list[Action] = []
 

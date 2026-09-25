@@ -22,24 +22,26 @@ class TestOpponentWarningGate(unittest.TestCase):
             {"meld_type": "pong", "tiles": ["C"] * 3}
         ]}
         for wall in (80, 70, 64, 56):
-            result = assess_opponent_threats([three_melds], "C", wall)[0]
+            result = assess_opponent_threats([three_melds], "C", wall, turn_count=3)[0]
             self.assertEqual((result["level"], result["reason"]), ("safe", "early_round"))
             self.assertNotIn("shanten", result)
+        self.assertEqual(assess_opponent_threats([three_melds], "C", 50, turn_count=4)[0]["level"], "safe")
 
-    def test_midgame_requires_visible_melds(self):
-        for meld_count in (0, 1):
-            source = {**self.two_melds, "melds": self.two_melds["melds"][:meld_count]}
-            self.assertEqual(assess_opponent_threats([source], "C", 30)[0]["level"], "safe")
-        self.assertEqual(assess_opponent_threats([self.two_melds], "C", 50)[0]["level"], "warn")
-        self.assertEqual(assess_opponent_threats([self.two_melds], "C", 49)[0]["reason"], "discard_pattern")
+    def test_midgame_meld_and_fresh_middle_prompts(self):
+        one_meld = {**self.two_melds, "discards": ["1m", "9p"], "melds": self.two_melds["melds"][:1]}
+        self.assertEqual(assess_opponent_threats([one_meld], "C", 55, turn_count=6)[0]["reason"], "new_meld")
+        fresh = {**one_meld, "melds": [], "discards": ["4m", "5p"]}
+        self.assertEqual(assess_opponent_threats([fresh], "C", 55, turn_count=6)[0]["reason"], "fresh_middle")
+        self.assertEqual(assess_opponent_threats([fresh], "C", 55, turn_count=6, self_discards=["4m"])[0]["level"], "safe")
+        self.assertEqual(assess_opponent_threats([self.two_melds], "C", 50, turn_count=6)[0]["level"], "high")
 
-    def test_three_melds_warn_at_55_and_tail_is_global(self):
+    def test_three_melds_are_high_risk_after_opening(self):
         three = {**self.two_melds, "melds": self.two_melds["melds"] + [
             {"meld_type": "pong", "tiles": ["C"] * 3}
         ]}
-        self.assertEqual(assess_opponent_threats([three], "C", 55)[0]["reason"], "many_melds")
+        self.assertEqual(assess_opponent_threats([three], "C", 55, turn_count=6)[0]["reason"], "high_tenpai")
         closed = {"seat_wind": "W", "discards": [], "melds": []}
-        self.assertEqual(assess_opponent_threats([closed], "C", 25)[0]["reason"], "late_round")
+        self.assertEqual(assess_opponent_threats([closed], "C", 25, turn_count=6)[0]["level"], "safe")
 
     def test_threat_api_rejects_private_hand_fields(self):
         response = TestClient(app).post("/api/game/threats", json={

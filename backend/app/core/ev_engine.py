@@ -423,6 +423,10 @@ def calculate_best_discards(
     _apply_seen_guest_dominance(
         candidates, hand_tiles, dealer_tile, seat_wind, round_wind, table_rem,
     )
+    _apply_isolated_honor_visibility_dominance(
+        candidates, hand_tiles, dealer_tile, seat_wind, round_wind,
+        Counter(discarded) + Counter(all_meld_phys),
+    )
     _apply_isolated_tile_shape_dominance(candidates, hand_tiles, dealer_tile)
     _apply_close_ukeire_safety_dominance(candidates)
 
@@ -2024,6 +2028,47 @@ def _apply_seen_guest_dominance(
         guest["attack_ev"] = round(guest["attack_ev"] + bonus, 4)
         guest["ev_score"] = round(guest["ev_score"] + bonus, 4)
         guest["note"] += f"；场见非本门风优先清理（策略修正 +{bonus:.1f}）"
+
+
+def _apply_isolated_honor_visibility_dominance(
+    candidates: list[dict], hand_tiles: list[str], dealer_tile: str,
+    seat_wind: str, round_wind: str, public_counts: Mapping[str, int],
+) -> None:
+    """Same-shanten worthless lone honors follow visibility if ukeire is no worse.
+
+    A role honor with fewer than two public copies can still form a valuable
+    pair, so it is excluded. The dealer tile and whiteboard substitute retain
+    their own special value. This is a comparison policy, not a universal EV
+    bonus for honors over structurally useful suited tiles.
+    """
+    yakuhai = _yakuhai_identities(dealer_tile, seat_wind, round_wind)
+    groups: dict[int, list[dict]] = {}
+    for candidate in candidates:
+        tile = candidate["tile"]
+        seen = min(4, int(public_counts.get(tile, 0)))
+        if (tile not in WINDS and tile not in DRAGONS) or tile == dealer_tile:
+            continue
+        if _is_whiteboard_substitute(tile, dealer_tile) or hand_tiles.count(tile) != 1:
+            continue
+        if tile in yakuhai and seen < 2:
+            continue
+        groups.setdefault(candidate["shanten"], []).append(candidate)
+
+    for group in groups.values():
+        for candidate in sorted(group, key=lambda c: int(public_counts.get(c["tile"], 0))):
+            seen = int(public_counts.get(candidate["tile"], 0))
+            less_seen = [c for c in group
+                         if int(public_counts.get(c["tile"], 0)) < seen
+                         and c["effective_count"] <= candidate["effective_count"]]
+            if not less_seen:
+                continue
+            target = max(c["ev_score"] for c in less_seen) + _EV_NEAR_TIE_EPS + 1.0
+            bonus = round(max(0.0, target - candidate["ev_score"]), 4)
+            if bonus:
+                candidate["visibility_safety_bonus"] = bonus
+                candidate["attack_ev"] = round(candidate["attack_ev"] + bonus, 4)
+                candidate["ev_score"] = round(candidate["ev_score"] + bonus, 4)
+                candidate["note"] += f"；字牌场见 {seen} 张，等进张优先跟切熟张"
 
 
 def _is_pair_run_core(tile: str, hand_tiles: list[str], dealer_tile: str) -> bool:

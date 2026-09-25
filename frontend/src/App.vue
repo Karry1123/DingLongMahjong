@@ -26,6 +26,8 @@ import { usePvEAutomation } from './composables/usePvEAutomation.js'
 import PvECircleSummary from './components/PvECircleSummary.vue'
 import PveStartDialog from './components/PveStartDialog.vue'
 import { useGameSession } from './composables/useGameSession.js'
+import { useOrientation } from './composables/useOrientation.js'
+import { useFullscreen } from './composables/useFullscreen.js'
 import { cloudWakeMessage, getRecommendDecision, getOpponentThreats, isAbortError } from './services/api.js'
 import { relativeOpponents, tileLabel } from './constants/tiles.js'
 import { DEALER_SEAT, windLabel } from './utils/seatLayout.js'
@@ -129,32 +131,24 @@ const {
 } = session
 
 const activeUiMode = ref('')
+const sandboxLeaving = ref(false)
 const stageActive = computed(() => gameMode.value === 'PVE' && activeUiMode.value === 'PVE')
-const stageTransform = ref('')
-function updateStageTransform() {
-  if (!stageActive.value || typeof window === 'undefined') {
-    stageTransform.value = ''
-    return
-  }
-  const width = window.innerWidth
-  const height = window.innerHeight
-  if (!width || !height) return
-  const portrait = height > width
-  const scale = portrait
-    ? Math.min(width / 720, height / 1280)
-    : Math.min(width / 1280, height / 720)
-  stageTransform.value = `translate(-50%, -50%) ${portrait ? 'rotate(90deg) ' : ''}scale(${scale})`
-}
-watch(stageActive, updateStageTransform, { flush: 'post' })
 onMounted(() => {
-  updateStageTransform()
-  window.addEventListener('resize', updateStageTransform, { passive: true })
-  window.addEventListener('orientationchange', updateStageTransform, { passive: true })
+  document.documentElement.classList.add('game-stage-scroll-lock')
+  document.body.classList.add('game-stage-scroll-lock')
 })
 onUnmounted(() => {
-  window.removeEventListener('resize', updateStageTransform)
-  window.removeEventListener('orientationchange', updateStageTransform)
+  document.documentElement.classList.remove('game-stage-scroll-lock')
+  document.body.classList.remove('game-stage-scroll-lock')
 })
+const { stageTransform } = useOrientation()
+const { isFullscreen, fullscreenAvailable, fullscreenError, enterFullscreen, exitFullscreen, toggleFullscreen } = useFullscreen()
+function enterFullscreenOnMobileStart() {
+  if (fullscreenAvailable && !isFullscreen.value &&
+    (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0)) {
+    void enterFullscreen()
+  }
+}
 const pveStartLoading = ref(false)
 const pveConfigOpen = ref(false)
 const enableEV = ref(true)
@@ -166,6 +160,7 @@ const { status: aiStatus, announcement: aiAnnouncement, thinkingSeat: aiThinking
 
 async function choosePveMode() {
   if (pveStartLoading.value) return
+  enterFullscreenOnMobileStart()
   try { sessionStorage.setItem('pveConfig', JSON.stringify({ enableEV: enableEV.value, aiStyle: 'balanced' })) } catch { /* private browsing */ }
   pveStartLoading.value = true
   analyzeError.value = ''
@@ -182,6 +177,15 @@ async function choosePveMode() {
 }
 
 function chooseSandboxMode() { activeUiMode.value = 'SANDBOX' }
+
+function closeSandbox() {
+  if (sandboxLeaving.value) return
+  sandboxLeaving.value = true
+  window.setTimeout(() => {
+    activeUiMode.value = ''
+    sandboxLeaving.value = false
+  }, 150)
+}
 
 function returnHome() {
   soundEngine.stop()
@@ -557,18 +561,24 @@ const seatRoleMap = computed(() => {
   return map
 })
 
+const totalDiscardCount = computed(() =>
+  (roundState.discards?.length || 0) +
+  (roundState.opponents || []).reduce((count, opponent) => count + (opponent.discards?.length || 0), 0),
+)
+const turnCount = computed(() => Math.floor(totalDiscardCount.value / 4) + 1)
+
 const opponentThreats = ref([])
 let threatTimer = null
 let threatRequest = null
 watch(() => JSON.stringify({
   mode: gameMode.value, playing: isPlaying.value, dealer: roundState.dealerTile,
   wall: wallTiles.value.length,
+  turn: turnCount.value, selfDiscards: roundState.discards,
   opponents: roundState.opponents.map((o) => ({ seat_wind: o.seat_wind,
     is_dealer: o.is_dealer, melds: o.melds, discards: o.discards })),
 }), () => {
   clearTimeout(threatTimer)
   threatRequest?.abort()
-  opponentThreats.value = []
   if (gameMode.value !== 'PVE' || !isPlaying.value) { opponentThreats.value = []; return }
   threatTimer = setTimeout(async () => {
     const controller = new AbortController()
@@ -576,6 +586,8 @@ watch(() => JSON.stringify({
     try {
       const result = await getOpponentThreats({ dealer_tile: roundState.dealerTile,
         wall_count: wallTiles.value.length,
+        turn_count: turnCount.value,
+        self_discards: roundState.discards || [],
         opponents: roundState.opponents.map((o) => ({ seat_wind: o.seat_wind,
           is_dealer: !!o.is_dealer,
           melds: o.melds || [], discards: o.discards || [] })) }, { signal: controller.signal })
@@ -588,20 +600,17 @@ watch(() => JSON.stringify({
 onUnmounted(() => { clearTimeout(threatTimer); threatRequest?.abort() })
 
 const opponentWarning = computed(() => {
-  if (wallTiles.value.length > 55) {
-    return { level: 'safe', text: '三家 AI 摸打思考中… 当前局势平稳' }
-  }
-  if (wallTiles.value.length <= 25 && isPlaying.value) {
-    return { level: 'high', text: '局势进入尾盘，提防点铳，建议跟切熟张' }
-  }
+  const steady = { level: 'safe', text: '牌局平稳进行中，四家摸打试探...' }
+  if (!isPlaying.value || wallTiles.value.length > 55 || turnCount.value <= 4) return steady
   const ranked = [...opponentThreats.value].sort((a, b) =>
     ({ high: 2, warn: 1, safe: 0 })[b.level] - ({ high: 2, warn: 1, safe: 0 })[a.level]
     || b.probability - a.probability)
   const threat = ranked[0]
-  if (!threat || threat.level === 'safe') return { level: 'safe', text: '三家 AI 摸打思考中… 当前局势平稳' }
-  const who = `${seatRoleMap.value[threat.seat_wind] || '对手'}·${windLabel(threat.seat_wind)}风`
-  if (threat.meld_count >= 3) return { level: 'warn', text: `注意：${who} 已三副露，注意防守！` }
-  return { level: 'warn', text: `注意：${who} 已多组副露，注意防守！` }
+  if (!threat || threat.level === 'safe') return steady
+  const who = seatRoleMap.value[threat.seat_wind] || `${windLabel(threat.seat_wind)}风`
+  if (threat.level === 'high') return { level: 'high', text: `警告：${who} 听牌概率极高，注意防守，建议跟切熟张！` }
+  if (threat.reason === 'fresh_middle') return { level: 'warn', text: `注意 ${who}，连续切出危险中张，疑似逼近听牌！` }
+  return { level: 'warn', text: `注意 ${who}，已完成一组副露！` }
 })
 
 /**
@@ -616,17 +625,6 @@ function formatActorLabel(seat) {
   if (seat === dealerSeat.value) parts.push('庄家')
   return parts.filter(Boolean).join('/')
 }
-
-/** 全场已出张数 → 巡目（四方各打 1 张为一巡） */
-const totalDiscardCount = computed(() => {
-  let n = roundState.discards?.length || 0
-  for (const o of roundState.opponents || []) {
-    n += o.discards?.length || 0
-  }
-  return n
-})
-
-const turnCount = computed(() => Math.floor(totalDiscardCount.value / 4) + 1)
 
 const handInRound = computed(() => (totalDiscardCount.value % 4) + 1)
 
@@ -953,6 +951,7 @@ function clearHand() {
 }
 
 function onConfirmStart() {
+  if (canStartPlaying.value) enterFullscreenOnMobileStart()
   if (!startPlaying()) return
   localRecommend.value = null
   recommendFetchKey.value = ''
@@ -961,6 +960,7 @@ function onConfirmStart() {
 
 async function onAutoDeal() {
   if (loading.value || isPlaying.value) return
+  enterFullscreenOnMobileStart()
   analyzeError.value = ''
   try {
     await applyAutoDeal()
@@ -1201,6 +1201,7 @@ async function onContinuePveCircle() {
 
 async function onExitPve() {
   try {
+    if (isFullscreen.value) await exitFullscreen()
     await exitPveGame()
     activeUiMode.value = ''
     localRecommend.value = null
@@ -1343,13 +1344,13 @@ async function onReset(clearHistory = false) {
 </script>
 
 <template>
-  <div class="viewport-wrapper" :class="{ 'is-stage-active': stageActive }">
+  <div class="viewport-wrapper viewport-container game-viewport" :class="{ 'is-stage-active': stageActive, 'is-sandbox-leaving': sandboxLeaving }">
   <div
     class="game-stage app-shell min-h-screen bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 px-4 py-8 sm:px-6 sm:py-10"
-    :style="stageActive ? { transform: stageTransform } : null"
-    :class="[gameMode === 'PVE' && activeUiMode === 'PVE' ? 'pve-portrait-shell' : '', { 'is-stage-active': stageActive }]"
+    :style="{ transform: stageTransform }"
+    :class="[stageActive ? 'pve-stage-shell' : '', { 'is-stage-active': stageActive, 'is-home-stage': !activeUiMode }]"
   >
-    <section v-if="!activeUiMode" class="mx-auto flex min-h-[75vh] max-w-5xl flex-col items-center justify-center text-center">
+    <section v-if="!activeUiMode" class="home-screen mx-auto flex min-h-[75vh] max-w-5xl flex-col items-center justify-center text-center">
       <p class="text-sm font-semibold tracking-[0.25em] text-amber-300">台州麻将 · 实战练习</p>
       <h1 class="mt-3 text-4xl font-bold text-amber-50 sm:text-5xl">选择对局模式</h1>
       <p class="mt-3 max-w-xl text-sm leading-6 text-teal-100/70">使用实时净 EV 辅助练习，或进入全景沙盘自由推演。</p>
@@ -1399,7 +1400,11 @@ async function onReset(clearHistory = false) {
             <button type="button" class="rounded-lg border border-amber-300/30 px-2 py-1" :aria-label="soundMuted ? '开启音效' : '静音'" :aria-pressed="soundMuted" @click="soundMuted = !soundMuted; if (!soundMuted) soundEngine.unlock()">{{ soundMuted ? '🔇 静音' : '🔊 音效' }}</button>
             <label class="flex items-center gap-1 whitespace-nowrap">音量 <input v-model.number="soundVolume" type="range" min="0" max="100" step="5" class="w-20 accent-amber-300" aria-label="音效音量" /></label>
           </div>
-          <button class="rounded-lg border border-slate-500/50 px-2 py-1 text-slate-200" @click="returnHome">返回主页</button>
+          <div class="flex shrink-0 items-center gap-2">
+            <button type="button" class="rounded-full border border-amber-300/40 px-3 py-1 text-amber-100 hover:border-amber-300 hover:bg-amber-300/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45" :disabled="!fullscreenAvailable" :title="fullscreenAvailable ? '' : '当前浏览器不支持网页全屏'" :aria-pressed="isFullscreen" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '⛶ 全屏' }}</button>
+            <button type="button" class="rounded-lg border border-slate-500/50 px-2 py-1 text-slate-200" @click="returnHome">返回主页</button>
+          </div>
+          <span v-if="fullscreenError" class="sr-only" role="alert">{{ fullscreenError }}</span>
         </div>
         <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div class="min-w-0 flex-1">
@@ -1579,6 +1584,7 @@ async function onReset(clearHistory = false) {
         @select-self-gang="onDeclareSelfKong"
         @pass-all-calls="onPassAllCalls"
         @catch-win="onOpponentWin"
+        @close="closeSandbox"
       />
 
       <!-- 串行时序：仅 PLAYING 且 currentTurnSeat 对手可打出 -->
@@ -1612,17 +1618,20 @@ async function onReset(clearHistory = false) {
         :dealer-tile="dealerTile"
         :current-turn-seat="currentTurnSeat"
         :opponents="opponents"
+        :self-discards="selfDiscards"
         :round-count="roundCount"
         :wall-count="wallTiles.length"
         :cumulative-scores="cumulativeScores"
         :ai-status="aiStatus"
         :ai-announcement="aiAnnouncement"
         :thinking-seat="aiThinkingSeat"
-        :risk-message="opponentWarning.text"
-        :risk-level="opponentWarning.level"
       />
 
-      <PlayerWorkbench :pve="gameMode === 'PVE'" :show-recommendation="gameMode !== 'PVE' || enableEV || decisionDockPhase === 'call' || canSelfWin">
+      <div v-if="gameMode === 'PVE'" class="pve-situation-hud" :class="`risk-${opponentWarning.level}`" role="status" aria-live="polite">
+        {{ opponentWarning.text }}
+      </div>
+
+      <PlayerWorkbench :pve="gameMode === 'PVE'" :show-recommendation="gameMode !== 'PVE' || (!(canSelfWin && selfWinInfo && !loading) && (enableEV || decisionDockPhase === 'call'))">
       <template #heading><header v-if="gameMode === 'PVE'" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/30 bg-teal-950 px-4 py-3 text-amber-50 lg:col-span-2" aria-label="自家信息">
         <b>自家 · {{ windLabel(seatWind) }}风 <span v-if="seatWind === dealerSeat" class="text-amber-300">庄家</span></b>
         <span>累计 {{ cumulativeScores[seatWind] || 0 }} 分</span>
@@ -1667,6 +1676,7 @@ async function onReset(clearHistory = false) {
       />
 
       <MeldBar
+        v-if="gameMode !== 'PVE' || melds.length"
         :read-only="gameMode === 'PVE'"
         :compact="gameMode === 'PVE'"
         :dealer-tile="dealerTile"
@@ -1675,18 +1685,13 @@ async function onReset(clearHistory = false) {
         :discarded-tiles="selfDiscards"
         :extra-occupied="meldBarExtra"
         :class="
-          isPlaying && !selfPanelFocused
+          gameMode !== 'PVE' && isPlaying && !selfPanelFocused
             ? 'pointer-events-none opacity-75'
             : isSetup
               ? 'opacity-90'
               : ''
         "
       />
-      <div v-if="gameMode === 'PVE' && selfDiscards.length" class="rounded-xl border border-teal-700/40 p-2.5" aria-label="自家牌河">
-        <p class="mb-1 text-xs text-teal-200">自家牌河</p>
-        <DiscardRiver :tiles="selfDiscards" compact layout="self" />
-      </div>
-
       <SelfWinBanner
         v-if="gameMode !== 'PVE' && canSelfWin && selfWinInfo && !loading"
         class="mb-3"
@@ -1729,16 +1734,8 @@ async function onReset(clearHistory = false) {
       </div>
 
       <template #recommendation>
-      <SelfWinBanner
-        v-if="gameMode === 'PVE' && canSelfWin && selfWinInfo && !loading"
-        class="pve-self-win-prompt"
-        :info="selfWinInfo"
-        :disabled="loading"
-        @declare="onDeclareSelfWin"
-        @dismiss="onDismissSelfWin"
-      />
       <ActionPrompt
-        v-else-if="gameMode === 'PVE' && decisionDockPhase === 'call'"
+        v-if="gameMode === 'PVE' && decisionDockPhase === 'call'"
         inline
         dock
         keyboard-shortcuts
@@ -1780,6 +1777,17 @@ async function onReset(clearHistory = false) {
       />
       </template>
       </PlayerWorkbench>
+
+      <div v-if="gameMode === 'PVE' && canSelfWin && selfWinInfo && !loading" class="pve-self-win-overlay">
+        <SelfWinBanner
+          class="pve-self-win-prompt"
+          modal
+          :info="selfWinInfo"
+          :disabled="loading"
+          @declare="onDeclareSelfWin"
+          @dismiss="onDismissSelfWin"
+        />
+      </div>
 
       <DiscardPool
         v-if="gameMode !== 'PVE'"
@@ -1838,7 +1846,7 @@ async function onReset(clearHistory = false) {
       </p>
 
       <div
-        v-if="stepLoading"
+        v-if="stepLoading && gameMode !== 'PVE'"
         class="flex flex-col items-center gap-3 rounded-2xl border border-teal-700/30 bg-teal-950/30 px-6 py-10"
         aria-live="polite"
         aria-busy="true"
@@ -1875,55 +1883,69 @@ async function onReset(clearHistory = false) {
 </template>
 
 <style>
-.viewport-wrapper { min-height:100vh; }
-.viewport-wrapper.is-stage-active { position:fixed; inset:0; z-index:20; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:#052e2b; }
-.viewport-wrapper.is-stage-active > .game-stage { position:absolute; top:50%; left:50%; width:1280px; height:720px; min-height:0; overflow:hidden; transform-origin:center center; transition:transform 160ms ease-out; }
-.viewport-wrapper.is-stage-active > .game-stage.pve-portrait-shell { box-sizing:border-box; width:1280px !important; height:720px !important; min-height:0 !important; padding:10px 16px !important; overflow:hidden !important; }
+.viewport-wrapper { position:fixed; top:0; left:0; z-index:20; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:#06221d; }
+.viewport-wrapper > .game-stage { box-sizing:border-box; position:absolute; top:50%; left:50%; width:1280px !important; height:720px !important; min-height:0 !important; overflow:auto; padding:24px 32px !important; transform-origin:center center; }
+.viewport-wrapper > .game-stage.is-home-stage { overflow:hidden; padding:36px 64px !important; }
+.viewport-wrapper .home-screen { width:100%; max-width:1080px; min-height:100%; }
+.viewport-wrapper.is-sandbox-leaving .god-view { opacity:0; transform:translateY(4px); transition:opacity 150ms ease, transform 150ms ease; }
+.viewport-wrapper.is-stage-active { overscroll-behavior:none; }
+html.game-stage-scroll-lock, body.game-stage-scroll-lock,
+html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%; height:100%; overflow:hidden; overscroll-behavior:none; touch-action:manipulation; }
+.viewport-wrapper.is-stage-active > .game-stage { overflow:hidden; }
+.viewport-wrapper.is-stage-active > .game-stage.pve-stage-shell { box-sizing:border-box; width:1280px !important; height:720px !important; min-height:0 !important; padding:10px 16px !important; overflow:hidden !important; }
 .viewport-wrapper.is-stage-active .pve-session-view { width:100%; height:100%; min-height:0; overflow:hidden; }
 .viewport-wrapper.is-stage-active .pve-session-view > header,
 .viewport-wrapper.is-stage-active .pve-workbench > header,
 .viewport-wrapper.is-stage-active .pve-table > header,
 .viewport-wrapper.is-stage-active .pve-landscape-hint { display:none !important; }
-.viewport-wrapper.is-stage-active .pve-game-main { display:grid !important; grid-template-columns:minmax(0,1fr); grid-template-rows:36px minmax(0,1fr) 164px !important; gap:6px !important; width:100%; height:100%; max-width:none; min-height:0; padding:0 !important; overflow:hidden; }
+.viewport-wrapper.is-stage-active .pve-game-main { position:relative; display:grid !important; grid-template-columns:minmax(0,1fr); grid-template-rows:36px minmax(0,1fr) 164px !important; gap:6px !important; width:100%; height:100%; max-width:none; min-height:0; padding:0 !important; overflow:hidden; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] { grid-row:1; width:100%; height:36px; min-height:0; padding:2px 10px; overflow:hidden; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] > :not(:first-child) { display:none; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] > :first-child { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; height:100%; margin:0; padding:0 4px; font-size:13px; }
-.viewport-wrapper.is-stage-active .pve-game-main > .pve-table { grid-row:2; width:100%; height:100%; min-height:0; padding:5px; overflow:hidden; border-radius:12px; }
-.viewport-wrapper.is-stage-active .pve-table .table-compass { display:grid; grid-template-columns:minmax(0,1fr) 128px minmax(0,1fr) !important; grid-template-areas:'top top top' 'left center right' !important; grid-template-rows:38% minmax(0,1fr) !important; gap:6px; height:100%; margin:0; align-items:stretch; }
-.viewport-wrapper.is-stage-active .pve-table .opponent-seat { width:100%; height:100%; min-width:0; min-height:0; padding:5px; overflow:hidden; }
-.viewport-wrapper.is-stage-active .pve-table .top { display:grid; grid-template-rows:18px minmax(0,1fr) minmax(0,1fr); width:min(100%,800px); padding:4px; }
-.viewport-wrapper.is-stage-active .pve-table .left,
-.viewport-wrapper.is-stage-active .pve-table .right { display:grid; grid-template-columns:minmax(0,1fr) 110px !important; grid-template-rows:18px minmax(0,1fr); gap:3px; }
-.viewport-wrapper.is-stage-active .pve-table .right { grid-template-columns:110px minmax(0,1fr) !important; }
-.viewport-wrapper.is-stage-active .pve-table .left .seat-header,
-.viewport-wrapper.is-stage-active .pve-table .right .seat-header { grid-column:1/-1; }
-.viewport-wrapper.is-stage-active .pve-table .left .seat-tiles { grid-column:1; grid-row:2; width:auto; flex-direction:column; align-items:flex-start; }
-.viewport-wrapper.is-stage-active .pve-table .right .seat-tiles { grid-column:2; grid-row:2; width:auto; flex-direction:column; align-items:flex-end; }
-.viewport-wrapper.is-stage-active .pve-table .left > .discard-river { grid-column:2; grid-row:2; justify-self:end; }
-.viewport-wrapper.is-stage-active .pve-table .right > .discard-river { grid-column:1; grid-row:2; justify-self:start; }
-.viewport-wrapper.is-stage-active .pve-table .opponent-seat .mahjong-tile { --tw:24px; --th:32px; }
-.viewport-wrapper.is-stage-active .pve-table .opponent-seat .discard-river { --river-tile:18px; }
-.viewport-wrapper.is-stage-active .pve-game-main .discard-river { --river-tile-width:18px; }
-.viewport-wrapper.is-stage-active .pve-table .opponent-seat .river--top { grid-template-columns:repeat(10,var(--river-tile)); grid-template-rows:repeat(3,calc(var(--river-tile)*4/3)); }
-.viewport-wrapper.is-stage-active .pve-table .opponent-seat .river--left,
-.viewport-wrapper.is-stage-active .pve-table .opponent-seat .river--right { grid-template-columns:repeat(4,var(--river-tile)); grid-template-rows:repeat(6,calc(var(--river-tile)*4/3)); }
-.viewport-wrapper.is-stage-active .pve-table .tile-back { width:11px; height:17px; }
+.viewport-wrapper.is-stage-active .pve-game-main > .pve-table { grid-row:2; width:100%; height:100%; min-height:0; padding:0; overflow:visible; border:0; border-radius:0; }
 .viewport-wrapper.is-stage-active .pve-game-main > .pve-workbench { display:contents !important; }
-.viewport-wrapper.is-stage-active .pve-workbench > .pve-self-controls { grid-row:3; height:100%; min-height:0; display:grid; grid-template-rows:94px 30px 31px; gap:2px; align-content:center; position:relative; overflow:hidden; margin:0; }
+.viewport-wrapper.is-stage-active .pve-workbench > .pve-self-controls { grid-row:3; height:100%; min-height:0; position:relative; overflow:visible; margin:0; }
 .viewport-wrapper.is-stage-active .pve-self-controls > * { min-height:0; margin:0 !important; }
-.viewport-wrapper.is-stage-active .pve-self-controls > .pve-self-hand { grid-row:1; height:94px; padding:4px 8px; overflow:hidden; }
-.viewport-wrapper.is-stage-active .pve-self-hand > :first-child { margin:0 0 3px; gap:4px; }
-.viewport-wrapper.is-stage-active .pve-self-hand [aria-label="手牌槽位"],
-.viewport-wrapper.is-stage-active .pve-self-hand [aria-label="手牌槽位"] > div { display:flex; flex-wrap:nowrap; justify-content:center; align-items:flex-end; gap:5px; min-width:0; width:100%; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .pve-self-hand { position:absolute; bottom:0; left:0; width:100%; height:94px; padding:4px 8px; overflow:hidden; }
+.viewport-wrapper.is-stage-active .pve-self-hand > :first-child { position:absolute; z-index:2; top:5px; right:8px; width:250px; display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin:0; text-align:right; }
+.viewport-wrapper.is-stage-active .pve-self-hand > :first-child h2 { font-size:12px; line-height:1; }
+.viewport-wrapper.is-stage-active .pve-self-hand > :first-child .pve-hand-caption { font-size:10px; line-height:1.2; white-space:nowrap; }
+.viewport-wrapper.is-stage-active .pve-self-hand > :first-child > div:last-child { display:flex; flex-wrap:nowrap; gap:4px; }
+.viewport-wrapper.is-stage-active .pve-self-hand > :first-child button { padding:3px 6px; font-size:10px; }
+.viewport-wrapper.is-stage-active .pve-self-hand .pve-hand-anchor { position:absolute; top:auto; bottom:24px; left:50%; transform:translateX(-50%); display:flex; flex-wrap:nowrap; justify-content:flex-start; align-items:flex-end; gap:5px; width:697px; min-width:697px; margin:0; white-space:nowrap; }
+.viewport-wrapper.is-stage-active .pve-self-hand .pve-hand-anchor > div { display:flex; flex-wrap:nowrap; justify-content:flex-start; align-items:flex-end; gap:5px; width:auto; flex:0 0 auto; }
+.viewport-wrapper.is-stage-active .pve-self-hand .pve-hand-anchor > .pve-drawn-slot { width:44px; min-width:44px; margin-left:16px; padding:0; border:0; }
 .viewport-wrapper.is-stage-active .pve-self-hand [aria-label="手牌槽位"] button[role="listitem"] { width:44px; height:59px; min-width:0; }
 .viewport-wrapper.is-stage-active .pve-self-hand [aria-label="手牌槽位"] .mahjong-tile { --tw:44px; --th:59px; --face-font:24px; --honor-font:30px; }
-.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds { grid-row:2; height:30px; padding:1px 5px; overflow:hidden; }
-.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds .mahjong-tile { --tw:20px; --th:27px; }
-.viewport-wrapper.is-stage-active .pve-self-controls > [aria-label="自家牌河"] { grid-row:3; height:31px; padding:0; display:flex; justify-content:center; overflow:hidden; }
-.viewport-wrapper.is-stage-active .pve-self-controls > [aria-label="自家牌河"] > p { display:none; }
-.viewport-wrapper.is-stage-active .pve-self-controls > [aria-label="自家牌河"] .discard-river { display:flex; flex-wrap:nowrap; gap:2px; min-height:0; width:max-content; }
-.viewport-wrapper.is-stage-active .pve-self-controls > [aria-label="自家牌河"] .mahjong-tile { --tw:20px; --th:27px; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds { position:absolute; z-index:8; bottom:165px; left:60px; box-sizing:border-box; width:480px; max-width:none; height:auto; min-height:0; display:flex; flex-direction:column; gap:3px; padding:4px; overflow:visible; border:0; background:transparent; box-shadow:none; --pve-meld-width:36px; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > div:first-child { display:flex; margin:0; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds h2 { font-size:13px; line-height:1.2; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > [aria-label="已录入副露"] { display:flex; flex-wrap:wrap; align-items:flex-end; gap:4px 8px; margin:0; overflow:visible; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > [aria-label="已录入副露"] > * { width:auto; flex:0 0 auto; gap:0; margin:0; padding:0; border:0; background:transparent; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > [aria-label="已录入副露"] > * > span:first-child { display:none; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds .mahjong-tile { --tw:var(--pve-meld-width); --th:calc(var(--tw)*4/3); }
 .viewport-wrapper.is-stage-active .pve-workbench > .pve-ev-slot { position:absolute !important; z-index:35; right:12px; bottom:230px; width:260px; max-height:190px; overflow:visible; }
-.viewport-wrapper.is-stage-active .pve-workbench > .pve-ev-slot:has(.action-prompt-wrap) { left:50%; right:auto; bottom:224px; transform:translateX(-50%); width:700px; height:94px; }
+.viewport-wrapper.is-stage-active .pve-workbench > .pve-ev-slot:has(.action-prompt-wrap) { position:absolute !important; left:50%; right:auto; bottom:180px; z-index:100; transform:translateX(-50%); width:700px; height:auto; min-height:0; max-height:none; overflow:visible; display:flex; flex-direction:column; align-items:center; }
+.viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-wrap,
+.viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel { height:auto; max-height:none; overflow:visible; }
+.viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel > header { display:block; }
+.viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel > div:last-child { height:auto; overflow:visible; }
+.viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel .action-label { display:inline; }
+.viewport-wrapper.is-stage-active .pve-self-win-overlay { position:absolute; z-index:1000; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(3,24,21,.68); }
+.viewport-wrapper.is-stage-active .pve-self-win-prompt { box-sizing:border-box; width:480px; max-width:100%; max-height:100%; overflow:auto; border:1px solid rgba(251,191,36,.75); background:linear-gradient(145deg,#123c31,#082820); color:#fffbeb; box-shadow:0 24px 70px rgba(0,0,0,.55); }
+.viewport-wrapper.is-stage-active .pve-self-win-prompt h2 { color:#fde68a; }
+.viewport-wrapper.is-stage-active .pve-self-win-prompt > div:nth-of-type(3) { flex-direction:column; align-items:stretch; }
+.viewport-wrapper.is-stage-active .pve-self-win-prompt > div:nth-of-type(3) > div:last-child { justify-content:center; }
+.viewport-wrapper.is-stage-active .pve-discard-hud { width:260px; min-height:58px; padding:2px; border-radius:8px; }
+.viewport-wrapper.is-stage-active .pve-discard-hud .hud-leading { min-height:52px; gap:2px; }
+.viewport-wrapper.is-stage-active .pve-discard-hud .hud-tile { position:relative; gap:2px; padding:9px 2px 2px; border-radius:5px; }
+.viewport-wrapper.is-stage-active .pve-discard-hud .hud-rank { position:absolute; top:0; left:2px; font-size:8px; }
+.viewport-wrapper.is-stage-active .pve-discard-hud .hud-face { width:19px; height:27px; font-size:10px; }
+.viewport-wrapper.is-stage-active .pve-discard-hud .hud-metrics,
+.viewport-wrapper.is-stage-active .pve-discard-hud .hud-metrics small { font-size:8px; }
+.viewport-wrapper.is-stage-active .pve-discard-hud .hud-more { flex-basis:25px; font-size:8px; }
+.viewport-wrapper.is-stage-active .pve-discard-hud .hud-drawer { width:100%; max-height:210px; }
+.viewport-wrapper.is-stage-active .pve-situation-hud { position:absolute; z-index:32; right:18px; bottom:177px; max-width:360px; padding:7px 12px; border:1px solid #d4af5870; border-radius:999px; background:#063b32e8; color:#fde68a; font-size:13px; font-weight:600; line-height:1.3; text-align:right; box-shadow:0 4px 12px #001b1740; pointer-events:none; }
+.viewport-wrapper.is-stage-active .pve-situation-hud.risk-high { border-color:#fb718580; color:#ffe4e6; }
 .viewport-wrapper.is-stage-active .app-version-footer { display:none; }
 </style>

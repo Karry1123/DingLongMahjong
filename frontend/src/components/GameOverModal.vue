@@ -887,73 +887,56 @@ function settlementReason(card) {
 
 <style scoped>
 .landscape-settlement { display:none; }
-@media (orientation:landscape) and (min-width:640px) {
-  .game-over-overlay { padding:8px; }
-  .game-over-panel { width:min(1060px,96vw); height:min(510px,92dvh); max-height:92dvh; overflow:hidden; }
+/* The outer game stage is always 1280×720, regardless of physical orientation. */
+.game-over-overlay { padding:16px; }
+.game-over-panel { width:1080px; max-width:none; height:560px; max-height:none; overflow:hidden; }
   .game-over-panel > header, .game-over-panel > footer,
   .game-over-panel > div:not(.landscape-settlement) { display:none; }
-  .landscape-settlement { display:flex; flex-direction:row; gap:14px; width:100%; height:100%; min-height:0; padding:14px; color:#fef3c7; }
-  .landscape-settlement-summary { display:flex; flex:0 0 43%; flex-direction:column; min-width:0; min-height:0; }
-  .landscape-settlement-topline { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#fbbf24; font-size:11px; font-weight:800; letter-spacing:.12em; }
+  .landscape-settlement { display:flex; flex-direction:row; gap:20px; width:100%; height:100%; min-height:0; padding:20px; color:#fef3c7; }
+  .landscape-settlement-summary { display:flex; flex:0 0 42%; flex-direction:column; min-width:0; min-height:0; }
+  .landscape-settlement-topline { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#fbbf24; font-size:13px; font-weight:800; letter-spacing:.12em; }
   .landscape-settlement-topline button { flex:none; border:1px solid #fbbf2470; border-radius:7px; padding:3px 7px; color:#fde68a; letter-spacing:0; }
-  .landscape-settlement-summary h2 { margin-top:7px; color:#fff7e1; font-size:clamp(16px,2.1vw,22px); font-weight:900; line-height:1.2; }
-  .landscape-settlement-score { display:flex; flex-wrap:wrap; align-items:baseline; gap:3px 7px; margin-top:8px; color:#fde68a; font-size:12px; line-height:1.3; }
-  .landscape-settlement-score strong { font-size:18px; }
-  .landscape-settlement-note { margin-top:3px; color:#d1fae5; font-size:11px; }
-  .landscape-settlement-id { display:flex; align-items:center; gap:7px; margin-top:14px; color:#fef3c7; font-size:12px; font-weight:700; white-space:nowrap; }
+  .landscape-settlement-summary h2 { margin-top:10px; color:#fff7e1; font-size:27px; font-weight:900; line-height:1.2; }
+  .landscape-settlement-score { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 9px; margin-top:10px; color:#fde68a; font-size:15px; line-height:1.3; }
+  .landscape-settlement-score strong { font-size:25px; }
+  .landscape-settlement-note { margin-top:5px; color:#d1fae5; font-size:13px; }
+  .landscape-settlement-id { display:flex; align-items:center; gap:7px; margin-top:16px; color:#fef3c7; font-size:14px; font-weight:700; white-space:nowrap; }
   .landscape-settlement-id button { border:1px solid #fbbf2470; border-radius:6px; padding:2px 6px; color:#fde68a; font-size:10px; }
   .landscape-settlement-copy { margin-top:3px; color:#86efac; font-size:10px; }
-  .landscape-settlement-actions { display:grid; gap:7px; margin-top:auto; }
-  .landscape-settlement-actions button { min-height:31px; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:800; line-height:1.2; }
+  .landscape-settlement-actions { display:grid; gap:9px; margin-top:auto; }
+  .landscape-settlement-actions button { min-height:48px; border-radius:9px; padding:9px 12px; font-size:15px; font-weight:800; line-height:1.2; cursor:pointer; }
   .landscape-settlement-next { background:#fbbf24; color:#422006; }
   .landscape-settlement-history-button { border:1px solid #5eead477; color:#d1fae5; }
-  .landscape-settlement-details { display:flex; flex:1 1 0; flex-direction:column; min-width:0; min-height:0; border-left:1px solid #fbbf2440; padding-left:14px; }
-  .landscape-settlement-details h3 { flex:none; margin:0 0 8px; color:#fef3c7; font-size:14px; font-weight:800; }
-  .landscape-settlement-seats { display:grid; grid-template-rows:repeat(3,minmax(0,1fr)); gap:5px; flex:1; min-height:0; }
+  .landscape-settlement-details { display:flex; flex:1 1 0; flex-direction:column; min-width:0; min-height:0; border-left:1px solid #fbbf2440; padding-left:20px; }
+  .landscape-settlement-details h3 { flex:none; margin:0 0 12px; color:#fef3c7; font-size:18px; font-weight:800; }
+  .landscape-settlement-seats { display:grid; grid-template-rows:repeat(3,minmax(0,1fr)); gap:9px; flex:1; min-height:0; }
   .landscape-settlement-seats:has(>article:nth-child(4)) { grid-template-rows:repeat(4,minmax(0,1fr)); }
-  .landscape-settlement-seat { display:flex; flex-direction:column; justify-content:center; gap:2px; min-width:0; min-height:0; border:1px solid #28695b; border-radius:9px; padding:5px 8px; background:#063a34; overflow:hidden; }
+  .landscape-settlement-seat { display:flex; flex-direction:column; justify-content:center; gap:5px; min-width:0; min-height:0; border:1px solid #28695b; border-radius:9px; padding:9px 12px; background:#063a34; overflow:hidden; }
   .landscape-settlement-seat.is-winner { border-color:#fbbf24a0; background:#49350d; }
-  .landscape-settlement-seat-main { display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:12px; line-height:1.2; }
+  .landscape-settlement-seat-main { display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:15px; line-height:1.25; }
   .landscape-settlement-seat-main strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .landscape-settlement-seat-main b { flex:none; color:#cbd5d1; font-size:15px; }
+  .landscape-settlement-seat-main b { flex:none; color:#cbd5d1; font-size:19px; }
   .landscape-settlement-seat-main b.positive { color:#86efac; }
   .landscape-settlement-seat-main b.negative { color:#fda4af; }
-  .landscape-settlement-seat p { overflow:hidden; margin-top:2px; color:#cbd5d1; font-size:10px; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
-  .landscape-winner-hand { min-height:0; margin-top:9px; border-top:1px solid #fbbf243b; padding-top:7px; }
+  .landscape-settlement-seat p { overflow:hidden; margin-top:3px; color:#cbd5d1; font-size:13px; line-height:1.3; text-overflow:ellipsis; white-space:nowrap; }
+  .landscape-winner-hand { min-height:0; margin-top:12px; border-top:1px solid #fbbf243b; padding-top:9px; overflow:auto; }
   .landscape-winner-hand > p { display:flex; justify-content:space-between; gap:5px; font-size:10px; font-weight:700; }
   .landscape-winner-groups, .landscape-seat-tiles { display:flex; flex-wrap:wrap; align-items:center; gap:2px; min-width:0; }
   .landscape-winner-groups { margin-top:5px; }
   .landscape-winner-group, .landscape-seat-meld { display:inline-flex; align-items:center; gap:1px; flex:none; border:1px solid #fbbf2455; border-radius:4px; padding:1px; }
   .settlement-mini-tile { display:inline-flex; flex:none; align-items:center; justify-content:center; width:18px; height:24px; overflow:hidden; border:1px solid #d4cbb8; border-radius:3px; background:#fffdf0; box-shadow:1px 2px 0 #b2cbb5; font-size:10px; font-weight:800; line-height:1; }
-  .landscape-winner-group .settlement-mini-tile { width:22px; height:30px; font-size:12px; }
+  .landscape-winner-group .settlement-mini-tile { width:28px; height:38px; font-size:15px; }
   .settlement-mini-tile.is-winning-tile { position:relative; overflow:visible; outline:2px solid #fbbf24; outline-offset:1px; }
   .settlement-mini-tile.is-winning-tile::after { content:'胡'; position:absolute; top:-9px; right:-7px; z-index:2; border:1px solid #fcd34d; border-radius:4px; padding:1px 2px; background:linear-gradient(135deg,#be123c,#7f1d1d); color:#fff7d6; font-size:8px; line-height:1; }
   .landscape-winner-breakdown, .landscape-seat-breakdown { display:flex; flex-wrap:wrap; gap:2px 6px; min-width:0; color:#d1fae5; font-size:9px; line-height:1.15; }
-  .landscape-winner-breakdown { margin-top:7px; gap:4px 8px; font-size:11px; line-height:1.3; }
+  .landscape-winner-breakdown { margin-top:9px; gap:5px 9px; font-size:13px; line-height:1.3; }
   .landscape-winner-breakdown strong { color:#fde68a; }
   .landscape-seat-tiles { margin-top:3px; }
   .landscape-seat-meld { border-color:#5eead477; }
-  .landscape-seat-breakdown { margin-top:3px; color:#c4b5fd; font-size:.75rem; line-height:1.15; }
+  .landscape-seat-breakdown { margin-top:4px; color:#c4b5fd; font-size:13px; line-height:1.2; }
   .landscape-settlement-history { display:grid; align-content:start; gap:5px; overflow:hidden; font-size:11px; line-height:1.2; }
   .landscape-settlement-history p { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .landscape-settlement-history-pages { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:3px; color:#fde68a; }
   .landscape-settlement-history-pages button { border:1px solid #5eead477; border-radius:5px; padding:3px 7px; color:#d1fae5; }
   .landscape-settlement-history-pages button:disabled { opacity:.4; }
-}
-@media (orientation:landscape) and (min-width:640px) and (max-height:420px) {
-  .landscape-settlement { gap:10px; padding:10px; }
-  .landscape-settlement-summary h2 { margin-top:4px; }
-  .landscape-settlement-score { margin-top:4px; }
-  .landscape-winner-hand { margin-top:5px; padding-top:4px; }
-  .landscape-winner-breakdown { margin-top:4px; }
-  .landscape-settlement-details { padding-left:10px; }
-  .landscape-settlement-details h3 { margin-bottom:5px; }
-  .landscape-settlement-seats { gap:4px; }
-  .landscape-settlement-seat { padding:3px 7px; }
-  .landscape-settlement-id { margin-top:7px; }
-  .settlement-mini-tile { width:15px; height:20px; font-size:8px; }
-  .landscape-winner-group .settlement-mini-tile { width:18px; height:24px; font-size:10px; }
-  .landscape-winner-breakdown { font-size:10px; }
-  .landscape-seat-breakdown { font-size:.75rem; }
-}
 </style>
