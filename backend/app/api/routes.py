@@ -224,7 +224,7 @@ def save_game_record_api(request: GameRecordRequest) -> GameRecordResponse:
                               bytes_written=meta["bytes_written"], steps_count=meta["steps_count"])
 
 
-@router.get("/game/records")
+@router.api_route("/game/records", methods=["GET", "HEAD"])
 def fetch_game_record_summaries() -> dict:
     """List the latest completed games with seat-relative settlement summaries."""
     from app.core.record_manager import list_game_record_summaries
