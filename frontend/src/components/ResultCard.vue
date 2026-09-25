@@ -90,6 +90,7 @@ const emit = defineEmits({
 })
 
 const expandedTile = ref(null)
+const mobileDetailsOpen = ref(false)
 
 const bestMeta = computed(
   () => props.candidates.find((c) => c.tile === props.bestTile) ?? null,
@@ -296,7 +297,7 @@ function defenseRows(item) {
     <!-- ========== 冠军位 ========== -->
     <div
       v-if="!loading || bestTile"
-      class="relative bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500"
+      class="ev-winner relative bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500"
       :class="compact ? 'px-3 py-3 sm:px-4' : 'px-5 py-8 sm:px-8 sm:py-10'"
     >
       <div
@@ -444,10 +445,19 @@ function defenseRows(item) {
       </div>
     </div>
 
+    <button
+      v-if="compact && rankedCandidates.length"
+      type="button"
+      class="mobile-ev-toggle"
+      :aria-expanded="mobileDetailsOpen"
+      @click="mobileDetailsOpen = !mobileDetailsOpen"
+    >{{ mobileDetailsOpen ? '收起候选' : `候选 ${rankedCandidates.length} ▴` }}</button>
+
     <!-- ========== 候选对比 ========== -->
     <div
       v-if="!loading || rankedCandidates.length"
-      :class="compact ? 'px-3 py-2' : 'px-4 py-5 sm:px-6 sm:py-6'"
+      class="ev-candidates"
+      :class="[{ 'mobile-ev-open': mobileDetailsOpen }, compact ? 'px-3 py-2' : 'px-4 py-5 sm:px-6 sm:py-6']"
     >
       <h3 class="mb-1 text-sm font-semibold tracking-wide text-amber-50">
         候选对比
@@ -622,3 +632,25 @@ function defenseRows(item) {
     </div>
   </section>
 </template>
+
+<style scoped>
+.mobile-ev-toggle { display:none; }
+@media screen and (orientation: portrait) and (max-width: 768px) {
+  .mobile-ev-toggle { display:block; flex:0 0 auto; padding:5px; color:#fef3c7; font-size:10px; font-weight:700; }
+  .ev-candidates { display:none; }
+  .ev-candidates.mobile-ev-open {
+    display:block;
+    position:absolute;
+    z-index:30;
+    left:0;
+    right:0;
+    bottom:calc(100% + 4px);
+    max-height:min(50dvh,430px);
+    overflow:auto;
+    border:1px solid #d9b65c88;
+    border-radius:12px;
+    background:#052e2b;
+    box-shadow:0 10px 25px #0009;
+  }
+}
+</style>

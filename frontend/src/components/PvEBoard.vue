@@ -9,7 +9,9 @@ const props = defineProps({
   seatWind: { type: String, default: 'E' }, currentTurnSeat: String, dealerSeat: String,
   dealerTile: String, opponents: { type: Array, default: () => [] },
   cumulativeScores: { type: Object, default: () => ({}) }, roundCount: { type: Number, default: 1 },
+  wallCount: { type: Number, default: 0 },
   aiStatus: String, aiAnnouncement: String, thinkingSeat: String,
+  riskMessage: String, riskLevel: { type: String, default: 'safe' },
 })
 const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind, role }, i) => {
   const opp = props.opponents.find(o => o.seat_wind === seat_wind) || {}
@@ -18,6 +20,7 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
 </script>
 <template>
   <section class="pve-table" aria-label="四方牌桌">
+    <div v-if="riskLevel !== 'safe'" class="opponent-risk-badge" :class="riskLevel === 'high' ? 'risk-high' : 'risk-warn'" role="status">{{ riskMessage }}</div>
     <header class="flex flex-wrap justify-between gap-2 text-sm text-teal-100">
       <span>第 {{ roundCount }} 圈 · 庄家 {{ windLabel(dealerSeat) }}风</span>
       <span class="text-amber-200">当前 {{ windLabel(currentTurnSeat) }}风行动</span>
@@ -33,20 +36,23 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
           <div class="concealed-hand" :aria-label="`${player.role}暗手，已隐藏`"><span v-for="n in player.handCount" :key="n" class="tile-back" /></div>
           <div v-if="player.melds.length" class="meld-area flex flex-wrap gap-2" aria-label="副露"><MeldTiles v-for="(meld,i) in player.melds" :key="i" :meld="meld" :dealer-tile="dealerTile" /></div>
         </div>
-        <DiscardRiver :tiles="player.discards" />
+        <DiscardRiver :tiles="player.discards" :layout="player.position" />
       </article>
       <div class="table-center" aria-label="本局财神">
-        <span class="rounded-full border border-amber-300/60 bg-amber-400 px-4 py-1 text-sm font-black text-amber-950 shadow">得 · 财神</span>
-        <MahjongTile v-if="dealerTile" :code="dealerTile" large class="my-3" />
-        <p class="text-sm font-semibold text-amber-100">{{ dealerTile ? tileLabel(dealerTile) : '等待发牌' }}</p>
-        <p v-if="dealerTile && dealerTile !== 'P'" class="mt-2 text-xs text-amber-100/80">白板承接 {{ tileLabel(dealerTile) }} 替身属性</p>
-        <p class="mt-4 text-center text-xs text-teal-200" role="status">{{ aiAnnouncement || aiStatus || '三家 AI 托管 · 等待你的决策' }}</p>
+        <div class="center-compass-hud">
+          <span class="compass-title">得 · 财神</span>
+          <MahjongTile v-if="dealerTile" :code="dealerTile" />
+          <span class="compass-count">余牌 <strong>{{ wallCount }}</strong><small>{{ windLabel(currentTurnSeat) }}风行牌</small></span>
+        </div>
+        <p class="sr-only" role="status">{{ dealerTile ? tileLabel(dealerTile) : '等待发牌' }}；{{ aiAnnouncement || aiStatus || '等待你的决策' }}</p>
       </div>
     </div>
   </section>
 </template>
 <style scoped>
-.pve-table { padding:20px; border:1px solid #c9b26c55; border-radius:24px; background:radial-gradient(ellipse at center,#17604c99,#052e2c 85%); box-shadow:inset 0 0 50px #0003,0 12px 30px #0002; }
+.pve-table { position:relative; padding:20px; border:1px solid #c9b26c55; border-radius:24px; background:radial-gradient(ellipse at center,#17604c99,#052e2c 85%); box-shadow:inset 0 0 50px #0003,0 12px 30px #0002; }
+.opponent-risk-badge { position:absolute; z-index:8; left:8px; top:5px; max-width:37%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #fbbf24; border-radius:999px; padding:2px 8px; background:#451a03e8; color:#fde68a; font-size:11px; line-height:1.3; }
+.opponent-risk-badge.risk-high { border-color:#fb7185; background:#4c0519e8; color:#ffe4e6; }
 .table-compass { display:grid; grid-template-columns:493px minmax(0,1fr) 493px; grid-template-areas:'top top top' 'left center right'; align-items:start; gap:16px; margin-top:16px; }
 .opponent-seat { min-width:0; padding:14px; border:1px solid #659d8955; border-radius:16px; background:#03272399; }
 .opponent-seat.active { border-color:#fcd34d; box-shadow:0 0 18px #fbbf2420; }
@@ -70,6 +76,12 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
 .opponent-seat :deep([aria-label="副露牌组"]) { gap:3px; padding-top:3px; padding-bottom:5px; }
 .top :deep([aria-label="副露牌组"]) { padding-top:0; padding-bottom:3px; }
 .table-center { grid-area:center; display:flex; flex-direction:column; align-items:center; padding:16px 4px; }
+.center-compass-hud { display:flex; align-items:center; justify-content:center; gap:6px; padding:5px 8px; border:1px solid #d4af5866; border-radius:13px; background:#043a32e8; color:#fef3c7; white-space:nowrap; }
+.compass-title { font-size:11px; font-weight:800; color:#fbbf24; }
+.compass-count { display:flex; flex-direction:column; align-items:center; font-size:10px; line-height:1.1; }
+.compass-count strong { font-size:16px; }
+.compass-count small { font-size:8px; color:#b7d8cc; }
+.center-compass-hud :deep(.mahjong-tile) { --tw:25px; --th:calc(var(--tw)*4/3); margin:0; }
 .tile-back { width:15px; height:23px; border:1px solid #7ab5a6; border-radius:3px; background:linear-gradient(130deg,#368a75,#115643); box-shadow:0 2px 0 #aec7b7; }
 @media(max-width:1279px) { .table-compass { grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-areas:'top top' 'left right' 'center center'; } .table-center { border-top:1px solid #d4b96844; } }
 @media(max-width:639px) { .pve-table { padding:12px; } .table-compass { grid-template-columns:minmax(0,1fr); grid-template-areas:'top' 'center' 'left' 'right'; } .opponent-seat { width:100%; justify-self:stretch; } }

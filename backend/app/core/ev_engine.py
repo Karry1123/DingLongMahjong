@@ -423,6 +423,8 @@ def calculate_best_discards(
     _apply_seen_guest_dominance(
         candidates, hand_tiles, dealer_tile, seat_wind, round_wind, table_rem,
     )
+    _apply_isolated_tile_shape_dominance(candidates, hand_tiles, dealer_tile)
+    _apply_close_ukeire_safety_dominance(candidates)
 
     # 净 EV 优先；同净 EV 时更低向听、更多进张、更高保留中张分优先
     candidates.sort(
@@ -2022,6 +2024,87 @@ def _apply_seen_guest_dominance(
         guest["attack_ev"] = round(guest["attack_ev"] + bonus, 4)
         guest["ev_score"] = round(guest["ev_score"] + bonus, 4)
         guest["note"] += f"；场见非本门风优先清理（策略修正 +{bonus:.1f}）"
+
+
+def _is_pair_run_core(tile: str, hand_tiles: list[str], dealer_tile: str) -> bool:
+    """True when discarding this pair breaks XX(X+1)(X+2) or its mirror."""
+    if tile == dealer_tile or len(tile) != 2 or tile[1] not in "mps":
+        return False
+    counts = _hand_identity_counts(hand_tiles, dealer_tile)
+    digit, suit = int(tile[0]), tile[1]
+    if counts[tile] < 2:
+        return False
+    return any(
+        1 <= digit + direction * 2 <= 9
+        and counts[f"{digit + direction}{suit}"] > 0
+        and counts[f"{digit + direction * 2}{suit}"] > 0
+        for direction in (-1, 1)
+    )
+
+
+def _apply_isolated_tile_shape_dominance(
+    candidates: list[dict], hand_tiles: list[str], dealer_tile: str,
+) -> None:
+    """Do not break a pair/run core when an isolated tile improves both ukeire and safety.
+
+    Deep-shanten score estimates can overvalue retained middle tiles even after
+    the exact effective-tile count and deal-in probabilities are known.  This
+    narrow Pareto check uses those computed values and never crosses shanten.
+    """
+    isolated = [c for c in candidates if _is_pure_isolated_tile(
+        c["tile"], hand_tiles, dealer_tile
+    )]
+    for core in candidates:
+        if not _is_pair_run_core(core["tile"], hand_tiles, dealer_tile):
+            continue
+        core_risk = max(core["deal_in_risks"].values(), default=0.0)
+        dominators = [c for c in isolated
+                      if c["shanten"] == core["shanten"]
+                      and c["effective_count"] >= core["effective_count"] + 4
+                      and c["effective_count"] >= core["effective_count"] * 1.35
+                      and max(c["deal_in_risks"].values(), default=0.0)
+                      <= core_risk - 0.03]
+        if not dominators:
+            continue
+        leader = max(dominators, key=lambda c: c["ev_score"])
+        margin = _EV_NEAR_TIE_EPS + 1.0
+        penalty = max(0.0, core["ev_score"] - leader["ev_score"] + margin)
+        if penalty:
+            core["attack_ev"] = round(core["attack_ev"] - penalty, 4)
+            core["ev_score"] = round(core["ev_score"] - penalty, 4)
+            core["note"] += "；孤张切除在同向听下兼有更多进张与更低铳率，保护对子顺子复合形"
+
+
+def _apply_close_ukeire_safety_dominance(candidates: list[dict]) -> None:
+    """Account for a large danger gap when same-shanten ukeire is close.
+
+    A small tenpai prior can otherwise make a doubled tile danger almost
+    disappear from Net EV. This guard only changes a near-score comparison.
+    """
+    for risky in candidates:
+        risk = max(risky["deal_in_risks"].values(), default=0.0)
+        if risk < 0.10:
+            continue
+        if len(risky["tile"]) != 2 or risky["tile"][1] not in "mps":
+            continue
+        safer = [candidate for candidate in candidates if candidate is not risky
+                 and len(candidate["tile"]) == 2
+                 and candidate["tile"][1] == risky["tile"][1]
+                 and abs(int(candidate["tile"][0]) - int(risky["tile"][0])) == 1
+                 and candidate["shanten"] == risky["shanten"]
+                 and candidate["effective_count"] >= risky["effective_count"] - 6
+                 and candidate["effective_count"] >= risky["effective_count"] * 0.78
+                 and max(candidate["deal_in_risks"].values(), default=0.0)
+                 <= min(risk - 0.04, risk * 0.70)
+                 and candidate["ev_score"] >= risky["ev_score"] - 15]
+        if not safer:
+            continue
+        leader = max(safer, key=lambda candidate: candidate["ev_score"])
+        adjustment = max(0.0, risky["ev_score"] - leader["ev_score"] + 0.1)
+        if adjustment:
+            risky["defense_loss"] = round(risky["defense_loss"] + adjustment, 4)
+            risky["ev_score"] = round(risky["ev_score"] - adjustment, 4)
+            risky["note"] += "；相近进张下规避显著更高的放铳风险"
 
 
 def _apply_near_ev_tiebreak(

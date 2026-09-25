@@ -75,41 +75,146 @@ try {
       return response;
     };
   ` })
-  await command('Page.navigate', { url: process.env.PVE_URL || 'http://127.0.0.1:5178/' })
+  await command('Page.navigate', { url: process.env.PVE_URL || 'http://127.0.0.1:5173/' })
   await until(() => evaluate(`Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('人机对战'))`))
   await evaluate(`Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('人机对战')).click()`)
-  await until(() => evaluate(`!!document.querySelector('[aria-label="手牌槽位"]') && document.querySelector('[aria-label="实时 EV 推荐"]').textContent.includes('Net EV')`))
+  await until(() => evaluate(`Array.from(document.querySelectorAll('button')).some(b => b.textContent.includes('开始对战'))`))
+  await evaluate(`Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('开始对战')).click()`)
+  await until(() => evaluate(`!!document.querySelector('[aria-label="手牌槽位"]') && !!document.querySelector('.pve-discard-hud .hud-tile')`))
   await sleep(500)
   await command('Emulation.setDeviceMetricsOverride', { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false })
   await sleep(100)
-  const recommendationView = await evaluate(`(() => { const aside=document.querySelector('[aria-label="实时 EV 推荐"]'); const rows=[...aside.querySelectorAll('[aria-label="切牌推荐结果"] [role="list"] > li')]; return {count:rows.length,fourthBottom:rows[3]?.getBoundingClientRect().bottom,viewport:innerHeight,internalScroll:aside.scrollTop}; })()`)
-  assert.ok(recommendationView.count >= 4)
-  assert.ok(recommendationView.fourthBottom <= recommendationView.viewport)
+  const recommendationView = await evaluate(`(() => { const aside=document.querySelector('[aria-label="实时决策看板"]'); const rows=[...aside.querySelectorAll('.hud-tile')]; return {count:rows.length,top:aside.getBoundingClientRect().top,bottom:aside.getBoundingClientRect().bottom,heroBottom:aside.querySelector('.pve-discard-hud')?.getBoundingClientRect().bottom,viewport:innerHeight,internalScroll:aside.scrollTop,pageScroll:window.scrollY}; })()`)
+  assert.equal(recommendationView.count, 2)
+  assert.ok(recommendationView.top >= 0 && recommendationView.bottom <= recommendationView.viewport)
+  assert.ok(recommendationView.heroBottom <= recommendationView.viewport)
   assert.equal(recommendationView.internalScroll, 0)
+  assert.equal(recommendationView.pageScroll, 0)
   await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
   const desktop = await evaluate(`(() => {
     const work = document.querySelector('[aria-label="自家操作工作台"]');
     const left = work.querySelector('[aria-label="自家手牌与副露"]').getBoundingClientRect();
-    const right = work.querySelector('[aria-label="实时 EV 推荐"]').getBoundingClientRect();
+    const right = work.querySelector('[aria-label="实时决策看板"]').getBoundingClientRect();
     const hand = work.querySelector('.pve-self-hand').getBoundingClientRect();
     const meld = work.querySelector('.compact-melds').getBoundingClientRect();
     const text = document.body.innerText;
     return {left: left.toJSON(), right: right.toJSON(), hand: hand.toJSON(), meld: meld.toJSON(), editors: ['添加副露','清空副露','清空重选','选牌键盘'].filter(t => text.includes(t))};
   })()`)
   assert.deepEqual(desktop.editors, [])
-  assert.ok(desktop.right.x >= desktop.left.right)
-  assert.ok(Math.abs(desktop.left.y - desktop.right.y) < 2)
-  assert.ok(desktop.hand.top >= desktop.right.top && desktop.hand.top < desktop.meld.top)
+  assert.ok(desktop.right.bottom <= desktop.hand.top + 1)
+  assert.ok(desktop.meld.bottom <= desktop.hand.top + 1)
+  assert.ok(desktop.hand.bottom <= 1000)
+  await command('Emulation.setDeviceMetricsOverride', { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false })
+  await sleep(80)
+  const callDock = await evaluate(`(async () => {
+    const session=document.querySelector('#app').__vue_app__._instance.setupState;
+    const aside=document.querySelector('[aria-label="实时决策看板"]');
+    const before={scrollY:window.scrollY,rect:aside.getBoundingClientRect().toJSON()};
+    const saved={phase:session.currentPhase,result:session.lastStepResult,seat:session.lastDiscardSeat};
+    session.lastDiscardSeat='N';
+    session.currentPhase='OPPONENT_DISCARD_ACTION';
+    session.lastStepResult={...saved.result,need_self_action:true,call_decision:{
+      recommended_action:{action_type:'chi',tiles:['4p','5p','6p'],provider_seat:'N'},
+      reason:'保留两面搭子',candidates:[
+        {action:{action_type:'chi',tiles:['4p','5p','6p'],provider_seat:'N'},net_ev:24},
+        {action:{action_type:'pong',tiles:['4p','4p','4p'],provider_seat:'N'},net_ev:10},
+        {action:{action_type:'ming_gang',tiles:['4p','4p','4p','4p'],provider_seat:'N'},net_ev:9},
+        {action:{action_type:'hu',tiles:['4p'],provider_seat:'N'},net_ev:8},
+        {action:{action_type:'pass',tiles:['4p'],provider_seat:'N'},net_ev:3},
+      ],
+    }};
+    await new Promise(resolve=>setTimeout(resolve,50));
+    const dock=aside.querySelector('.action-prompt-docked');
+    const buttons=[...dock?.querySelectorAll('[aria-label="可选响应动作"] button')||[]];
+    const panelBody=dock?.querySelector('.action-prompt-panel > div:last-child');
+    const active={scrollY:window.scrollY,rect:aside.getBoundingClientRect().toJSON(),bodyOverflow:panelBody ? panelBody.scrollHeight-panelBody.clientHeight : -1,
+      dockInside:!!dock && aside.contains(dock),strayPrompt:!!document.querySelector('.pve-self-controls .action-prompt-wrap'),
+      buttons:buttons.map(button=>({type:button.dataset.action,shortcut:button.getAttribute('aria-keyshortcuts'),bottom:button.getBoundingClientRect().bottom})),
+      recommended:!!dock?.querySelector('button[data-action="chi"]')?.textContent.includes('荐')};
+    window.__restoreCallDock=async()=>{session.currentPhase=saved.phase;session.lastStepResult=saved.result;session.lastDiscardSeat=saved.seat;await new Promise(resolve=>setTimeout(resolve,50));};
+    return {before,active};
+  })()`)
+  await mkdir('tests/artifacts', { recursive: true })
+  const callShot = await command('Page.captureScreenshot', { format: 'png' })
+  await writeFile('tests/artifacts/pve-call-dock.png', Buffer.from(callShot.data, 'base64'))
+  await command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false })
+  await sleep(80)
+  const mobileCall = await evaluate(`(() => {const panel=document.querySelector('.pve-ev-slot .action-prompt-panel').getBoundingClientRect();const root=document.documentElement;return {top:panel.top,bottom:panel.bottom,scroll:[root.scrollWidth,root.clientWidth,root.scrollHeight,root.clientHeight]}})()`)
+  assert.ok(mobileCall.top >= 0 && mobileCall.bottom <= 844)
+  assert.deepEqual(mobileCall.scroll, [390,390,844,844])
+  await command('Emulation.setDeviceMetricsOverride', { width: 1024, height: 768, deviceScaleFactor: 1, mobile: false })
+  await sleep(80)
+  const laptopCall = await evaluate(`(() => {const aside=document.querySelector('.pve-ev-slot').getBoundingClientRect();const buttons=[...document.querySelectorAll('.pve-ev-slot [aria-label="可选响应动作"] button')].map(el=>el.getBoundingClientRect());const center=document.querySelector('.table-center .mahjong-tile').getBoundingClientRect();const table=document.querySelector('.pve-table').getBoundingClientRect();return {dockBottom:aside.bottom,buttonBottom:Math.max(...buttons.map(r=>r.bottom)),centerVisible:center.top>=table.top&&center.bottom<=table.bottom,scrollY:window.scrollY}})()`)
+  assert.ok(laptopCall.dockBottom <= 768 && laptopCall.buttonBottom <= 768)
+  assert.equal(laptopCall.centerVisible, true)
+  assert.equal(laptopCall.scrollY, 0)
+  await command('Emulation.setDeviceMetricsOverride', { width: 1366, height: 768, deviceScaleFactor: 1, mobile: false })
+  await evaluate('window.__restoreCallDock()')
+  assert.equal(callDock.active.scrollY, callDock.before.scrollY)
+  assert.equal(await evaluate('window.scrollY'), callDock.before.scrollY)
+  assert.ok(callDock.active.rect.bottom < 768)
+  assert.ok(callDock.active.rect.top < callDock.before.rect.top)
+  assert.equal(callDock.active.dockInside, true)
+  assert.equal(callDock.active.strayPrompt, false)
+  assert.equal(callDock.active.recommended, true)
+  assert.ok(callDock.active.bodyOverflow <= 1)
+  assert.deepEqual(callDock.active.buttons.map(button=>button.type), ['chi','pong','ming_gang','hu','pass'])
+  assert.deepEqual(callDock.active.buttons.map(button=>button.shortcut), ['1','2','3','4','5'])
+  assert.ok(callDock.active.buttons.every(button=>button.bottom <= 768))
+  assert.equal(await evaluate(`!!document.querySelector('[aria-label="实时决策看板"] .pve-discard-hud')`), true)
+  await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
   await mkdir('tests/artifacts', { recursive: true })
   await evaluate(`document.querySelector('[aria-label="自家操作工作台"]').scrollIntoView({block:'start'})`)
   await sleep(100)
   let shot = await command('Page.captureScreenshot', { format: 'png' })
   await writeFile('tests/artifacts/pve-desktop.png', Buffer.from(shot.data, 'base64'))
-  await evaluate(`window.__pveStart = performance.now(); document.querySelector('[aria-label="手牌槽位"] button[title="打出 北"]').click()`)
+  await command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false })
+  await sleep(150)
+  const mobileDecision = await evaluate(`(() => {
+    const hand=document.querySelector('[aria-label="手牌槽位"]');
+    const controls=document.querySelector('[aria-label="自家手牌与副露"]');
+    const tile=hand.querySelector('button[title="打出 北"]');
+    const before=hand.querySelectorAll('button[role="listitem"]').length;
+    tile.click();
+    return {before,after:hand.querySelectorAll('button[role="listitem"]').length,river:!!document.querySelector('[aria-label="自家牌河"]'),drawerButton:!!document.querySelector('.hud-more'),tilesFit:[...hand.querySelectorAll('button[role="listitem"]')].every(el=>el.getBoundingClientRect().right<=controls.getBoundingClientRect().right+1)};
+  })()`)
+  assert.equal(mobileDecision.before, 14)
+  assert.equal(mobileDecision.after, 14)
+  await sleep(50)
+  assert.equal(await evaluate(`document.querySelector('[aria-label="手牌槽位"] button[title="确认打出 北"]').classList.contains('hand-tile-selected')`), true)
+  assert.equal(mobileDecision.river, false)
+  assert.equal(mobileDecision.drawerButton, true)
+  assert.equal(mobileDecision.tilesFit, true)
+  const centerLayout = await evaluate(`(() => {const c=document.querySelector('.table-center');return {center:c.getBoundingClientRect().toJSON(),children:[...c.children].map(el=>({tag:el.tagName,text:el.textContent?.slice(0,12),rect:el.getBoundingClientRect().toJSON(),display:getComputedStyle(el).display}))}})()`)
+  assert.ok(centerLayout.children.some(c => c.rect.width > 15 && c.rect.height > 20 && c.rect.top >= centerLayout.center.top && c.rect.bottom <= centerLayout.center.bottom), 'fortune tile visible inside table center')
+  await evaluate(`document.querySelector('.hud-more').click()`)
+  assert.equal(await evaluate(`!!document.querySelector('.hud-drawer')`), true)
+  await evaluate(`document.querySelector('.hud-more').click()`)
+  shot = await command('Page.captureScreenshot', { format: 'png' })
+  await writeFile('tests/artifacts/pve-mobile-decision.png', Buffer.from(shot.data, 'base64'))
+  for (const [width, height] of [[320, 568], [430, 932]]) {
+    await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false })
+    await sleep(70)
+    const fit = await evaluate(`(() => {
+      const hand=document.querySelector('[aria-label="自家手牌与副露"]').getBoundingClientRect();
+      const board=document.querySelector('.pve-table').getBoundingClientRect();
+      const ev=document.querySelector('[aria-label="实时决策看板"]').getBoundingClientRect();
+      return {scrollX:document.documentElement.scrollWidth-innerWidth,scrollY:document.documentElement.scrollHeight-innerHeight,handRight:hand.right,handBottom:hand.bottom,boardBottom:board.bottom,evBottom:ev.bottom,tiles:[...document.querySelectorAll('[aria-label="手牌槽位"] button[role="listitem"]')].filter(el=>el.getBoundingClientRect().right<=hand.right+1).length};
+    })()`)
+    assert.ok(fit.scrollX <= 0 && fit.scrollY <= 0, `${width}x${height} page scroll`)
+    assert.ok(fit.handRight <= width+1 && fit.handBottom <= height+1 && fit.boardBottom <= height+1 && fit.evBottom <= height+1, `${width}x${height} clipped game layer`)
+    assert.equal(fit.tiles, 14, `${width}x${height} visible hand tiles`)
+  }
+  await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false })
+  await evaluate(`window.__pveStart = performance.now(); document.querySelector('[aria-label="手牌槽位"] button[title$="北"]').click()`)
   await until(() => evaluate(`!!document.querySelector('[aria-label="自家牌河"]')`))
   const selfOrder = await evaluate(`(() => {const work=document.querySelector('[aria-label="自家操作工作台"]');const hand=work.querySelector('.pve-self-hand').getBoundingClientRect();const meld=work.querySelector('.compact-melds').getBoundingClientRect();const river=work.querySelector('[aria-label="自家牌河"]').getBoundingClientRect();return {hand:hand.top, meld:meld.top, river:river.top}})()`)
-  assert.ok(selfOrder.hand < selfOrder.meld && selfOrder.meld < selfOrder.river)
+  assert.ok(selfOrder.river < selfOrder.hand && selfOrder.meld < selfOrder.hand)
   await until(() => evaluate(`document.querySelector('[data-seat="S"] .thinking-indicator')?.textContent.includes('思考中')`))
+  const waitingDock = await evaluate(`(() => {const aside=document.querySelector('.pve-ev-slot');return {placeholder:!!aside.querySelector('.pve-ev-placeholder'),scrollY:window.scrollY,dockHeight:aside.getBoundingClientRect().height}})()`)
+  assert.equal(waitingDock.placeholder, true)
+  assert.equal(waitingDock.scrollY, 0)
+  assert.ok(waitingDock.dockHeight >= 0 && waitingDock.dockHeight < 100)
   assert.equal(await evaluate(`document.querySelector('[data-seat="S"] [aria-label="弃牌"]').children.length`), 0)
   await until(() => evaluate(`document.querySelector('[data-seat="S"] [aria-label="弃牌"]').children.length > 0`))
   await until(() => evaluate(`window.__pveRequests.some(r => r.event?.actor_seat === 'S' && r.event?.event_type === 'DISCARD' && r.status === 200)`))
@@ -137,14 +242,14 @@ try {
       shell: box('.pve-portrait-shell'),
       board: box('.pve-table'),
       hand: box('[aria-label="自家手牌与副露"]'),
-      recommend: box('[aria-label="实时 EV 推荐"]'),
+      recommend: box('[aria-label="实时决策看板"]'),
       viewport: {width: innerWidth, height: innerHeight},
       pageScroll: {width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight},
       rotated: getComputedStyle(document.querySelector('.pve-portrait-shell')).transform !== 'none',
       visibleHandTiles: (() => {const hand=document.querySelector('[aria-label="自家手牌与副露"]').getBoundingClientRect(); return [...document.querySelectorAll('[aria-label="手牌槽位"] button[role="listitem"]')].filter(el => {const r=el.getBoundingClientRect();return r.left >= hand.left && r.right <= hand.right && r.top >= hand.top && r.bottom <= hand.bottom && getComputedStyle(el.querySelector('.tile-face')).display !== 'none'}).length})(),
     };
   })()`)
-  assert.ok(mobile.rotated)
+  assert.equal(mobile.rotated, false)
   assert.ok(mobile.pageScroll.width <= mobile.viewport.width)
   assert.ok(mobile.pageScroll.height <= mobile.viewport.height)
   assert.equal(mobile.visibleHandTiles, 13)

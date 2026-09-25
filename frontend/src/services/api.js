@@ -294,6 +294,33 @@ export async function postGameRecord(payload, options = {}) {
   return res.json()
 }
 
+export async function getGameRecord(gameId, options = {}) {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/game/records/${encodeURIComponent(gameId)}`, {
+    signal: options.signal,
+  })
+  if (!res.ok) throw new Error(`牌谱检索失败：${await _readError(res)}`)
+  return res.json()
+}
+
+export async function listGameRecords(options = {}) {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/game/records`, {
+    signal: options.signal,
+  })
+  if (!res.ok) throw new Error(`牌谱列表读取失败：${await _readError(res)}`)
+  return res.json()
+}
+
+export async function getOpponentThreats(payload, options = {}) {
+  const res = await fetchWithWakeNotice(`${API_BASE}/api/game/threats`, {
+    method: 'POST',
+    signal: options.signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`风险评估失败：${await _readError(res)}`)
+  return res.json()
+}
+
 async function _readError(res) {
   let detail = `HTTP ${res.status}`
   try {

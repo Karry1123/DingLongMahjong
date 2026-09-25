@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises'
 
 /** Browser fixture uses the production components with explicit public meld metadata. */
 export async function checkPveVisuals({ command, evaluate, until, sleep }) {
-  await command('Page.navigate', { url: process.env.PVE_URL || 'http://127.0.0.1:5178/' })
+  await command('Page.navigate', { url: process.env.PVE_URL || 'http://127.0.0.1:5173/' })
   await until(() => evaluate(`!!document.querySelector('#app')?.__vue_app__`))
   await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
   await evaluate(`(async () => {
@@ -19,7 +19,7 @@ export async function checkPveVisuals({ command, evaluate, until, sleep }) {
     const Prompt = (await import('/src/components/ActionPrompt.vue')).default;
     const Modal = (await import('/src/components/GameOverModal.vue')).default;
     const meld = {meld_type:'chi',tiles:['4s','5s','6s'],claimed_tile:'5s',provider_seat:'E'};
-    const response = await fetch('${process.env.API_URL || 'http://127.0.0.1:8123'}/api/calculate-hu', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({melds:[meld],hand_tiles:['4m','6m','1p','2p','3p','7p','8p','9p','E','E'],win_tile:'5m',dealer_tile:'8s',seat_wind:'E',is_zimo:false,is_dealer:true})});
+    const response = await fetch('${process.env.API_URL || 'http://127.0.0.1:8000'}/api/calculate-hu', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({melds:[meld],hand_tiles:['4m','6m','1p','2p','3p','7p','8p','9p','E','E'],win_tile:'5m',dealer_tile:'8s',seat_wind:'E',is_zimo:false,is_dealer:true})});
     if(!response.ok) throw new Error(await response.text());
     const scored = await response.json();
     window.__sideDiscards=ref(['E','9m','N','4p','3s','P','F','2m']);
@@ -33,11 +33,23 @@ export async function checkPveVisuals({ command, evaluate, until, sleep }) {
     window.__visualApp=createApp({render:()=>h('div',{class:'space-y-4'},[
       h(Board,{seatWind:'E',dealerSeat:'E',currentTurnSeat:'S',dealerTile:'8s',opponents:
         ['N','W','S'].map(seat=>({seat_wind:seat,hand_tiles:Array(10).fill('1m'),melds:seat==='W'?[meld]:window.__sideMelds.value,discards:seat==='W'?['E','9m','N','4p','3s','P','F','2m']:window.__sideDiscards.value}))}),
-      h(Workbench,{pve:true},{default:()=>[h('header',{'aria-label':'自家信息',class:'text-amber-100'},'自家 · 东风 庄家 · 累计 0 分'),h('div',{'aria-label':'自家牌河',class:'rounded-xl border border-teal-700/40 p-2.5'},[h('p',{class:'mb-1 text-xs text-teal-200'},'自家牌河'),h(River,{tiles:selfRiver,compact:true})]),h(MeldBar,{modelValue:[meld],readOnly:true,compact:true,dealerTile:'8s'}),h(Hand,{modelValue:['1m','2m','3m','4p','5p','6p','4s','6s','E','E','N','N','P','8s'],wallDriven:true,discardMode:true,dealerTile:'8s'}),h(Prompt,{inline:true,seatWind:'E',providerSeat:'S',discardedTile:'C',dealerTile:'8s',callDecision:{reason:'碰牌锁定红中明刻(+4底胡，+1番翻倍)',recommended_action:{action_type:'pong',tiles:['C','C','C'],provider_seat:'S'},candidates:[{action:{action_type:'pong',tiles:['C','C','C'],provider_seat:'S'},net_ev:36},{action:{action_type:'pass',tiles:[],provider_seat:'S'},net_ev:8}]}})],recommendation:()=>h(Result,{bestTile:'1m',candidates:recommendation,compact:true,interactive:true,seatWind:'E'})})
+      h(Workbench,{pve:true},{default:()=>[h('header',{'aria-label':'自家信息',class:'text-amber-100'},'自家 · 东风 庄家 · 累计 0 分'),h('div',{'aria-label':'自家牌河',class:'rounded-xl border border-teal-700/40 p-2.5'},[h('p',{class:'mb-1 text-xs text-teal-200'},'自家牌河'),h(River,{tiles:selfRiver,compact:true})]),h(MeldBar,{modelValue:[meld],readOnly:true,compact:true,dealerTile:'8s'}),h(Hand,{modelValue:['1m','2m','3m','4p','5p','6p','4s','6s','E','E','N','N','P','8s'],wallDriven:true,discardMode:true,dealerTile:'8s'}),h(Prompt,{inline:true,keyboardShortcuts:true,onActionSelected:(action)=>(window.__promptActions ||= []).push(action),seatWind:'E',providerSeat:'S',discardedTile:'C',dealerTile:'8s',callDecision:{reason:'碰牌锁定红中明刻(+4底胡，+1番翻倍)',recommended_action:{action_type:'pong',tiles:['C','C','C'],provider_seat:'S'},candidates:[{action:{action_type:'pong',tiles:['C','C','C'],provider_seat:'S'},net_ev:36},{action:{action_type:'pass',tiles:[],provider_seat:'S'},net_ev:8}]}})],recommendation:()=>h(Result,{bestTile:'1m',candidates:recommendation,compact:true,interactive:true,seatWind:'E'})})
     ])});window.__visualApp.mount(root);
-    window.__showSettlement=()=>{window.__visualApp.unmount();window.__visualApp=createApp(Modal,{info:{...scored,winner_seat:'E',win_type:'ron',win_tile:'5m',dealer_tile:'8s'}});window.__visualApp.mount(root)};
+    window.__showSettlement=()=>{
+      window.__visualApp.unmount();
+      const seatDetails={
+        E:{hand_tiles:['4m','6m','1p','2p','3p','7p','8p','9p','E','E'],melds:[meld],inherent:{items:['红中雀头 (+2胡)']}},
+        S:{hand_tiles:['1m','2m','3m','4p','5p','6p','7s','8s','9s','C','C','E','E'],melds:[],inherent:{items:['红中雀头 (+2胡)']}},
+        W:{hand_tiles:['2m','3m','4m','4m','5m','6m','2p','3p','4p','5s','6s','7s','N'],melds:[],inherent:{items:['中张搭子 (+0胡)']}},
+        N:{hand_tiles:['1p','1p','1p','2p','3p','4p','5m','6m','7m','6s','7s','8s','F'],melds:[],inherent:{items:['一筒暗刻 (+8胡)']}}
+      };
+      window.__visualApp=createApp(Modal,{info:{...scored,winner_seat:'E',win_type:'ron',win_tile:'5m',dealer_tile:'8s',seat_details:seatDetails}});
+      window.__visualApp.mount(root);
+    };
   })()`)
   await sleep(150)
+  await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'1',bubbles:true}));document.querySelector('.action-prompt-panel button[data-action="pass"]').click()`)
+  assert.deepEqual(await evaluate(`window.__promptActions.map(action=>action.action_type)`), ['pong','pass'])
   const table = await evaluate(`(() => {
     const box=s=>document.querySelector(s).getBoundingClientRect().toJSON();
     const river=document.querySelector('[data-seat="S"] [aria-label="弃牌"]');
@@ -123,12 +135,30 @@ export async function checkPveVisuals({ command, evaluate, until, sleep }) {
   await command('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
   await evaluate('window.__showSettlement()')
   await sleep(100)
+  const landscapeSettlement = await evaluate(`(() => {
+    const panel=document.querySelector('.game-over-panel');
+    const left=document.querySelector('.landscape-settlement-summary').getBoundingClientRect();
+    const right=document.querySelector('.landscape-settlement-details').getBoundingClientRect();
+    return {cards:document.querySelectorAll('.landscape-settlement-seat').length,columns:left.right<right.left,
+      noScroll:panel.scrollHeight<=panel.clientHeight+1,title:document.querySelector('.landscape-settlement-summary h2').textContent,
+      winningGroups:document.querySelectorAll('.landscape-winner-group').length,
+      loserTiles:[...document.querySelectorAll('.landscape-settlement-seat')].every(card=>card.querySelector('.settlement-mini-tile'))};
+  })()`)
+  assert.equal(landscapeSettlement.cards,3)
+  assert.equal(landscapeSettlement.columns,true)
+  assert.equal(landscapeSettlement.noScroll,true)
+  assert.ok(landscapeSettlement.winningGroups>0 && landscapeSettlement.loserTiles)
+  assert.match(landscapeSettlement.title,/自家/)
+  let settlementShot = await command('Page.captureScreenshot', { format: 'png' })
+  await writeFile('tests/artifacts/pve-settlement-landscape.png', Buffer.from(settlementShot.data,'base64'))
+  await command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false })
+  await sleep(80)
   const settlement = await evaluate(`[...document.querySelectorAll('[data-sideways="true"]')].map(n=>({tile:n.dataset.tile,label:n.getAttribute('aria-label'),width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height}))`)
   assert.deepEqual(settlement.map(t=>t.tile), ['5s','5m'])
   assert.match(settlement[1].label, /胡/)
   assert.ok(settlement.every(t=>t.width>t.height))
   shot = await command('Page.captureScreenshot', { format: 'png' })
   await writeFile('tests/artifacts/pve-settlement.png', Buffer.from(shot.data,'base64'))
-  await writeFile('tests/artifacts/pve-visual.json',JSON.stringify({table,growth,thirdRow,gangs,visible,narrow,responsive,decisionViewports,settlement},null,2))
+  await writeFile('tests/artifacts/pve-visual.json',JSON.stringify({table,growth,thirdRow,gangs,visible,narrow,responsive,decisionViewports,landscapeSettlement,settlement},null,2))
   console.log('Diamond layout, anchored side seats with wrapping rivers, claimed chi and winning tile rotation: passed')
 }

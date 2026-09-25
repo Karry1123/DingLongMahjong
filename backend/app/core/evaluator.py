@@ -681,13 +681,14 @@ def _check_complete_win(
         logical = normalize_hand_for_eval(list(hand_tiles), dealer_tile)
         if check_win_or_shanten(logical, 0, needed_melds=needed) != -1:
             return None
-        # 候选胡张：优先指定，否则枚举
-        candidates: list[str] = []
-        if win_tile and win_tile in hand_tiles:
-            candidates.append(win_tile)
-        for t in dict.fromkeys(hand_tiles):
-            if t not in candidates:
-                candidates.append(t)
+        # The physical draw is fixed once supplied. Reinterpreting another tile
+        # as the winning tile can change the scored shape and hide a joker draw.
+        if win_tile:
+            if win_tile not in hand_tiles:
+                return None
+            candidates = [win_tile]
+        else:
+            candidates = list(dict.fromkeys(hand_tiles))
     else:
         expect = needed * 3 + 1
         if len(hand_tiles) != expect:

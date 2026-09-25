@@ -13,6 +13,7 @@ import HandBar from './components/HandBar.vue'
 import MeldBar from './components/MeldBar.vue'
 import OpponentPanel from './components/OpponentPanel.vue'
 import ResultCard from './components/ResultCard.vue'
+import PvEDiscardHud from './components/PvEDiscardHud.vue'
 import ActionPrompt from './components/ActionPrompt.vue'
 import TilePicker from './components/TilePicker.vue'
 import SelfWinBanner from './components/SelfWinBanner.vue'
@@ -23,8 +24,9 @@ import DiscardRiver from './components/DiscardRiver.vue'
 import PlayerWorkbench from './components/PlayerWorkbench.vue'
 import { usePvEAutomation } from './composables/usePvEAutomation.js'
 import PvECircleSummary from './components/PvECircleSummary.vue'
+import PveStartDialog from './components/PveStartDialog.vue'
 import { useGameSession } from './composables/useGameSession.js'
-import { cloudWakeMessage, getRecommendDecision, isAbortError } from './services/api.js'
+import { cloudWakeMessage, getRecommendDecision, getOpponentThreats, isAbortError } from './services/api.js'
 import { relativeOpponents, tileLabel } from './constants/tiles.js'
 import { DEALER_SEAT, windLabel } from './utils/seatLayout.js'
 import { createSoundEngine } from './utils/soundEngine.js'
@@ -128,16 +130,24 @@ const {
 
 const activeUiMode = ref('')
 const pveStartLoading = ref(false)
+const pveConfigOpen = ref(false)
+const enableEV = ref(true)
+function openPveConfig() {
+  try { enableEV.value = JSON.parse(sessionStorage.getItem('pveConfig') || '{}').enableEV !== false } catch { enableEV.value = true }
+  pveConfigOpen.value = true
+}
 const { status: aiStatus, announcement: aiAnnouncement, thinkingSeat: aiThinkingSeat, busy: aiActionBusy, error: aiError, retry: retryAI } = usePvEAutomation(session)
 
 async function choosePveMode() {
   if (pveStartLoading.value) return
+  try { sessionStorage.setItem('pveConfig', JSON.stringify({ enableEV: enableEV.value, aiStyle: 'balanced' })) } catch { /* private browsing */ }
   pveStartLoading.value = true
   analyzeError.value = ''
   try {
     if (!soundMuted.value) soundEngine.unlock()
     await startPveGame()
     activeUiMode.value = 'PVE'
+    pveConfigOpen.value = false
   } catch (e) {
     analyzeError.value = e?.message || String(e)
   } finally {
@@ -387,15 +397,6 @@ const showActionPrompt = computed(
     (!!lastStepResult.value?.need_self_action || !!pveResponseDecision.value),
 )
 
-watch(showActionPrompt, async (visible) => {
-  if (!visible || gameMode.value !== 'PVE') return
-  await nextTick()
-  document.querySelector('[aria-label="手牌槽位"]')?.scrollIntoView({
-    block: 'start',
-    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-  })
-})
-
 /** 出牌后副露响应窗（含仅对手可吃碰、或自家 CALL） */
 const responseWindowOpen = computed(() => !!isResponseWindow.value)
 
@@ -431,6 +432,12 @@ const handReadyToDiscard = computed(
     currentPhase.value !== 'OPPONENT_DISCARD_ACTION',
 )
 
+const decisionDockPhase = computed(() => {
+  if (showActionPrompt.value) return 'call'
+  if (responseWindowOpen.value) return 'wait'
+  return isMyDiscardTurn.value || handReadyToDiscard.value ? 'discard' : 'wait'
+})
+
 /** 切牌推荐：待切（阶段或手牌已满）时展示；优先本地最新摸牌后的补算 */
 const displayRecommend = computed(() => {
   if (!isMyDiscardTurn.value && !handReadyToDiscard.value) return null
@@ -441,15 +448,6 @@ const displayRecommend = computed(() => {
   const fromStep = lastStepResult.value?.recommend_discard
   if (fromStep?.best_tile && !latestDrawnTile.value) return fromStep
   return localRecommend.value || fromStep || null
-})
-
-watch(displayRecommend, async (decision) => {
-  if (gameMode.value !== 'PVE' || !decision?.best_tile || showActionPrompt.value) return
-  await nextTick()
-  document.querySelector('[aria-label="自家操作工作台"]')?.scrollIntoView({
-    block: 'start',
-    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-  })
 })
 
 const bestDiscardTile = computed(
@@ -531,6 +529,53 @@ const seatRoleMap = computed(() => {
     map[seat_wind] = role
   }
   return map
+})
+
+const opponentThreats = ref([])
+let threatTimer = null
+let threatRequest = null
+watch(() => JSON.stringify({
+  mode: gameMode.value, playing: isPlaying.value, dealer: roundState.dealerTile,
+  wall: wallTiles.value.length,
+  opponents: roundState.opponents.map((o) => ({ seat_wind: o.seat_wind,
+    is_dealer: o.is_dealer, melds: o.melds, discards: o.discards })),
+}), () => {
+  clearTimeout(threatTimer)
+  threatRequest?.abort()
+  opponentThreats.value = []
+  if (gameMode.value !== 'PVE' || !isPlaying.value) { opponentThreats.value = []; return }
+  threatTimer = setTimeout(async () => {
+    const controller = new AbortController()
+    threatRequest = controller
+    try {
+      const result = await getOpponentThreats({ dealer_tile: roundState.dealerTile,
+        wall_count: wallTiles.value.length,
+        opponents: roundState.opponents.map((o) => ({ seat_wind: o.seat_wind,
+          is_dealer: !!o.is_dealer,
+          melds: o.melds || [], discards: o.discards || [] })) }, { signal: controller.signal })
+      if (!controller.signal.aborted) opponentThreats.value = result.threats || []
+    } catch (error) {
+      if (!isAbortError(error)) console.warn('[opponent-threats]', error)
+    }
+  }, 150)
+}, { immediate: true })
+onUnmounted(() => { clearTimeout(threatTimer); threatRequest?.abort() })
+
+const opponentWarning = computed(() => {
+  if (wallTiles.value.length > 55) {
+    return { level: 'safe', text: '三家 AI 摸打思考中… 当前局势平稳' }
+  }
+  if (wallTiles.value.length <= 25 && isPlaying.value) {
+    return { level: 'high', text: '局势进入尾盘，提防点铳，建议跟切熟张' }
+  }
+  const ranked = [...opponentThreats.value].sort((a, b) =>
+    ({ high: 2, warn: 1, safe: 0 })[b.level] - ({ high: 2, warn: 1, safe: 0 })[a.level]
+    || b.probability - a.probability)
+  const threat = ranked[0]
+  if (!threat || threat.level === 'safe') return { level: 'safe', text: '三家 AI 摸打思考中… 当前局势平稳' }
+  const who = `${seatRoleMap.value[threat.seat_wind] || '对手'}·${windLabel(threat.seat_wind)}风`
+  if (threat.meld_count >= 3) return { level: 'warn', text: `注意：${who} 已三副露，注意防守！` }
+  return { level: 'warn', text: `注意：${who} 已多组副露，注意防守！` }
 })
 
 /**
@@ -834,6 +879,7 @@ async function refreshLocalRecommend() {
     }
     validateRoundState()
     const payload = toHandRequestPayload()
+    if (latestDrawnTile.value) payload.latest_drawn_tile = latestDrawnTile.value
     console.log('[recommend] POST hand_tiles=', payload.hand_tiles, {
       drawn: latestDrawnTile.value,
       len: payload.hand_tiles?.length,
@@ -1280,7 +1326,7 @@ async function onReset(clearHistory = false) {
       <h1 class="mt-3 text-4xl font-bold text-amber-50 sm:text-5xl">选择对局模式</h1>
       <p class="mt-3 max-w-xl text-sm leading-6 text-teal-100/70">使用实时净 EV 辅助练习，或进入全景沙盘自由推演。</p>
       <div class="mt-9 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
-        <button class="rounded-3xl border border-amber-300/60 bg-amber-400/15 p-7 text-left transition hover:-translate-y-1 hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading" @click="choosePveMode">
+        <button class="rounded-3xl border border-amber-300/60 bg-amber-400/15 p-7 text-left transition hover:-translate-y-1 hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading" @click="openPveConfig">
           <span class="text-2xl">人机对战</span><span class="mt-2 block text-sm text-amber-100/70">带 EV 辅助 · 三家 AI 自主决策</span>
         </button>
         <button class="rounded-3xl border border-teal-300/35 bg-teal-900/40 p-7 text-left transition hover:-translate-y-1 hover:bg-teal-800/50 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading" @click="chooseSandboxMode">
@@ -1290,8 +1336,10 @@ async function onReset(clearHistory = false) {
       <p v-if="pveStartLoading" class="mt-5 text-sm text-teal-100" role="status">正在连接云端计算引擎并初始化对局…</p>
       <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
       <p v-if="errorMsg" class="mt-5 text-sm text-rose-200">{{ errorMsg }}</p>
+      <PveStartDialog v-if="pveConfigOpen" v-model:enableEV="enableEV" :busy="pveStartLoading" @close="pveConfigOpen = false" @start="choosePveMode" />
     </section>
     <div v-else :class="gameMode === 'PVE' ? 'pve-session-view' : ''">
+    <div v-if="gameMode === 'PVE'" class="pve-landscape-hint" role="note">建议横屏使用，体验完整牌桌视野</div>
     <header class="mb-8 text-center">
       <h1
         class="text-3xl font-semibold tracking-wide text-amber-50 sm:text-4xl"
@@ -1304,7 +1352,7 @@ async function onReset(clearHistory = false) {
       <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
     </header>
 
-    <main class="mx-auto flex flex-col gap-6" :class="gameMode === 'PVE' ? ['pve-game-main', 'max-w-7xl min-h-[calc(100vh+18rem)]', showActionPrompt ? 'pb-72' : 'pb-24'] : 'max-w-6xl pb-16'">
+    <main class="mx-auto flex flex-col gap-6" :class="gameMode === 'PVE' ? ['pve-game-main', 'max-w-7xl pb-24'] : 'max-w-6xl pb-16'">
       <!-- ========== 顶部全局轮次状态条 ========== -->
       <section
         class="rounded-2xl border p-4 shadow-lg transition-colors duration-300 sm:p-5"
@@ -1538,13 +1586,16 @@ async function onReset(clearHistory = false) {
         :current-turn-seat="currentTurnSeat"
         :opponents="opponents"
         :round-count="roundCount"
+        :wall-count="wallTiles.length"
         :cumulative-scores="cumulativeScores"
         :ai-status="aiStatus"
         :ai-announcement="aiAnnouncement"
         :thinking-seat="aiThinkingSeat"
+        :risk-message="opponentWarning.text"
+        :risk-level="opponentWarning.level"
       />
 
-      <PlayerWorkbench :pve="gameMode === 'PVE'">
+      <PlayerWorkbench :pve="gameMode === 'PVE'" :show-recommendation="gameMode !== 'PVE' || enableEV || decisionDockPhase === 'call' || canSelfWin">
       <template #heading><header v-if="gameMode === 'PVE'" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/30 bg-teal-950 px-4 py-3 text-amber-50 lg:col-span-2" aria-label="自家信息">
         <b>自家 · {{ windLabel(seatWind) }}风 <span v-if="seatWind === dealerSeat" class="text-amber-300">庄家</span></b>
         <span>累计 {{ cumulativeScores[seatWind] || 0 }} 分</span>
@@ -1559,7 +1610,7 @@ async function onReset(clearHistory = false) {
         :dealer-tile="dealerTile"
         :latest-drawn-tile="isSetup ? '' : latestDrawnTile || ''"
         :highlight-tile="
-          isPlaying && (handReadyToDiscard || isMyDiscardTurn)
+          enableEV && isPlaying && (handReadyToDiscard || isMyDiscardTurn)
             ? bestDiscardTile
             : ''
         "
@@ -1575,7 +1626,7 @@ async function onReset(clearHistory = false) {
           showActionPrompt ||
           (isPlaying && !isSelfTurn)
         "
-        :ev-calculating="isCalculatingEV && (handReadyToDiscard || isMyDiscardTurn)"
+        :ev-calculating="enableEV && isCalculatingEV && (handReadyToDiscard || isMyDiscardTurn)"
         @discard-tile="(tile, index) => onDiscardTile(tile, index)"
         @move-joker="
           ({ fromIndex, toIndex }) =>
@@ -1606,11 +1657,11 @@ async function onReset(clearHistory = false) {
       />
       <div v-if="gameMode === 'PVE' && selfDiscards.length" class="rounded-xl border border-teal-700/40 p-2.5" aria-label="自家牌河">
         <p class="mb-1 text-xs text-teal-200">自家牌河</p>
-        <DiscardRiver :tiles="selfDiscards" compact />
+        <DiscardRiver :tiles="selfDiscards" compact layout="self" />
       </div>
 
       <SelfWinBanner
-        v-if="canSelfWin && selfWinInfo && !loading"
+        v-if="gameMode !== 'PVE' && canSelfWin && selfWinInfo && !loading"
         class="mb-3"
         :info="selfWinInfo"
         :disabled="loading"
@@ -1650,23 +1701,41 @@ async function onReset(clearHistory = false) {
         </button>
       </div>
 
+      <template #recommendation>
+      <SelfWinBanner
+        v-if="gameMode === 'PVE' && canSelfWin && selfWinInfo && !loading"
+        class="pve-self-win-prompt"
+        :info="selfWinInfo"
+        :disabled="loading"
+        @declare="onDeclareSelfWin"
+        @dismiss="onDismissSelfWin"
+      />
       <ActionPrompt
-        v-if="showActionPrompt && gameMode === 'PVE'"
+        v-else-if="gameMode === 'PVE' && decisionDockPhase === 'call'"
         inline
+        dock
+        keyboard-shortcuts
         :call-decision="activeCallDecision"
         :seat-wind="seatWind"
         :provider-seat="callProviderSeat"
         :dealer-tile="dealerTile"
         :discarded-tile="callDiscardedTile"
         :disabled="loading || aiActionBusy"
+        :show-recommendation="enableEV"
         @action-selected="onActionSelected"
       />
-
-      <template #recommendation>
+      <PvEDiscardHud
+        v-else-if="gameMode === 'PVE' && enableEV && (displayRecommend || analyzeLoading) && decisionDockPhase === 'discard' && !stepLoading"
+        :best-tile="displayRecommend?.best_tile || ''"
+        :candidates="displayRecommend?.candidates || []"
+        :loading="analyzeLoading"
+        :interactive="!analyzeLoading && !!displayRecommend?.best_tile"
+        @select-tile="onSelfDiscardFromRecommend"
+      />
       <ResultCard
-        v-if="
+        v-else-if="gameMode !== 'PVE' &&
           (displayRecommend || analyzeLoading) &&
-          (handReadyToDiscard || isMyDiscardTurn) &&
+          decisionDockPhase === 'discard' &&
           !stepLoading
         "
         :best-tile="displayRecommend?.best_tile || ''"
@@ -1682,10 +1751,6 @@ async function onReset(clearHistory = false) {
         @select-tile="onSelfDiscardFromRecommend"
         @select-self-gang="onDeclareSelfKong"
       />
-        <div v-if="gameMode === 'PVE' && !displayRecommend && !analyzeLoading" class="rounded-2xl border border-amber-400/30 bg-amber-950/20 p-5 text-sm text-amber-100/80">
-          <h2 class="font-semibold">实时 EV 推荐</h2>
-          <p class="mt-2">{{ isSelfTurn ? '正在准备切牌建议' : '等待自家回合' }} · 可直接点击推荐出牌</p>
-        </div>
       </template>
       </PlayerWorkbench>
 

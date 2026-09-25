@@ -55,6 +55,7 @@ test('west discard: only north can win; passing unlocks east and undo restores n
   await assert.rejects(s.declareOpponentWin({ seat: 'E', winType: 'catch_win', winTile: 'C', discarderSeat: 'W' }), /尚未轮到/)
   await assert.rejects(s.executeOpponentMeld({ seat: 'E', meld_type: 'pong', tiles: ['C','C','C'] }), /顺位胡牌/)
   await s.passCall('C')
+  assert.deepEqual(s.gameLogSteps.value.map((step) => step.action), ['DISCARD', 'PASS'])
   assert.equal(s.currentTurnSeat.value, 'W')
   assert.deepEqual(s.catchWinSeats.value, ['E'])
   assert.equal(s.lastStepResult.value.call_decision, null)
@@ -64,6 +65,7 @@ test('west discard: only north can win; passing unlocks east and undo restores n
   await assert.rejects(s.declareSelfRon('C', 'W'), /尚未轮到/)
   s.undoLastStep()
   assert.deepEqual(s.pendingHuQueue.value, ['N', 'E'])
+  assert.deepEqual(s.gameLogSteps.value.map((step) => step.action), ['DISCARD'])
 })
 
 test('east accepts after north passes: settlement clears all rights', async () => {

@@ -18,16 +18,15 @@ const suitName = computed(() => ({ m: '万', p: '筒', s: '条' })[props.code[1]
   </span>
 </template>
 <style scoped>
-.mahjong-tile { --tw:40px; --th:56px; position:relative; display:inline-block; flex:none; width:var(--tw); height:var(--th); vertical-align:bottom; margin-bottom:4px; }
-.mahjong-tile.large { --tw:54px; --th:76px; }
-.tile-face { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; width:var(--tw); height:var(--th); border:1px solid #cabfa3; border-radius:6px; background:linear-gradient(115deg,#fffef6,#ece9d8); color:#173d42; box-shadow:inset 2px 2px 2px #fff,inset -2px -2px 2px #d5cfb9,0 4px 0 #4c8a79,0 5px 4px #0006; }
-.sideways { width:var(--th); height:var(--tw); }
-.sideways .tile-face { inset:auto; left:50%; top:50%; transform:translate(-50%,-50%) rotate(90deg); }
-.characters { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-family:serif; font-size:var(--face-font,22px); font-weight:700; line-height:1; text-align:center; }
+.mahjong-tile { --tw:40px; --th:calc(var(--tw)*4/3); position:relative; display:inline-flex; flex:none; width:var(--tw); height:var(--th); aspect-ratio:3/4; vertical-align:bottom; margin-bottom:4px; border-radius:clamp(2px,calc(var(--tw)*.12),6px); background:#fffef6; box-shadow:2px 3px 0px #b2cbb5,3px 4px 2px rgba(0,0,0,0.25); }
+.mahjong-tile.large { --tw:54px; --th:calc(var(--tw)*4/3); }
+.tile-face { position:absolute; inset:0; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%; padding:8% 4%; overflow:hidden; border:1px solid #cabfa3; border-radius:clamp(2px,calc(var(--tw)*.12),6px); background:linear-gradient(140deg,#fffef6,#ece9d8); color:#173d42; }
+.sideways { width:var(--th); height:var(--tw); aspect-ratio:4/3; }
+.sideways .tile-face { inset:auto; left:50%; top:50%; width:var(--tw); height:var(--th); transform:translate(-50%,-50%) rotate(90deg); }
+.characters { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; width:100%; font-family:serif; font-size:calc(var(--tw)*.4); font-weight:700; line-height:.9; text-align:center; }
 .suit-m { color:#b4232d; } .suit-p { color:#185a91; } .suit-s { color:#177247; }
-.honor { font-size:var(--honor-font,30px); font-family:serif; }
-.white-dragon { width:65%; height:70%; border:3px double #225c91; border-radius:3px; }
-.large .characters { font-size:29px; } .large .honor { font-size:39px; }
+.honor { max-width:100%; font-size:calc(var(--tw)*.56); line-height:1; font-family:serif; white-space:nowrap; }
+.white-dragon { width:65%; height:70%; border:max(1px,calc(var(--tw)*.055)) double #225c91; border-radius:3px; }
 .marked .tile-face { outline:2px solid #fbbf24; }
 .tile-badge { position:absolute; right:-3px; top:-10px; z-index:2; padding:1px 4px; border-radius:4px; background:#fbbf24; color:#422006; font-size:10px; font-weight:800; white-space:nowrap; }
 .tile-note { position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); z-index:2; padding:0 2px; border-radius:3px; background:#bae6fd; color:#0c4a6e; font-size:9px; white-space:nowrap; }

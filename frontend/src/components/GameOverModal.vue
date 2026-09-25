@@ -5,6 +5,7 @@
 import { computed, ref } from 'vue'
 import MahjongTile from './MahjongTile.vue'
 import MeldTiles from './MeldTiles.vue'
+import GameHistoryModal from './GameHistoryModal.vue'
 import { relativeOpponents, tileLabel, tileSuitClass } from '../constants/tiles.js'
 import { windLabel } from '../utils/seatLayout.js'
 
@@ -42,6 +43,24 @@ const emit = defineEmits(['next-round', 'review-history'])
 const showHistory = ref(false)
 const expandedInherent = ref({})
 const isMinimized = ref(false)
+const copyStatus = ref('')
+async function copyGameId() {
+  const id = props.info?.game_id
+  if (!id) return
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(id)
+    else {
+      const field = document.createElement('textarea')
+      field.value = id
+      document.body.appendChild(field)
+      field.select()
+      if (!document.execCommand('copy')) throw new Error('copy unavailable')
+      field.remove()
+    }
+    copyStatus.value = '已复制对局编号'
+  } catch { copyStatus.value = '复制失败，请手动选择编号' }
+  setTimeout(() => { copyStatus.value = '' }, 2500)
+}
 
 const isDraw = computed(
   () =>
@@ -124,6 +143,7 @@ const huDetail = computed(() => {
     fan: props.info?.hu_detail?.fan ?? props.info?.fan ?? 0,
     fans,
     fanItems,
+    scoreItems: d.score_items || [],
     pairs: d.pairs || [],
     melds: d.melds || [],
     restored: props.info?.restored_jokers ?? d.restored_jokers ?? 0,
@@ -264,14 +284,41 @@ const seatCards = computed(() => {
     }
   })
 })
+const winningCard = computed(() => seatCards.value.find((card) => card.isWinner) || null)
+const settlementSideCards = computed(() => isDraw.value ? seatCards.value : seatCards.value.filter((card) => !card.isWinner))
+const fullTileName = (tile) => ({ E: '东风', S: '南风', W: '西风', N: '北风', C: '红中', F: '发财', P: '白板' })[tile] || tileLabel(tile)
+const winnerBreakdown = computed(() => {
+  if (huDetail.value.scoreItems.length) return huDetail.value.scoreItems
+    .filter((item) => item.kind !== 'base')
+    .map((item) => item.hu != null ? `${item.label} (+${item.hu}胡)` : item.label)
+  // Older archived rounds predate score_items; reconstruct labels from scored details.
+  const items = huDetail.value.melds.filter((item) => Number(item.hu) > 0).map((item) => {
+    const kind = ({ pong: '明刻', anko: '暗刻', ming_gang: '明杠', an_gang: '暗杠' })[item.type] || item.type
+    return `${kind} ${fullTileName(item.identity || item.tiles?.[0])} (+${item.hu}胡)`
+  })
+  items.push(...huDetail.value.pairs.filter((item) => Number(item.hu) > 0)
+    .map((item) => `${fullTileName(item.tile)}雀头 (+${item.hu}胡)`))
+  if (huDetail.value.zimo) items.push(`自摸 (+${huDetail.value.zimo}胡)`)
+  if (huDetail.value.kanzhang) items.push(`嵌档 (+${huDetail.value.kanzhang}胡)`)
+  items.push(...huDetail.value.fanItems)
+  return items
+})
+
+function inherentItemLabel(item) {
+  if (item == null) return ''
+  if (typeof item === 'string') return item.replaceAll('明碰', '明刻')
+  if (typeof item === 'object') {
+    const label = item.label || item.name || item.reason || item.title || ''
+    const hu = item.hu ?? item.base_hu ?? item.points
+    return label ? `${label.replaceAll('明碰', '明刻')}${hu != null ? ` (+${hu}胡)` : ''}` : JSON.stringify(item)
+  }
+  return String(item)
+}
 
 const transfers = computed(() => props.info?.transfers || [])
 const payoutTransfers = computed(() => transfers.value.filter(t => (t.transaction_type || 'winner_payout') === 'winner_payout'))
 const mutualTransfers = computed(() => props.info?.payments?.mutual_settlement_transactions || transfers.value.filter(t => t.transaction_type === 'mutual_settlement'))
 
-const historyNewestFirst = computed(() =>
-  [...(props.roundHistory || [])].reverse(),
-)
 
 function formatSeat(seat) {
   if (!seat) return '—'
@@ -290,7 +337,7 @@ function meldTypeLabel(kind) {
     {
       chi: '吃',
       anko: '暗刻',
-      pong: '碰',
+      pong: '明刻',
       ming_gang: '明杠',
       an_gang: '暗杠',
       head: '雀头',
@@ -337,13 +384,23 @@ function minimizePanel() {
 function expandPanel() {
   isMinimized.value = false
 }
+
+function settlementReason(card) {
+  if (isDraw.value) return `流局 · 固有底胡 ${card.inherent.calculated_points} 胡`
+  if (card.isWinner) return `${winBadge.value} · ${finalHu.value} 胡${huDetail.value.fan ? ` · ${huDetail.value.fan} 翻` : ''}`
+  const payment = payoutTransfers.value.find((entry) => entry.from === card.seat)
+  if (props.info?.payments?.is_lazi && payment) return `辣子封顶 · 基础赔付 ${payment.amount} 分`
+  if (payment) return `${payment.capped ? '赔付封顶' : '和牌赔付'} · ${payment.amount} 分`
+  return `固有底胡 ${card.inherent.calculated_points} 胡`
+}
 </script>
 
 <template>
+  <GameHistoryModal v-if="showHistory" :current-game-id="info.game_id || ''" @close="showHistory = false" />
   <!-- 最小化：右下角胶囊，沙盘完全可操作 -->
   <div
     v-if="isMinimized"
-    class="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-3 sm:p-4"
+    class="settlement-capsule pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-3 sm:p-4"
   >
     <div
       class="pointer-events-auto flex max-w-[min(100%,28rem)] flex-col gap-2 rounded-2xl border border-amber-400/60 bg-teal-950/95 px-3 py-2.5 shadow-2xl shadow-black/40 backdrop-blur-md"
@@ -363,6 +420,8 @@ function expandPanel() {
             {{ finalHu }} 胡
             <span v-if="huDetail.fan"> · {{ huDetail.fan }} 翻</span>
           </p>
+          <p v-if="info.game_id" class="mt-1 text-[11px] text-amber-200">牌谱编号：{{ info.game_id }} <button type="button" class="underline" @click="copyGameId">复制</button></p>
+          <p v-if="copyStatus" role="status" class="text-[11px] text-teal-200">{{ copyStatus }}</p>
         </div>
         <button
           type="button"
@@ -388,14 +447,76 @@ function expandPanel() {
   <!-- 完整结算面板 -->
   <div
     v-else
-    class="fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/80 p-2 backdrop-blur-sm sm:p-4"
+    class="game-over-overlay fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/80 p-2 backdrop-blur-sm sm:p-4"
     role="dialog"
     aria-modal="true"
     aria-label="对局结束结算"
   >
     <div
-      class="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-amber-400/55 bg-teal-950 shadow-2xl"
+      class="game-over-panel flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-amber-400/55 bg-teal-950 shadow-2xl"
     >
+      <div class="landscape-settlement" aria-label="横屏四方结算看板">
+        <section class="landscape-settlement-summary">
+          <div class="landscape-settlement-topline">
+            <span>本局结算</span>
+            <button type="button" title="最小化，查看牌桌" @click="minimizePanel">收起</button>
+          </div>
+          <h2>{{ headline }}</h2>
+          <p class="landscape-settlement-score" v-if="!isDraw">
+            <strong>{{ finalHu }} 胡</strong>
+            <span v-if="huDetail.fan">{{ huDetail.fan }} 翻</span>
+            <span v-if="info.win_tile">胡张 {{ tileLabel(info.win_tile) }}</span>
+            <span v-if="dealerTile">得 {{ tileLabel(dealerTile) }}</span>
+          </p>
+          <p class="landscape-settlement-score" v-else>四家本局得分见右侧</p>
+          <p v-if="hardLabel && !isDraw" class="landscape-settlement-note">{{ hardLabel }}</p>
+          <div class="landscape-settlement-id">
+            <template v-if="info.game_id"><span>牌谱 {{ info.game_id }}</span><button type="button" @click="copyGameId">复制</button></template>
+            <span v-else>{{ info.archive_error ? '牌谱归档失败' : '牌谱归档中…' }}</span>
+          </div>
+          <div v-if="winningCard" class="landscape-winner-hand" aria-label="和牌者最终成牌">
+            <p>成牌面子与雀头 <span v-if="info.win_tile || winningCard.winTile">胡张 {{ tileLabel(info.win_tile || winningCard.winTile) }}</span></p>
+            <div class="landscape-winner-groups">
+              <div v-for="(group, index) in winningCard.winningGroups" :key="index" class="landscape-winner-group" :title="groupCaption(group)">
+                <span v-for="(tile, tileIndex) in group.display_tiles" :key="tileIndex" class="settlement-mini-tile" :class="[tileSuitClass(tile.code), { 'is-winning-tile': tile.is_win_tile }]" :title="tileNote(tile) || tileLabel(tile.code)">{{ tileLabel(tile.code) }}</span>
+              </div>
+            </div>
+            <div class="landscape-winner-breakdown">
+              <span>底胡 {{ huDetail.baseHu }}胡</span>
+              <span v-for="(item, index) in winnerBreakdown" :key="index">{{ item }}</span>
+              <strong>合计 {{ finalHu }}胡 · {{ huDetail.fan }}番</strong>
+            </div>
+          </div>
+          <p v-if="copyStatus" role="status" class="landscape-settlement-copy">{{ copyStatus }}</p>
+          <div class="landscape-settlement-actions">
+            <button type="button" class="landscape-settlement-next" @click="onNextRound">{{ isRoundOver ? '查看本圈总结' : '开始下一局' }}</button>
+            <button type="button" class="landscape-settlement-history-button" @click="onToggleHistory">{{ showHistory ? '返回结算明细' : '查看复盘历史' }}</button>
+          </div>
+        </section>
+        <section class="landscape-settlement-details">
+          <h3>四方结算明细</h3>
+          <div class="landscape-settlement-seats">
+            <article v-for="card in settlementSideCards" :key="card.seat" class="landscape-settlement-seat" :class="{ 'is-winner': card.isWinner }">
+              <div class="landscape-settlement-seat-main">
+                <strong>{{ card.role }} · {{ windLabel(card.seat) }}风<span v-if="card.isDealer"> · 庄</span></strong>
+                <b :class="card.net > 0 ? 'positive' : card.net < 0 ? 'negative' : ''">{{ card.net >= 0 ? '+' : '' }}{{ card.net }}</b>
+              </div>
+              <p>{{ settlementReason(card) }} · 累计 {{ card.total >= 0 ? '+' : '' }}{{ card.total }}</p>
+              <div class="landscape-seat-tiles" :aria-label="`${card.role}最终持牌与副露`">
+                <span v-for="(tile, index) in card.handTiles" :key="`hand-${index}`" class="settlement-mini-tile" :class="tileSuitClass(tile)">{{ tileLabel(tile) }}</span>
+                <span v-for="(meld, meldIndex) in card.melds" :key="`meld-${meldIndex}`" class="landscape-seat-meld">
+                  <span v-for="(tile, tileIndex) in meld.tiles" :key="tileIndex" class="settlement-mini-tile" :class="tileSuitClass(tile)">{{ tileLabel(tile) }}</span>
+                </span>
+              </div>
+              <div class="landscape-seat-breakdown">
+                <span v-for="(item, index) in card.inherent.items" :key="index">{{ inherentItemLabel(item) }}</span>
+                <span v-if="!card.inherent.items.length">固有底胡 {{ card.inherent.calculated_points }}胡</span>
+                <span v-for="(fan, index) in card.inherent.fan_details" :key="`fan-${index}`">{{ fan.label || fan.name }}</span>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
       <header
         class="relative shrink-0 bg-gradient-to-r from-rose-700 via-amber-500 to-yellow-400 px-4 py-4 text-center sm:px-6 sm:py-5"
       >
@@ -431,6 +552,13 @@ function expandPanel() {
         <p v-else class="mt-1 text-sm text-amber-950/80">
           本局无人胡牌 · 不计主支付（固有胡头互结若有则已计入）
         </p>
+        <p class="mt-2 text-xs font-semibold text-amber-950">
+          <template v-if="info.game_id">牌谱编号：<b>{{ info.game_id }}</b> <button type="button" class="ml-1 rounded bg-amber-950/15 px-2 py-0.5 hover:bg-amber-950/25" @click="copyGameId">复制</button></template>
+          <template v-else-if="info.archive_error">牌谱归档失败，请检查网络后再开下一局</template>
+          <template v-else>牌谱归档中…</template>
+        </p>
+        <p v-if="info.game_id" class="mt-1 text-[11px] text-amber-950/75">如遇不合理 EV 推荐，可将编号与截图反馈排查。</p>
+        <p v-if="copyStatus" role="status" class="mt-1 text-xs text-emerald-950">{{ copyStatus }}</p>
         <p
           v-if="info.payments?.label"
           class="mt-1 text-xs text-amber-950/70"
@@ -642,7 +770,7 @@ function expandPanel() {
                       :key="ii"
                       class="text-[10px] text-violet-100/85"
                     >
-                      {{ it }}
+                      {{ inherentItemLabel(it) }}
                     </li>
                     <li
                       v-if="(card.inherent.fan_count || 0) > 0"
@@ -666,7 +794,7 @@ function expandPanel() {
                       :key="ii"
                       class="rounded bg-violet-900/50 px-1 py-0.5 text-[9px] text-violet-100/90"
                     >
-                      {{ it.replace(/\s*\(\+\d+胡\)/, '') }}
+                      {{ inherentItemLabel(it).replace(/\s*\(\+\d+胡\)/, '') }}
                     </span>
                   </div>
                   <p
@@ -733,30 +861,6 @@ function expandPanel() {
           </ul>
         </section>
 
-        <section v-if="showHistory" class="mb-2">
-          <h3 class="mb-2 text-sm font-semibold text-amber-100">
-            复盘历史（{{ roundHistory.length }} 局）
-          </h3>
-          <ul
-            v-if="historyNewestFirst.length"
-            class="max-h-40 space-y-1.5 overflow-y-auto text-[11px]"
-          >
-            <li
-              v-for="(h, i) in historyNewestFirst"
-              :key="h.roundIndex ?? i"
-              class="rounded-lg border border-teal-800/50 bg-emerald-950/40 px-2.5 py-2 text-teal-100"
-            >
-              <span class="font-semibold text-amber-100/90">
-                第 {{ h.roundIndex ?? historyNewestFirst.length - i }} 局
-              </span>
-              · {{ h.summary || h.headline || '—' }}
-              <span class="text-teal-400/75">
-                （{{ h.is_draw ? '流局' : `${h.points ?? 0} 胡` }}）
-              </span>
-            </li>
-          </ul>
-          <p v-else class="text-[11px] text-teal-500/80">暂无历史局</p>
-        </section>
       </div>
 
       <footer
@@ -780,3 +884,76 @@ function expandPanel() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.landscape-settlement { display:none; }
+@media (orientation:landscape) and (min-width:640px) {
+  .game-over-overlay { padding:8px; }
+  .game-over-panel { width:min(1060px,96vw); height:min(510px,92dvh); max-height:92dvh; overflow:hidden; }
+  .game-over-panel > header, .game-over-panel > footer,
+  .game-over-panel > div:not(.landscape-settlement) { display:none; }
+  .landscape-settlement { display:flex; flex-direction:row; gap:14px; width:100%; height:100%; min-height:0; padding:14px; color:#fef3c7; }
+  .landscape-settlement-summary { display:flex; flex:0 0 43%; flex-direction:column; min-width:0; min-height:0; }
+  .landscape-settlement-topline { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#fbbf24; font-size:11px; font-weight:800; letter-spacing:.12em; }
+  .landscape-settlement-topline button { flex:none; border:1px solid #fbbf2470; border-radius:7px; padding:3px 7px; color:#fde68a; letter-spacing:0; }
+  .landscape-settlement-summary h2 { margin-top:7px; color:#fff7e1; font-size:clamp(16px,2.1vw,22px); font-weight:900; line-height:1.2; }
+  .landscape-settlement-score { display:flex; flex-wrap:wrap; align-items:baseline; gap:3px 7px; margin-top:8px; color:#fde68a; font-size:12px; line-height:1.3; }
+  .landscape-settlement-score strong { font-size:18px; }
+  .landscape-settlement-note { margin-top:3px; color:#d1fae5; font-size:11px; }
+  .landscape-settlement-id { display:flex; align-items:center; gap:7px; margin-top:14px; color:#fef3c7; font-size:12px; font-weight:700; white-space:nowrap; }
+  .landscape-settlement-id button { border:1px solid #fbbf2470; border-radius:6px; padding:2px 6px; color:#fde68a; font-size:10px; }
+  .landscape-settlement-copy { margin-top:3px; color:#86efac; font-size:10px; }
+  .landscape-settlement-actions { display:grid; gap:7px; margin-top:auto; }
+  .landscape-settlement-actions button { min-height:31px; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:800; line-height:1.2; }
+  .landscape-settlement-next { background:#fbbf24; color:#422006; }
+  .landscape-settlement-history-button { border:1px solid #5eead477; color:#d1fae5; }
+  .landscape-settlement-details { display:flex; flex:1 1 0; flex-direction:column; min-width:0; min-height:0; border-left:1px solid #fbbf2440; padding-left:14px; }
+  .landscape-settlement-details h3 { flex:none; margin:0 0 8px; color:#fef3c7; font-size:14px; font-weight:800; }
+  .landscape-settlement-seats { display:grid; grid-template-rows:repeat(3,minmax(0,1fr)); gap:5px; flex:1; min-height:0; }
+  .landscape-settlement-seats:has(>article:nth-child(4)) { grid-template-rows:repeat(4,minmax(0,1fr)); }
+  .landscape-settlement-seat { display:flex; flex-direction:column; justify-content:center; gap:2px; min-width:0; min-height:0; border:1px solid #28695b; border-radius:9px; padding:5px 8px; background:#063a34; overflow:hidden; }
+  .landscape-settlement-seat.is-winner { border-color:#fbbf24a0; background:#49350d; }
+  .landscape-settlement-seat-main { display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:12px; line-height:1.2; }
+  .landscape-settlement-seat-main strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .landscape-settlement-seat-main b { flex:none; color:#cbd5d1; font-size:15px; }
+  .landscape-settlement-seat-main b.positive { color:#86efac; }
+  .landscape-settlement-seat-main b.negative { color:#fda4af; }
+  .landscape-settlement-seat p { overflow:hidden; margin-top:2px; color:#cbd5d1; font-size:10px; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
+  .landscape-winner-hand { min-height:0; margin-top:9px; border-top:1px solid #fbbf243b; padding-top:7px; }
+  .landscape-winner-hand > p { display:flex; justify-content:space-between; gap:5px; font-size:10px; font-weight:700; }
+  .landscape-winner-groups, .landscape-seat-tiles { display:flex; flex-wrap:wrap; align-items:center; gap:2px; min-width:0; }
+  .landscape-winner-groups { margin-top:5px; }
+  .landscape-winner-group, .landscape-seat-meld { display:inline-flex; align-items:center; gap:1px; flex:none; border:1px solid #fbbf2455; border-radius:4px; padding:1px; }
+  .settlement-mini-tile { display:inline-flex; flex:none; align-items:center; justify-content:center; width:18px; height:24px; overflow:hidden; border:1px solid #d4cbb8; border-radius:3px; background:#fffdf0; box-shadow:1px 2px 0 #b2cbb5; font-size:10px; font-weight:800; line-height:1; }
+  .landscape-winner-group .settlement-mini-tile { width:22px; height:30px; font-size:12px; }
+  .settlement-mini-tile.is-winning-tile { position:relative; overflow:visible; outline:2px solid #fbbf24; outline-offset:1px; }
+  .settlement-mini-tile.is-winning-tile::after { content:'胡'; position:absolute; top:-9px; right:-7px; z-index:2; border:1px solid #fcd34d; border-radius:4px; padding:1px 2px; background:linear-gradient(135deg,#be123c,#7f1d1d); color:#fff7d6; font-size:8px; line-height:1; }
+  .landscape-winner-breakdown, .landscape-seat-breakdown { display:flex; flex-wrap:wrap; gap:2px 6px; min-width:0; color:#d1fae5; font-size:9px; line-height:1.15; }
+  .landscape-winner-breakdown { margin-top:7px; gap:4px 8px; font-size:11px; line-height:1.3; }
+  .landscape-winner-breakdown strong { color:#fde68a; }
+  .landscape-seat-tiles { margin-top:3px; }
+  .landscape-seat-meld { border-color:#5eead477; }
+  .landscape-seat-breakdown { margin-top:3px; color:#c4b5fd; font-size:.75rem; line-height:1.15; }
+  .landscape-settlement-history { display:grid; align-content:start; gap:5px; overflow:hidden; font-size:11px; line-height:1.2; }
+  .landscape-settlement-history p { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .landscape-settlement-history-pages { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:3px; color:#fde68a; }
+  .landscape-settlement-history-pages button { border:1px solid #5eead477; border-radius:5px; padding:3px 7px; color:#d1fae5; }
+  .landscape-settlement-history-pages button:disabled { opacity:.4; }
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:420px) {
+  .landscape-settlement { gap:10px; padding:10px; }
+  .landscape-settlement-summary h2 { margin-top:4px; }
+  .landscape-settlement-score { margin-top:4px; }
+  .landscape-winner-hand { margin-top:5px; padding-top:4px; }
+  .landscape-winner-breakdown { margin-top:4px; }
+  .landscape-settlement-details { padding-left:10px; }
+  .landscape-settlement-details h3 { margin-bottom:5px; }
+  .landscape-settlement-seats { gap:4px; }
+  .landscape-settlement-seat { padding:3px 7px; }
+  .landscape-settlement-id { margin-top:7px; }
+  .settlement-mini-tile { width:15px; height:20px; font-size:8px; }
+  .landscape-winner-group .settlement-mini-tile { width:18px; height:24px; font-size:10px; }
+  .landscape-winner-breakdown { font-size:10px; }
+  .landscape-seat-breakdown { font-size:.75rem; }
+}
+</style>

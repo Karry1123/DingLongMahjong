@@ -185,6 +185,7 @@ function tilesForMode(group) {
         :key="`meld-${i}-${m.meld_type}`"
         type="button"
         role="listitem"
+        :aria-label="`${MELD_TYPE_LABEL[m.meld_type] || m.meld_type}牌组 ${i + 1}`"
         class="flex w-full items-center gap-3 rounded-xl border border-teal-700/45 bg-emerald-950/40 text-left transition hover:border-rose-400/45 hover:bg-rose-950/20"
         :class="compact ? 'px-2 py-1' : 'px-3 py-2.5'"
         :title="readOnly ? undefined : `删除此组${MELD_TYPE_LABEL[m.meld_type] || m.meld_type}`"

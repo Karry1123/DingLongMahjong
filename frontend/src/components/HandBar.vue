@@ -4,7 +4,7 @@
  * - SETUP / 编辑态：点击移出录入（绝不切牌）
  * - PLAYING 切牌态（discardMode）：点击派发 discard-tile(tile, index)
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import MahjongTile from './MahjongTile.vue'
 import { tileLabel } from '../constants/tiles.js'
 import {
@@ -136,6 +136,8 @@ const emptySlotCount = computed(() =>
 
 const dragFrom = ref(null)
 const dropHover = ref(null)
+const selectedTileIndex = ref(null)
+watch(tiles, () => { selectedTileIndex.value = null })
 
 /** 百搭可挪：有财神即可插嵌（切牌/移除仍受 disabled 约束） */
 const canArrangeJoker = computed(() => !!props.dealerTile)
@@ -161,6 +163,13 @@ function handleTileClick(item) {
   if (props.disabled && isJoker(item.code)) return
   if (props.disabled) return
   if (isDiscardReady.value) {
+    if (props.wallDriven && typeof window !== 'undefined' && window.matchMedia('(orientation: portrait) and (max-width: 768px)').matches) {
+      if (selectedTileIndex.value !== item.index) {
+        selectedTileIndex.value = item.index
+        return
+      }
+    }
+    selectedTileIndex.value = null
     emit('discard-tile', item.code, item.index)
     return
   }
@@ -253,6 +262,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
       ? 'ring-2 ring-fuchsia-400/70 cursor-grab active:cursor-grabbing'
       : '',
     dropHover.value === item.index ? 'ring-2 ring-lime-300/80 scale-105' : '',
+    selectedTileIndex.value === item.index ? 'hand-tile-selected -translate-y-2 ring-2 ring-amber-200 z-[2]' : '',
   ]
 }
 </script>
@@ -386,13 +396,14 @@ function tileButtonClass(item, { drawn = false } = {}) {
             type="button"
             role="listitem"
             :class="tileButtonClass(item)"
+            :aria-pressed="wallDriven && isDiscardReady ? selectedTileIndex === item.index : undefined"
             :draggable="isJoker(item.code) && canArrangeJoker"
             :aria-disabled="disabled && !isJoker(item.code)"
             :title="
               setupMode
                 ? `移除 ${tileLabel(item.code)}`
                 : isDiscardReady
-                  ? `打出 ${tileLabel(item.code)}`
+                  ? `${selectedTileIndex === item.index ? '确认打出' : '打出'} ${tileLabel(item.code)}`
                   : `移出 ${tileLabel(item.code)}`
             "
             @click="handleTileClick(item)"
@@ -429,11 +440,12 @@ function tileButtonClass(item, { drawn = false } = {}) {
           type="button"
           role="listitem"
           :class="tileButtonClass(splitHand.drawn, { drawn: true })"
+          :aria-pressed="wallDriven && isDiscardReady ? selectedTileIndex === splitHand.drawn.index : undefined"
           :draggable="isJoker(splitHand.drawn.code) && canArrangeJoker"
           :aria-disabled="disabled && !isJoker(splitHand.drawn.code)"
           :title="
             isDiscardReady
-              ? `打出摸入张 ${tileLabel(splitHand.drawn.code)}`
+              ? `${selectedTileIndex === splitHand.drawn.index ? '确认打出摸入张' : '打出摸入张'} ${tileLabel(splitHand.drawn.code)}`
               : tileLabel(splitHand.drawn.code)
           "
           @click="handleTileClick(splitHand.drawn)"

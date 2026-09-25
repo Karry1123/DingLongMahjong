@@ -37,7 +37,7 @@ test('PvE board hides AI hand faces and labels whiteboard substitution in melds'
     assert.match(html, /data-seat="N" data-position="left"/)
     assert.match(html, /data-seat="W" data-position="top"/)
     assert.match(html, /data-seat="S" data-position="right"/)
-    assert.match(html, /白板承接 七万 替身属性/)
+    assert.match(html, /aria-label="白 · 替七万"/)
     const rotated = await renderToString(createSSRApp(Board, { seatWind: 'S', dealerTile: 'P' }))
     assert.match(rotated, /data-seat="E" data-position="left"/)
     assert.match(rotated, /data-seat="N" data-position="top"/)

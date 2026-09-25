@@ -307,6 +307,12 @@ class TestCaseStudyDiscard9p(unittest.TestCase):
         self.assertEqual(r["tile_hu"], 14)
         self.assertTrue(r["is_hard_hu"])
         self.assertEqual(r["final_hu"], 48)
+        items = r["details"]["score_items"]
+        self.assertEqual(sum(item["hu"] for item in items if "hu" in item),
+                         r["base_hu"] + r["tile_hu"])
+        self.assertIn("明刻 一万", [item["label"] for item in items])
+        self.assertIn("暗刻 一筒", [item["label"] for item in items])
+        self.assertIn("自摸", [item["label"] for item in items])
 
     def test_win_4p_zimo_hard(self):
         r = calculate_hu_points(

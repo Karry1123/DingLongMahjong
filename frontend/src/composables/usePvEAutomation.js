@@ -124,6 +124,7 @@ export function usePvEAutomation(session, options = {}) {
     // Think time overlaps the network request rather than adding latency before it.
     const [rec] = await Promise.all([recommend(payload, { signal: controller.signal }), thinkingTimer])
     if (!valid(epoch, snapshot)) return false
+    s.setPendingAiRecommend(seat, rec)
     if (rec.can_self_win || rec.self_win_info?.is_win) {
       await s.declareOpponentWin({ seat, winType: 'self_draw_win', winTile: s.latestDrawnBySeat.value[seat] || state.hand_tiles.at(-1) })
       announce(`${windLabel(seat)}风 AI 自摸和牌`)

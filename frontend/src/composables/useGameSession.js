@@ -186,8 +186,10 @@ export function useGameSession(initial = {}) {
   /** 本局轨迹落盘：round_id + steps（GAME_OVER 时 POST /api/game/record） */
   const gameRoundId = ref('')
   const gameLogSteps = ref([])
+  const initialDeal = ref(null)
   /** 自家最近一次切牌推荐快照（供 DISCARD 步骤写入 self_recommendation） */
   const pendingSelfRecommend = ref(null)
+  const pendingAiRecommendations = ref({})
 
   /** 四家累计总分（按当前门风标签；轮庄时随门风映射平移） */
   const cumulativeScores = ref({ E: 0, S: 0, W: 0, N: 0 })
@@ -429,6 +431,9 @@ export function useGameSession(initial = {}) {
       latestDrawnTile: sanitizeTileCode(latestDrawnTile.value),
       latestDrawnBySeat: { ...(latestDrawnBySeat.value || {}) },
       lastStepResult: cloneStepResult(lastStepResult.value),
+      gameLogLength: gameLogSteps.value.length,
+      pendingSelfRecommend: safeDeepClone(pendingSelfRecommend.value, 'pendingSelfRecommend'),
+      pendingAiRecommendations: safeDeepClone(pendingAiRecommendations.value, 'pendingAiRecommendations') || {},
     })
   }
 
@@ -449,6 +454,14 @@ export function useGameSession(initial = {}) {
       ...(snap.latestDrawnBySeat || {}),
     }
     lastStepResult.value = snap.lastStepResult
+    restoreGameLogSnapshot(snap)
+  }
+
+  function restoreGameLogSnapshot(snap) {
+    if (typeof snap.gameLogLength !== 'number') return
+    gameLogSteps.value = gameLogSteps.value.slice(0, snap.gameLogLength)
+    pendingSelfRecommend.value = snap.pendingSelfRecommend ?? null
+    pendingAiRecommendations.value = snap.pendingAiRecommendations || {}
   }
 
   function applyRoundState(snapshot) {
@@ -574,6 +587,19 @@ export function useGameSession(initial = {}) {
     gameRoundId.value = newGameRoundId()
     gameLogSteps.value = []
     pendingSelfRecommend.value = null
+    pendingAiRecommendations.value = {}
+  }
+
+  function setPendingAiRecommend(seat, rec) {
+    if (!seat || !rec?.best_tile) return
+    const best = rec.candidates?.find((candidate) => candidate.tile === rec.best_tile)
+    pendingAiRecommendations.value = {
+      ...pendingAiRecommendations.value,
+      [seat]: { best_tile: rec.best_tile, net_ev: best?.ev_score ?? null,
+        candidates: (rec.candidates || []).map((candidate) => ({ tile: candidate.tile,
+          ev_score: candidate.ev_score, effective_count: candidate.effective_count,
+          deal_in_risks: candidate.deal_in_risks, shanten: candidate.shanten })) },
+    }
   }
 
   function setPendingSelfRecommend(rec) {
@@ -590,6 +616,13 @@ export function useGameSession(initial = {}) {
     pendingSelfRecommend.value = {
       best_tile: rec.best_tile,
       net_ev: net != null ? Number(net) : null,
+      candidates: (rec.candidates || []).map((candidate) => ({
+        tile: candidate.tile,
+        ev_score: candidate.ev_score,
+        effective_count: candidate.effective_count,
+        deal_in_risks: candidate.deal_in_risks,
+        shanten: candidate.shanten,
+      })),
     }
   }
 
@@ -612,6 +645,13 @@ export function useGameSession(initial = {}) {
   function appendGameLogStep(step) {
     if (!gameRoundId.value) resetGameLog()
     const seat = step.seat || currentTurnSeat.value || roundState.seatWind
+    const aiDecision = seat !== roundState.seatWind && ['DISCARD', 'GANG', 'WIN'].includes(step.action)
+      ? pendingAiRecommendations.value[seat] : null
+    if (aiDecision) {
+      const next = { ...pendingAiRecommendations.value }
+      delete next[seat]
+      pendingAiRecommendations.value = next
+    }
     gameLogSteps.value = [
       ...gameLogSteps.value,
       {
@@ -619,7 +659,13 @@ export function useGameSession(initial = {}) {
         seat,
         action: step.action,
         tile: step.tile ?? null,
-        self_recommendation: step.self_recommendation ?? null,
+        self_recommendation: step.self_recommendation ?? aiDecision ?? null,
+        details: step.details ?? null,
+        snapshot: {
+          wall_count: wallTiles.value.length,
+          current_turn_seat: currentTurnSeat.value,
+          self: cloneRoundState(),
+        },
       },
     ]
   }
@@ -641,6 +687,10 @@ export function useGameSession(initial = {}) {
           dealer_seat: DEALER_SEAT,
           dealer_tile: roundState.dealerTile,
           seat_wind: roundState.seatWind,
+          circle_index: roundCount.value,
+          round_index: roundIndex.value || 1,
+          initial_hands: initialDeal.value?.hands || {},
+          initial_wall_tiles: initialDeal.value?.wall_tiles || [],
         },
         steps: [...gameLogSteps.value],
         final_result: finalResult || null,
@@ -648,7 +698,7 @@ export function useGameSession(initial = {}) {
       try {
         const res = await awaitCurrentSession(epoch, postGameRecord(payload))
         logTurn('submitGameRecord:ok', {
-          path: res?.path,
+          game_id: res?.game_id,
           steps: res?.steps_count,
         })
         return res
@@ -1861,6 +1911,7 @@ export function useGameSession(initial = {}) {
           seat,
           action: meldActionLabel(meldType),
           tile: claimed || tiles[0] || null,
+          details: { meld_type: meldType, tiles: [...tiles], claimed_tile: claimed || null },
         })
 
         // 本地已进入该座切牌态：先释放 loading，避免 OpponentPanel 因 disabled 卡死
@@ -1961,9 +2012,12 @@ export function useGameSession(initial = {}) {
     const epoch = sessionEpoch
     try {
       if (huResolutionBusy.value) return false
+      let passLogged = false
       if (lastStepResult.value?._pending_add_kong) {
         if (responderSeat !== currentHuSeat.value) throw new Error('尚未轮到该家过抢杠胡')
         pushSnapshot()
+        appendGameLogStep({ seat: responderSeat, action: 'PASS', tile: discardedTile || null,
+          details: { provider_seat: lastDiscardSeat.value, response: 'rob_kong' } })
         lastStepResult.value = { ...lastStepResult.value, pending_hu_queue: pendingHuQueue.value.slice(1) }
         if (pendingHuQueue.value.length) {
           syncHuResponseWindow()
@@ -1974,6 +2028,9 @@ export function useGameSession(initial = {}) {
       if (currentHuSeat.value) {
         if (responderSeat !== currentHuSeat.value) throw new Error('尚未轮到该家过胡')
         pushSnapshot()
+        appendGameLogStep({ seat: responderSeat, action: 'PASS', tile: discardedTile || null,
+          details: { provider_seat: lastDiscardSeat.value, response: 'hu' } })
+        passLogged = true
         lastStepResult.value = {
           ...lastStepResult.value,
           pending_hu_queue: pendingHuQueue.value.slice(1),
@@ -1988,6 +2045,8 @@ export function useGameSession(initial = {}) {
       }
       pushSnapshot()
       logTurn('passCall', { provider, discardedTile })
+      if (!passLogged) appendGameLogStep({ seat: responderSeat, action: 'PASS', tile: discardedTile || null,
+        details: { provider_seat: provider } })
       try {
         await awaitCurrentSession(epoch, postGameStep(toHandRequestPayload(), {
           actor_seat: roundState.seatWind,
@@ -2408,6 +2467,7 @@ export function useGameSession(initial = {}) {
           seat: roundState.seatWind,
           action: meldActionLabel(meldType),
           tile: claimed || tiles[0] || null,
+          details: { meld_type: meldType, tiles: [...tiles], claimed_tile: claimed || null },
         })
         return lastStepResult.value
       } catch (e) {
@@ -3261,6 +3321,7 @@ export function useGameSession(initial = {}) {
       }
     }
     lastStepResult.value = snap.lastStepResult
+    restoreGameLogSnapshot(snap)
     errorMsg.value = ''
     try {
       assertVisibleTileLimit(roundState)
@@ -3374,6 +3435,10 @@ export function useGameSession(initial = {}) {
       // never the dealer wind itself.
       const activeDealer = DEALER_SEAT
       const deal = await awaitCurrentSession(epoch, postAutoDeal({ dealer_seat: activeDealer }))
+      initialDeal.value = {
+        hands: Object.fromEntries(Object.entries(deal.hands || {}).map(([seat, tiles]) => [seat, [...tiles]])),
+        wall_tiles: [...(deal.wall_tiles || [])],
+      }
       const self = roundState.seatWind
       roundState.dealerTile = deal.dealer_tile
       roundState.handTiles = sortHandTiles(
@@ -3602,7 +3667,9 @@ export function useGameSession(initial = {}) {
     errorMsg.value = ''
     gameRoundId.value = ''
     gameLogSteps.value = []
+    initialDeal.value = null
     pendingSelfRecommend.value = null
+    pendingAiRecommendations.value = {}
   }
 
   /**
@@ -3685,7 +3752,9 @@ export function useGameSession(initial = {}) {
     errorMsg.value = ''
     gameRoundId.value = ''
     gameLogSteps.value = []
+    initialDeal.value = null
     pendingSelfRecommend.value = null
+    pendingAiRecommendations.value = {}
     logTurn('startNextRound', {
       keepDealer,
       isDraw,
@@ -4123,7 +4192,7 @@ export function useGameSession(initial = {}) {
           action: 'WIN',
           tile: opts.winTile || winInfo.win_tile || null,
         })
-        await awaitCurrentSession(epoch, submitGameRecord({
+        const archived = await awaitCurrentSession(epoch, submitGameRecord({
           winner_seat: winnerSeat,
           win_type: settlement.win_type,
           points: settlement.points ?? settlement.final_hu ?? null,
@@ -4140,6 +4209,11 @@ export function useGameSession(initial = {}) {
             win_type_label: settlement.win_type_label,
           },
         }))
+        selfWinSettlement.value = {
+          ...selfWinSettlement.value,
+          game_id: archived?.game_id || null,
+          archive_error: !archived?.game_id,
+        }
         logTurn('declareTableWin', {
           winnerSeat,
           winType: settlement.win_type,
@@ -4206,13 +4280,18 @@ export function useGameSession(initial = {}) {
         action: 'WIN',
         tile: null,
       })
-      await awaitCurrentSession(epoch, submitGameRecord({
+      const archived = await awaitCurrentSession(epoch, submitGameRecord({
         winner_seat: null,
         win_type: 'draw',
         points: 0,
         deal_in_seat: null,
         details: { note: note || '荒牌流局', payments: settlement.payments },
       }))
+      selfWinSettlement.value = {
+        ...selfWinSettlement.value,
+        game_id: archived?.game_id || null,
+        archive_error: !archived?.game_id,
+      }
       logTurn('declareDraw', {})
       return true
 
@@ -4480,6 +4559,7 @@ export function useGameSession(initial = {}) {
     isSeatWaitingDraw,
     applyGodViewSelfDrawFast,
     setPendingSelfRecommend,
+    setPendingAiRecommend,
     gameRoundId,
     gameLogSteps,
     applyHandSort,

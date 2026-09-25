@@ -5,6 +5,8 @@ from __future__ import annotations
 import unittest
 
 from app.core.ev_engine import (
+    _apply_close_ukeire_safety_dominance,
+    _apply_isolated_tile_shape_dominance,
     _is_completed_sequence_surplus,
     _estimate_opponent_hu_points,
     _payment_loss,
@@ -19,6 +21,45 @@ def _m(meld_type: MeldType, tiles: list[str]) -> Meld:
 
 
 class TestJokerDragonSequenceOverlap(unittest.TestCase):
+    def test_close_ukeire_must_respect_doubled_deal_in_risk(self):
+        candidates = [
+            {"tile": "2s", "shanten": 0, "effective_count": 27,
+             "deal_in_risks": {"S": .12}, "ev_score": 12.0,
+             "defense_loss": 2.0, "note": ""},
+            {"tile": "3s", "shanten": 0, "effective_count": 22,
+             "deal_in_risks": {"S": .06}, "ev_score": 10.0,
+             "defense_loss": 1.0, "note": ""},
+        ]
+        _apply_close_ukeire_safety_dominance(candidates)
+        self.assertGreater(candidates[1]["ev_score"], candidates[0]["ev_score"])
+        self.assertGreater(candidates[0]["defense_loss"], 2.0)
+
+    def test_east_pong_hand_discards_isolated_nine_sou(self):
+        hand = ["5m", "5m", "6m", "7m", "1s", "2s", "3s", "4s", "5s", "5s", "9s"]
+        result = calculate_best_discards(
+            hand, dealer_tile="1p", is_dealer=True, seat_wind="E",
+            melds=[_m(MeldType.PONG, ["E"] * 3)],
+            opponents=[PlayerState(seat_wind=s) for s in ("S", "W", "N")],
+            include_self_gang=False,
+        )
+        by_tile = {candidate["tile"]: candidate for candidate in result["candidates"]}
+        self.assertEqual(result["best_tile"], "9s")
+        self.assertGreater(by_tile["9s"]["ev_score"], by_tile["5m"]["ev_score"])
+
+    def test_more_effective_safer_isolate_cannot_lose_to_pair_run_break(self):
+        hand = ["5m", "5m", "6m", "7m", "1s", "2s", "3s", "4s", "5s", "5s", "9s"]
+        candidates = [
+            {"tile": "5m", "shanten": 1, "effective_count": 12,
+             "deal_in_risks": {"S": .135}, "ev_score": -100.0,
+             "attack_ev": 50.0, "note": ""},
+            {"tile": "9s", "shanten": 1, "effective_count": 22,
+             "deal_in_risks": {"S": .06}, "ev_score": -120.0,
+             "attack_ev": 30.0, "note": ""},
+        ]
+        _apply_isolated_tile_shape_dominance(candidates, hand, "1p")
+        self.assertGreater(candidates[1]["ev_score"], candidates[0]["ev_score"])
+        self.assertIn("保护对子顺子复合形", candidates[0]["note"])
+
     def test_cut_surplus_four_sou_instead_of_live_green_dragon(self):
         melds = [
             _m(MeldType.CHI, ["1p", "2p", "3p"]),

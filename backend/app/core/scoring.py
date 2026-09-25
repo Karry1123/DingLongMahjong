@@ -503,6 +503,26 @@ def _score_shape(
     # —— 公式 ——
     final_hu = (tile_hu + base_hu) * (2 ** fan)
     others_hu = tile_hu * (2 ** fan)
+    score_items: list[dict[str, Any]] = [{"kind": "base", "label": "底胡", "hu": base_hu}]
+    for item in details_melds:
+        if not item["hu"]:
+            continue
+        identity = _group_identity(item, dealer_tile)
+        kind = _MELD_FAN_CN.get(item["type"], item["type"])
+        name = _DRAGON_FAN_CN.get(identity, _WIND_FAN_CN.get(identity, _tile_cn(identity)))
+        score_items.append({"kind": "meld", "label": f"{kind} {name}", "hu": item["hu"],
+                            "tiles": list(item["tiles"])})
+    if pair_hu:
+        name = _DRAGON_FAN_CN.get(shape.pair_tile,
+                                  _WIND_FAN_CN.get(shape.pair_tile, _tile_cn(shape.pair_tile)))
+        score_items.append({"kind": "pair", "label": f"{name}雀头", "hu": pair_hu,
+                            "tiles": [shape.pair_tile] * 2})
+    if zimo_hu:
+        score_items.append({"kind": "zimo", "label": "自摸", "hu": zimo_hu})
+    if kanzhang_hu:
+        score_items.append({"kind": "wait", "label": "嵌档", "hu": kanzhang_hu})
+    for item in fan_items:
+        score_items.append({"kind": "fan", "label": item})
 
     return {
         "tile_hu": tile_hu,
@@ -521,6 +541,7 @@ def _score_shape(
             "kanzhang": kanzhang_hu,
             "fans": fans,
             "fan_items": fan_items,
+            "score_items": score_items,
             "win_tile_logical": win_logical,
             "restored_jokers": restored_jokers,
             "restored_jokers_for_fan": restored_for_fan,
@@ -932,7 +953,7 @@ def calculate_unwon_base_hu(
           total_base_hu, base_hu, fan_count, calculated_points,
           items, breakdown, hu_details, fan_details, fans, seat_wind
         }``
-        items 为可读字符串列表，如 ``'明碰 南风 (+4胡)'``。
+        items 为可读字符串列表，如 ``'明刻 南风 (+4胡)'``。
     """
     items: list[str] = []
     breakdown: list[dict[str, Any]] = []
@@ -951,7 +972,7 @@ def calculate_unwon_base_hu(
             else "?"
         )
         label = {
-            "pong": "明碰",
+            "pong": "明刻",
             "ming_gang": "明杠",
             "an_gang": "暗杠",
             "chi": "吃",
@@ -1103,7 +1124,7 @@ def _unwon_yakuhai_fan(
         if not identity:
             continue
         kind_cn = {
-            "pong": "明碰",
+            "pong": "明刻",
             "anko": "暗刻",
             "ming_gang": "明杠",
             "an_gang": "暗杠",

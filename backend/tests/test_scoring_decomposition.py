@@ -15,12 +15,12 @@ class TestUnwonBaseHu(unittest.TestCase):
         # 门风东：暗刻 8p + 自风对 E
         hand = ["8p", "8p", "8p", "E", "E", "2m", "3m", "5s", "6s", "7s"]
         r = calculate_unwon_base_hu(hand, melds, "E", "5m")
-        self.assertEqual(r["total_base_hu"], 4 + 4 + 2)  # 明碰北4 + 暗刻8p4 + 东对2
+        self.assertEqual(r["total_base_hu"], 4 + 4 + 2)  # 明刻北风4 + 暗刻八筒4 + 东风雀头2
         # 北风非门风/三元：不加番
         self.assertEqual(r["fan_count"], 0)
         self.assertEqual(r["calculated_points"], 10)
         joined = " ".join(r["items"])
-        self.assertIn("明碰", joined)
+        self.assertIn("明刻", joined)
         self.assertIn("暗刻", joined)
         self.assertIn("自风雀头", joined)
 
@@ -34,7 +34,7 @@ class TestUnwonBaseHu(unittest.TestCase):
         self.assertTrue(any("发财" in (fd["name"] or "") for fd in r["fan_details"]))
 
     def test_open_fa_pong_doubles_for_unwon(self):
-        """明碰发财：底胡 4 × 1番 = 结算 8。"""
+        """明刻发财：底胡 4 × 1番 = 结算 8。"""
         from app.core.scoring import calculate_unwon_player_points
 
         melds = [Meld(meld_type=MeldType.PONG, tiles=["F", "F", "F"])]
@@ -153,7 +153,7 @@ class TestSettlementSeatDetails(unittest.TestCase):
 
 class TestUnwonYakuhaiFanSettlement(unittest.TestCase):
     def test_fa_pong_side_settlement_uses_doubled_points(self):
-        """庄和：北闲明碰发财 → 固有结算 8，高于无副露闲家，应收互结差额。"""
+        """庄和：北闲明刻发财 → 固有结算 8，高于无副露闲家，应收互结差额。"""
         players = [
             {
                 "seat_wind": "E",

@@ -4,6 +4,7 @@ Points = 赢家 H_final（§5.1）。
 支付：
   - 庄家和：三闲各付全额 Points；三闲之间按固有结算胡差额折半互结。
   - 闲家和：庄付全额，其余两闲各付半额；未和各家固有结算胡折半互结。
+  - 辣子（Points >= 100）：无论庄闲或和牌方式，三家各付 100；固有胡头继续互结。
 
 固有结算胡 = 固有底胡 × 2^字牌/门风/圈风番（见 scoring.calculate_unwon_player_points）。
 """
@@ -197,8 +198,17 @@ def calculate_final_settlement(
 
     dealer_seat = next(s for s, p in table.items() if p.get("is_dealer"))
     xian_seats = [s for s in table if s != dealer_seat]
+    is_lazi = pts >= MAX_PAYMENT_PER_PLAYER
 
-    if win_is_dealer:
+    if is_lazi:
+        # 辣子达到封顶线后，三家均按封顶额全付；普通闲家半额规则不再适用。
+        for loser in table:
+            if loser != winner_seat:
+                _pay(net, transfers, loser, winner_seat, MAX_PAYMENT_PER_PLAYER,
+                     "辣子封顶 · 基础赔付 100 分")
+        side_pool = [seat for seat in table if seat != winner_seat]
+        main_label = "辣子封顶：三家各付 100 分"
+    elif win_is_dealer:
         for xs in xian_seats:
             _pay(net, transfers, xs, winner_seat, pts, "闲家全额→庄家")
         side_pool = list(xian_seats)
@@ -282,9 +292,11 @@ def calculate_final_settlement(
     payments = {
         "label": main_label,
         "points": pts,
+        "is_lazi": is_lazi,
         "winner_income": net[winner_seat],
         "from_dealer": min(pts, MAX_PAYMENT_PER_PLAYER) if not win_is_dealer else 0,
-        "from_each_xian": min(pts if win_is_dealer else pts / 2.0, MAX_PAYMENT_PER_PLAYER),
+        "from_each_xian": (MAX_PAYMENT_PER_PLAYER if is_lazi else
+                           min(pts if win_is_dealer else pts / 2.0, MAX_PAYMENT_PER_PLAYER)),
         "payment_cap": MAX_PAYMENT_PER_PLAYER,
         "capped_seats": sorted(capped_seats),
         "inherent_hu": {

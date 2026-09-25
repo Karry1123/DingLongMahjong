@@ -1,9 +1,9 @@
 <script setup>
 /**
- * 副露 / 和牌 / 过牌决策面板；PvE 中嵌在手牌下方。
+ * 副露 / 和牌 / 过牌决策面板；PvE 中嵌在手牌右侧的实时决策看板。
  * 数据源：后端 call_decision（candidates + recommended_action + reason）。
  */
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import {
   SEAT_WINDS,
   relativeOpponents,
@@ -17,8 +17,8 @@ const ACTION_META = {
   pong: { label: '碰', short: '碰', tone: 'pong' },
   ming_gang: { label: '明杠', short: '杠', tone: 'gang' },
   an_gang: { label: '暗杠', short: '暗杠', tone: 'gang' },
-  hu: { label: '捉铳', short: '胡', tone: 'hu' },
-  catch_win: { label: '捉铳', short: '胡', tone: 'hu' },
+  hu: { label: '胡', short: '胡', tone: 'hu' },
+  catch_win: { label: '胡', short: '胡', tone: 'hu' },
   self_draw_win: { label: '自摸', short: '自摸', tone: 'hu' },
   pass: { label: '过牌', short: '过', tone: 'pass' },
 }
@@ -71,6 +71,9 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  dock: { type: Boolean, default: false },
+  keyboardShortcuts: { type: Boolean, default: false },
+  showRecommendation: { type: Boolean, default: true },
 })
 
 const emit = defineEmits({
@@ -135,12 +138,12 @@ const actionRows = computed(() => {
         matched?.net_ev ??
         (typeof raw.net_ev === 'number' ? raw.net_ev : null),
       note: matched?.note || raw.note || '',
-      isRecommended: isSameAction(action, cd.recommended_action),
+      isRecommended: props.showRecommendation && isSameAction(action, cd.recommended_action),
     })
   }
 
   // 推荐动作置顶，其余按 EV 降序（inf 胡牌最前）
-  rows.sort((a, b) => {
+  if (props.showRecommendation) rows.sort((a, b) => {
     if (a.isRecommended !== b.isRecommended) return a.isRecommended ? -1 : 1
     return evSortValue(b.net_ev) - evSortValue(a.net_ev)
   })
@@ -213,6 +216,27 @@ const passActionEv = computed(() =>
 
 function displayTile(tile) {
   return substituteTileLabel(tile, props.dealerTile)
+}
+
+function previewMeld(action) {
+  const type = action.action_type
+  if (!['chi', 'pong', 'ming_gang'].includes(type)) return []
+  const target = props.discardedTile || resolvedDiscard.value
+  const expected = type === 'ming_gang' ? 4 : 3
+  const tiles = (action.tiles || []).slice(0, expected).map((code) => ({ code, claimed: false }))
+  if (target && tiles.length === expected - 1) tiles.push({ code: target, claimed: true })
+  if (target && type !== 'chi') while (tiles.length < expected) tiles.push({ code: target, claimed: tiles.length === expected - 1 })
+  if (tiles.length === expected && !tiles.some((tile) => tile.claimed)) {
+    const claimedIndex = type === 'chi'
+      ? tiles.findIndex((tile) => tile.code === target)
+      : tiles.length - 1
+    if (claimedIndex >= 0) tiles[claimedIndex].claimed = true
+  }
+  if (type === 'chi') {
+    const face = (code) => code === 'P' && props.dealerTile !== 'P' ? props.dealerTile : code
+    tiles.sort((a, b) => Number(face(a.code)?.[0] || 0) - Number(face(b.code)?.[0] || 0))
+  }
+  return tiles
 }
 
 const passReason = computed(() => {
@@ -293,12 +317,12 @@ function selectAction(row) {
   const type = action.action_type
   // 明杠：确保 emit 含 4 张（含打出张）
   let tiles = [...(action.tiles || [])]
-  if (type === 'ming_gang' && tiles.length !== 4) {
+  if (['chi', 'pong', 'ming_gang'].includes(type) && tiles.length < (type === 'ming_gang' ? 4 : 3)) {
     const disc =
       props.discardedTile ||
       resolvedDiscard.value ||
       tiles[0]
-    if (disc) tiles = [disc, disc, disc, disc]
+    if (disc) while (tiles.length < (type === 'ming_gang' ? 4 : 3)) tiles.push(disc)
   }
   emit('action-selected', {
     action_type: type,
@@ -308,13 +332,26 @@ function selectAction(row) {
     note: row.note,
   })
 }
+
+function onNumberKey(event) {
+  if (!props.keyboardShortcuts || props.disabled || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return
+  const target = event.target
+  if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return
+  const index = Number(event.key) - 1
+  if (!Number.isInteger(index) || index < 0 || index >= Math.min(9, actionRows.value.length)) return
+  event.preventDefault()
+  selectAction(actionRows.value[index])
+}
+
+onMounted(() => window.addEventListener('keydown', onNumberKey))
+onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
 </script>
 
 <template>
   <Teleport to="body" :disabled="inline">
     <div
       class="action-prompt-wrap flex w-full"
-      :class="inline ? 'relative justify-start pt-4 pb-2' : 'pointer-events-none fixed inset-x-0 bottom-0 z-50 justify-center p-3 sm:p-5'"
+      :class="inline ? (dock ? 'action-prompt-docked relative h-full justify-start p-0' : 'relative justify-start pt-4 pb-2') : 'pointer-events-none fixed inset-x-0 bottom-0 z-50 justify-center p-3 sm:p-5'"
       role="dialog"
       :aria-modal="inline ? undefined : 'true'"
       aria-label="副露与和牌决策"
@@ -332,7 +369,7 @@ function selectAction(row) {
           <p
             class="relative text-[11px] font-medium uppercase tracking-[0.18em] text-amber-200/70"
           >
-            系统综合推荐
+            {{ showRecommendation ? '系统综合推荐' : '请选择响应动作' }}
           </p>
           <div
             class="relative mt-1.5 flex flex-wrap items-center gap-2 text-sm text-amber-50 sm:text-base"
@@ -351,61 +388,9 @@ function selectAction(row) {
             </span>
             <span v-else class="text-teal-300/70">（未知张）</span>
           </div>
-          <p
-            v-if="callDecision.reason && !recommendPass && !hasHu"
-            class="relative mt-2 text-xs leading-relaxed text-teal-200/80"
-          >
-            {{ callDecision.reason }}
-          </p>
         </header>
 
         <div class="space-y-3 px-4 py-4 sm:px-5 sm:py-5">
-          <!-- 可胡：红金大卡 -->
-          <div
-            v-if="hasHu"
-            class="hu-banner relative overflow-hidden rounded-2xl border-2 border-amber-300/80 bg-gradient-to-br from-rose-600 via-red-600 to-amber-500 px-4 py-5 text-center shadow-xl shadow-rose-950/50 sm:px-6 sm:py-6"
-          >
-            <div
-              class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,_rgba(255,255,255,0.35),_transparent_50%)]"
-            />
-            <p
-              class="relative text-xs font-semibold uppercase tracking-[0.25em] text-amber-100/90"
-            >
-              台州 · 无振听 · 无包牌
-            </p>
-            <p
-              class="relative mt-2 text-2xl font-black tracking-wide text-amber-50 drop-shadow sm:text-3xl"
-            >
-              即时和牌！
-            </p>
-            <p class="relative mt-2 text-lg font-semibold text-amber-100 sm:text-xl">
-              预估胡数
-              <span class="ml-1 font-black text-white">
-                {{ huPoints != null ? huPoints : '—' }}
-              </span>
-            </p>
-            <p class="relative mt-2 text-xs font-semibold text-amber-50/95 sm:text-sm">
-              捉铳 Net EV
-              <span class="ml-1 font-black">{{ formatEv(callDecision.hu_ev ?? huActionEv) }}</span>
-              <span class="mx-1 text-amber-100/60">·</span>
-              过牌 Net EV
-              <span class="ml-1 font-black">{{ formatEv(callDecision.pass_ev ?? passActionEv) }}</span>
-            </p>
-          </div>
-
-          <!-- 建议过牌 -->
-          <div
-            v-if="recommendPass"
-            class="pass-banner rounded-2xl border border-sky-400/50 bg-gradient-to-r from-sky-950/90 to-cyan-950/80 px-4 py-3.5 shadow-inner shadow-sky-900/40"
-          >
-            <p class="text-base font-bold text-sky-100 sm:text-lg">
-              建议过牌！
-            </p>
-            <p class="mt-1 text-sm leading-relaxed text-sky-200/90">
-              原因：{{ passReason }}
-            </p>
-          </div>
-
           <!-- 动作按钮 -->
           <div
             class="flex flex-wrap gap-2.5"
@@ -413,13 +398,16 @@ function selectAction(row) {
             aria-label="可选响应动作"
           >
             <button
-              v-for="row in actionRows"
+              v-for="(row, index) in actionRows"
               :key="actionKey(row.action)"
               type="button"
+              :data-action="row.action.action_type"
+              :aria-keyshortcuts="keyboardShortcuts && index < 9 ? String(index + 1) : undefined"
               :disabled="disabled"
               :class="buttonClass(row)"
               @click="selectAction(row)"
             >
+              <span v-if="keyboardShortcuts && index < 9" class="action-shortcut absolute left-1.5 top-1 text-[10px] font-bold text-amber-100/70">{{ index + 1 }}</span>
               <span
                 v-if="row.isRecommended"
                 class="absolute -top-2 right-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-950"
@@ -429,39 +417,19 @@ function selectAction(row) {
               <span class="text-base font-bold tracking-wide sm:text-lg">
                 {{ actionLabel(row.action.action_type) }}
               </span>
-              <span
-                v-if="row.action.tiles?.length && row.action.action_type !== 'pass'"
-                class="flex flex-wrap justify-center gap-0.5"
-              >
+              <span v-if="previewMeld(row.action).length" class="action-meld-preview flex flex-nowrap justify-center gap-0.5">
                 <span
-                  v-for="(t, i) in row.action.tiles"
-                  :key="`${t}-${i}`"
+                  v-for="(tile, i) in previewMeld(row.action)"
+                  :key="`${tile.code}-${i}`"
                   class="inline-flex h-6 w-5 items-center justify-center rounded border text-[10px] font-semibold opacity-95"
-                  :class="tileSuitClass(t)"
+                  :class="[tileSuitClass(tile.code), tile.claimed ? 'action-claimed-tile ring-2 ring-amber-300' : '']"
+                  :title="tile.claimed ? `供牌 ${displayTile(tile.code)}` : displayTile(tile.code)"
                 >
-                  {{ displayTile(t) }}
+                  {{ tileLabel(tile.code) }}
                 </span>
-              </span>
-              <span
-                class="text-[11px] font-medium tabular-nums opacity-90"
-                :class="
-                  row.action.action_type === 'hu'
-                    ? 'text-amber-50'
-                    : 'text-white/75'
-                "
-              >
-                {{ actionLabel(row.action.action_type) }} EV
-                {{ formatEv(row.net_ev) }}
               </span>
             </button>
           </div>
-
-          <p
-            v-if="actionRows.length"
-            class="text-center text-[11px] text-teal-300/65"
-          >
-            点击按钮确认动作 · Net EV 为该选择相对期望
-          </p>
         </div>
       </div>
     </div>
@@ -469,6 +437,18 @@ function selectAction(row) {
 </template>
 
 <style scoped>
+.action-prompt-docked .action-prompt-panel { max-width:none; height:100%; display:flex; flex-direction:column; animation:none; }
+.action-prompt-docked .action-prompt-panel > header { padding:8px 12px; }
+.action-prompt-docked .action-prompt-panel > div:last-child { min-height:0; overflow-y:auto; padding:8px 12px; }
+.action-prompt-docked .hu-banner, .action-prompt-docked .pass-banner,
+.action-prompt-docked .action-prompt-panel > div:last-child > p:last-child { display:none; }
+.action-prompt-docked [aria-label="可选响应动作"] { display:grid; grid-template-columns:repeat(auto-fit,minmax(86px,1fr)); gap:8px; }
+.action-prompt-docked [aria-label="可选响应动作"] button { min-width:0; padding:6px 3px; gap:2px; }
+.action-prompt-docked [aria-label="可选响应动作"] button[data-action="pass"] { order:99; }
+.action-prompt-docked header p:last-child { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+@media (min-width:1024px) and (max-width:1279px) {
+  .action-prompt-docked .action-prompt-panel > header > p:first-of-type { display:none; }
+}
 .action-prompt-panel {
   animation: prompt-rise 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

@@ -6,6 +6,7 @@ __pycache__/
 .env
 .env.local
 data/game_logs/
+data/*.sqlite3*
 logs/
 *.log
 _*.txt

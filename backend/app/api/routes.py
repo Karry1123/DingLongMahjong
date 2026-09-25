@@ -1,6 +1,7 @@
 """HTTP 路由：切牌推荐、算胡明细、牌局步进等 API。"""
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from app.api.game_step import process_game_step
 from app.core.ev_engine import calculate_best_discards
@@ -18,6 +19,7 @@ from app.schemas import (
     GameStepRequest,
     GameStepResponse,
     HandRequest,
+    PlayerState,
     RecommendResponse,
     SettlementRequest,
     SettlementResponse,
@@ -62,6 +64,7 @@ def recommend_discard(request: HandRequest) -> RecommendResponse:
             seat_wind=request.seat_wind,
             round_wind=request.round_wind,
             is_dealer=request.is_dealer,
+            win_tile=request.latest_drawn_tile,
             players=[
                 {
                     "seat_wind": request.seat_wind,
@@ -203,11 +206,11 @@ def draw_card(request: DrawCardRequest) -> DrawCardResponse:
 
 @router.post("/game/record", response_model=GameRecordResponse)
 def save_game_record_api(request: GameRecordRequest) -> GameRecordResponse:
-    """对局终局轨迹落盘：写入 backend/data/game_logs/{round_id}.json。"""
-    from app.core.game_logger import save_game_record
+    """正式结算后归档完整牌谱；重复提交同一局返回原编号。"""
+    from app.core.record_manager import archive_completed_game
 
     try:
-        meta = save_game_record(request.model_dump())
+        meta = archive_completed_game(request.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except OSError as exc:
@@ -215,4 +218,43 @@ def save_game_record_api(request: GameRecordRequest) -> GameRecordResponse:
             status_code=500,
             detail=f"轨迹落盘失败：{exc}",
         ) from exc
-    return GameRecordResponse(ok=True, **meta)
+    return GameRecordResponse(ok=True, round_id=meta["round_id"],
+                              game_id=meta["game_id"], timestamp=meta["timestamp"],
+                              path=meta["path"], absolute_path=meta["path"],
+                              bytes_written=meta["bytes_written"], steps_count=meta["steps_count"])
+
+
+@router.get("/game/records")
+def fetch_game_record_summaries() -> dict:
+    """List the latest completed games with seat-relative settlement summaries."""
+    from app.core.record_manager import list_game_record_summaries
+
+    return {"records": list_game_record_summaries()}
+
+
+@router.get("/game/records/{game_id}")
+def fetch_game_record(game_id: str) -> dict:
+    """按 GM 编号取回可重放的起手、牌墙、动作与终局结果。"""
+    from app.core.record_manager import get_game_record
+
+    record = get_game_record(game_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="未找到该牌谱编号")
+    return record
+
+
+class ThreatRequest(BaseModel):
+    dealer_tile: str
+    wall_count: int = Field(ge=0)
+    opponents: list[PlayerState] = Field(default_factory=list, max_length=3)
+
+
+@router.post("/game/threats")
+def opponent_threats(request: ThreatRequest) -> dict:
+    from app.core.threat_assessment import assess_opponent_threats
+
+    try:
+        return {"threats": assess_opponent_threats(
+            request.opponents, request.dealer_tile, request.wall_count)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

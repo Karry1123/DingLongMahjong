@@ -133,6 +133,11 @@ class HandRequest(BaseModel):
         max_length=14,
         description="自家门清手牌（未副露部分）",
     )
+    latest_drawn_tile: Optional[str] = Field(
+        None,
+        pattern=_TILE_PATTERN,
+        description="Latest physical self draw, used to identify the actual self-win tile.",
+    )
     melds: List[Meld] = Field(
         default_factory=list,
         description="自家已公开副露",
@@ -803,7 +808,7 @@ class DrawCardResponse(BaseModel):
 # 对局轨迹落盘（GameRecord）
 # ---------------------------------------------------------------------------
 
-GameLogAction = Literal["DRAW", "DISCARD", "CHI", "PONG", "GANG", "WIN"]
+GameLogAction = Literal["DRAW", "DISCARD", "CHI", "PONG", "GANG", "PASS", "WIN"]
 
 
 class GameRecordSelfRecommendation(BaseModel):
@@ -817,6 +822,7 @@ class GameRecordSelfRecommendation(BaseModel):
         None,
         description="对应净 EV（通常取 best 候选的 ev_score）",
     )
+    candidates: List[dict] = Field(default_factory=list, description="该巡 EV 候选矩阵")
 
 
 class GameRecordStep(BaseModel):
@@ -831,8 +837,10 @@ class GameRecordStep(BaseModel):
     )
     self_recommendation: Optional[GameRecordSelfRecommendation] = Field(
         None,
-        description="仅自家 DISCARD 时填写",
+        description="该动作的 EV 决策快照（自家或 AI）",
     )
+    details: Optional[dict] = Field(None, description="副露牌组、供牌方及动作补充信息")
+    snapshot: Optional[dict] = Field(None, description="动作后的四家局面快照")
 
 
 class GameRecordConfig(BaseModel):
@@ -845,6 +853,10 @@ class GameRecordConfig(BaseModel):
         description="公示得（财神）",
     )
     seat_wind: SeatWind = Field(..., description="自家门风")
+    circle_index: Optional[int] = Field(None, ge=1, description="当前圈数")
+    round_index: Optional[int] = Field(None, ge=1, description="当前局次")
+    initial_hands: dict[str, List[str]] = Field(default_factory=dict, description="四家起手")
+    initial_wall_tiles: List[str] = Field(default_factory=list, description="发牌后的完整摸牌墙顺序")
 
 
 class GameRecordFinalResult(BaseModel):
@@ -898,4 +910,6 @@ class GameRecordResponse(BaseModel):
     absolute_path: str
     bytes_written: int
     steps_count: int
+    game_id: Optional[str] = None
+    timestamp: Optional[str] = None
 

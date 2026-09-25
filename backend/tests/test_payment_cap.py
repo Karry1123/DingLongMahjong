@@ -14,18 +14,38 @@ def settle(points, winner='S', win_type='ron', side=False):
                                       discarder_seat='E' if winner != 'E' else 'S')
 
 
-def test_128_xian_win_pays_100_64_64():
+def test_128_xian_win_lazi_pays_100_from_every_loser():
     r = settle(128)
     assert MAX_PAYMENT_PER_PLAYER == 100
     assert r['final_hu'] == 128
-    assert r['net_by_seat'] == {'E': -100, 'S': 228, 'W': -64, 'N': -64}
-    assert r['payments']['winner_income'] == 228
+    assert r['net_by_seat'] == {'E': -100, 'S': 300, 'W': -100, 'N': -100}
+    assert r['payments']['winner_income'] == 300
     assert r['payments']['from_dealer'] == 100
-    assert r['payments']['from_each_xian'] == 64
-    assert r['seat_details']['E']['payment_capped']
+    assert r['payments']['from_each_xian'] == 100
+    assert r['payments']['is_lazi']
+    assert not r['seat_details']['E']['payment_capped']
     assert not r['seat_details']['W']['payment_capped']
-    assert r['transfers'][0]['raw_amount'] == 128
+    assert r['transfers'][0]['raw_amount'] == 100
     assert r['transfers'][0]['transaction_type'] == 'winner_payout'
+
+
+@pytest.mark.parametrize('win_type', ['ron', 'zimo'])
+def test_120_hu_two_fan_north_self_draw_lazi_has_three_full_payouts(win_type):
+    r = settle(120, winner='N', win_type=win_type)
+    payouts = r['payments']['winner_payout_transactions']
+    assert r['payments']['is_lazi']
+    assert {entry['from']: entry['amount'] for entry in payouts} == {
+        'E': 100, 'S': 100, 'W': 100,
+    }
+    assert all(entry['note'] == '辣子封顶 · 基础赔付 100 分' for entry in payouts)
+    assert r['net_by_seat'] == {'E': -100, 'S': -100, 'W': -100, 'N': 300}
+
+
+def test_below_lazi_keeps_dealer_full_and_other_players_half():
+    r = settle(99, winner='N', win_type='zimo')
+    assert not r['payments']['is_lazi']
+    assert r['payments']['from_dealer'] == 99
+    assert r['payments']['from_each_xian'] == 49.5
 
 
 @pytest.mark.parametrize('winner', ['E', 'S'])
@@ -62,8 +82,8 @@ def test_dealer_winner_cap_does_not_consume_mutual_settlement_budget():
     payouts = result['payments']['winner_payout_transactions']
     mutual = result['payments']['mutual_settlement_transactions']
     assert next(t for t in payouts if t['from'] == 'W')['amount'] == 100
-    assert next(t for t in payouts if t['from'] == 'W')['raw_amount'] == 104
+    assert next(t for t in payouts if t['from'] == 'W')['raw_amount'] == 100
     assert next(t for t in mutual if t['from'] == 'W' and t['to'] == 'S')['amount'] == 14
     assert next(t for t in mutual if t['from'] == 'N' and t['to'] == 'S')['amount'] == 7
-    assert result['net_by_seat'] == {'E': 204.0, 'S': -31.0, 'W': -114.0, 'N': -59.0}
+    assert result['net_by_seat'] == {'E': 300.0, 'S': -79.0, 'W': -114.0, 'N': -107.0}
     assert sum(result['net_by_seat'].values()) == 0

@@ -12,6 +12,18 @@ from app.schemas import Meld, MeldType
 
 
 class TestCheckSelfDrawnWin(unittest.TestCase):
+    def test_gm_972dd5_drawn_second_joker_is_win_tile(self):
+        # GM-972DD5, wall 64: 333m open; 44m head, 55m+J,
+        # 2s3s+J and 5s6s7s complete the concealed three melds.
+        hand = ["C", "4m", "4m", "5m", "5m", "2s", "3s", "5s", "6s", "7s", "C"]
+        melds = [Meld(meld_type=MeldType.PONG, tiles=["3m"] * 3)]
+        result = check_self_drawn_win(hand, melds, "C", "E", is_dealer=True, win_tile="C")
+        self.assertIsNotNone(result)
+        self.assertTrue(result["is_win"])
+        self.assertEqual(result["win_tile"], "C")
+        self.assertEqual(len(result["details"]["best_decomposition"]["winning_hand_groups"]), 5)
+        self.assertIsNone(check_self_drawn_win(hand[:-1] + ["9p"], melds, "C", "E", is_dealer=True, win_tile="9p"))
+
     def test_simple_zimo_closed(self):
         # 门清和：111m 222m 333m 444m 55m，摸 5m
         hand = [
@@ -93,6 +105,23 @@ class TestSelfWinRecommendApi(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.client = TestClient(app)
+
+    def test_gm_972dd5_recommend_surfaces_second_joker_win(self):
+        payload = {
+            "hand_tiles": ["C", "4m", "4m", "5m", "5m", "2s", "3s", "5s", "6s", "7s", "C"],
+            "melds": [{"meld_type": "pong", "tiles": ["3m", "3m", "3m"]}],
+            "discards": [], "dealer_tile": "C", "latest_drawn_tile": "C", "seat_wind": "E",
+            "round_wind": "E", "is_dealer": True,
+            "opponents": [
+                {"seat_wind": seat, "is_dealer": False, "melds": [], "discards": []}
+                for seat in ("S", "W", "N")
+            ],
+        }
+        response = self.client.post("/api/recommend", json=payload)
+        self.assertEqual(response.status_code, 200, response.text)
+        data = response.json()
+        self.assertTrue(data["can_self_win"])
+        self.assertEqual(data["self_win_info"]["win_tile"], "C")
 
     def test_recommend_flags_self_win(self):
         payload = {

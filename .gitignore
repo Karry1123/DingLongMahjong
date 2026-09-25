@@ -20,6 +20,7 @@ venv/
 logs/
 *.log
 backend/data/game_logs/
+backend/data/*.sqlite3*
 frontend/tests/artifacts/
 
 # Editors and OS
