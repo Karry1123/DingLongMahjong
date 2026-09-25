@@ -10,6 +10,7 @@ def test_health_and_vercel_cors():
     for origin in (
         "https://ding-long-mahjong.vercel.app",
         "https://mahjong-preview-123.vercel.app",
+        "https://karry1123.github.io",
     ):
         headers = {
             "Origin": origin,

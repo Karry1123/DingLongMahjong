@@ -8,6 +8,7 @@ export default defineConfig(({ command, mode }) => {
   }
   return {
     plugins: [vue()],
+    base: process.env.NODE_ENV === 'production' ? '/DingLongMahjong/' : '/',
     server: {
       host: true,
       port: 5173,

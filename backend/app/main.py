@@ -7,6 +7,7 @@ from app.api.routes import router
 
 _LOCAL_ORIGINS = [
     "https://ding-long-mahjong.vercel.app",
+    "https://karry1123.github.io",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
