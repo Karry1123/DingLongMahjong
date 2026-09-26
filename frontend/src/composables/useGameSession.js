@@ -793,14 +793,8 @@ export function useGameSession(initial = {}) {
     const force = !!opts.force
     if (!force && !autoSortEnabled.value) return
     const self = roundState.seatWind
-    // 手动组牌锁定时：非 force 不把「得」抓回最左
+    // 手动组牌锁定时，摸牌记录仍保留，但不移动用户摆放的牌。
     if (handLayoutPinned.value[self] && !force) {
-      const keepDrawn = opts.keepDrawn === true
-      const drawn =
-        keepDrawn && latestDrawnTile.value ? latestDrawnTile.value : undefined
-      if (drawn) {
-        roundState.handTiles = ensureTileAtEnd(roundState.handTiles, drawn)
-      }
       return
     }
     if (force) clearHandLayoutPin(self)
@@ -902,7 +896,7 @@ export function useGameSession(initial = {}) {
         !Number.isInteger(toIndex) || toIndex < 0 || toIndex > hand.length) return hand
     if (toIndex === fromIndex || toIndex === fromIndex + 1) return hand
     roundState.handTiles = moveTileInList(hand, fromIndex, toIndex)
-    clearDrawnMarker(roundState.seatWind)
+    // 排序只改显示位置；真实摸入张要留给自摸判定和结算。
     handLayoutPinned.value = { ...handLayoutPinned.value, [roundState.seatWind]: true }
     logTurn('moveSelfTileInHand', { fromIndex, toIndex })
     return roundState.handTiles
@@ -947,12 +941,9 @@ export function useGameSession(initial = {}) {
       : undefined
     const dealer = roundState.dealerTile
 
-    // 手动插嵌锁定：只保证摸入张挂右，不强制百搭回最左
+    // 手动插嵌锁定：自家保留拖拽位置与实际摸牌标记。
     if (handLayoutPinned.value[seat] && !force) {
       if (seat === roundState.seatWind) {
-        if (drawn) {
-          roundState.handTiles = ensureTileAtEnd(roundState.handTiles, drawn)
-        }
         return roundState.handTiles
       }
       const oi = roundState.opponents.findIndex((o) => o.seat_wind === seat)
@@ -3627,8 +3618,17 @@ export function useGameSession(initial = {}) {
       return false
     }
 
+    const dealtHand = initialDeal.value?.hands?.[roundState.seatWind]
+    const openingDraw = gameMode.value === 'PVE' && roundState.seatWind === dealerSeat.value &&
+      dealtHand?.length === 14 &&
+      [...dealtHand].sort().join(',') === [...roundState.handTiles].sort().join(',')
+      ? dealtHand.at(-1) : null
     clearAllDrawnMarkers()
     sortAllClosedHands()
+    if (openingDraw) {
+      roundState.handTiles = ensureTileAtEnd(roundState.handTiles, openingDraw)
+      setDrawnMarker(roundState.seatWind, openingDraw)
+    }
 
     gameState.value = 'PLAYING'
     tableLocked.value = true
@@ -4327,7 +4327,11 @@ export function useGameSession(initial = {}) {
         return false
       }
       const remain = [...roundState.handTiles]
-      const wt = info.win_tile
+      const wt = latestDrawnTile.value
+      if (!wt || !remain.includes(wt) || info.win_tile !== wt) {
+        errorMsg.value = '自摸信息与实际摸入张不一致，请重新获取推荐'
+        return false
+      }
       if (wt && remain.includes(wt)) {
         remain.splice(remain.indexOf(wt), 1)
       }

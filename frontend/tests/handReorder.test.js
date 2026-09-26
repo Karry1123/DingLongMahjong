@@ -20,5 +20,7 @@ test('PvE moves any tile by insertion and preserves the chosen order', () => {
   session.latestDrawnBySeat.value.E = '5m'
   session.moveSelfTileInHand(5, 2)
   assert.deepEqual(session.roundState.handTiles, ['1m', '4m', '5m', '2m', '3m', '9p'])
-  assert.equal(session.latestDrawnTile.value, null)
+  assert.equal(session.latestDrawnTile.value, '5m')
+  session.applyHandSort({ keepDrawn: true })
+  assert.deepEqual(session.roundState.handTiles, ['1m', '4m', '5m', '2m', '3m', '9p'])
 })

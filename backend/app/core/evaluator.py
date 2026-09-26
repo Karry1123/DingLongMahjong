@@ -595,7 +595,7 @@ def check_self_drawn_win(
         dealer_tile: 本局「得」。
         seat_wind / round_wind: 门风 / 场风（场风预留）。
         is_dealer: 是否庄家。
-        win_tile: 优先视为胡张的物理牌（通常为刚摸入）。
+        win_tile: 实际摸入的物理牌；未提供时不能推断胡张。
         players: 可选四家公开状态；传入则挂载完整 §6 结算矩阵。
 
     Returns:
@@ -609,7 +609,7 @@ def check_self_drawn_win(
         is_dealer=is_dealer,
         is_zimo=True,
         win_tile=win_tile,
-        win_tile_required=False,
+        win_tile_required=True,
         players=players,
         round_wind=round_wind,
     )
@@ -681,14 +681,11 @@ def _check_complete_win(
         logical = normalize_hand_for_eval(list(hand_tiles), dealer_tile)
         if check_win_or_shanten(logical, 0, needed_melds=needed) != -1:
             return None
-        # The physical draw is fixed once supplied. Reinterpreting another tile
-        # as the winning tile can change the scored shape and hide a joker draw.
-        if win_tile:
-            if win_tile not in hand_tiles:
-                return None
-            candidates = [win_tile]
-        else:
-            candidates = list(dict.fromkeys(hand_tiles))
+        # The physical draw must come from the action, never from a search over
+        # hand tiles. A search could choose a higher-scoring but undrawn tile.
+        if not win_tile or win_tile not in hand_tiles:
+            return None
+        candidates = [win_tile]
     else:
         expect = needed * 3 + 1
         if len(hand_tiles) != expect:

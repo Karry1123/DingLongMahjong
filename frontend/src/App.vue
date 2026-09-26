@@ -506,17 +506,16 @@ const selfGangCandidates = computed(
 const selfWinDismissed = ref(false)
 const selfWinInfo = computed(() => {
   const fromRec = displayRecommend.value?.self_win_info
-  if (fromRec) return fromRec
-  return lastStepResult.value?.self_win_info || null
+  const actualDraw = latestDrawnTile.value
+  if (!actualDraw) return null
+  if (fromRec?.win_tile === actualDraw) return fromRec
+  const fromStep = lastStepResult.value?.self_win_info
+  return fromStep?.win_tile === actualDraw ? fromStep : null
 })
 const canSelfWin = computed(() => {
   if (selfWinDismissed.value || isGameOver.value) return false
   if (!(handReadyToDiscard.value || isMyDiscardTurn.value)) return false
-  return !!(
-    displayRecommend.value?.can_self_win ||
-    lastStepResult.value?.can_self_win ||
-    selfWinInfo.value?.is_win
-  )
+  return !!selfWinInfo.value?.is_win
 })
 
 watch(

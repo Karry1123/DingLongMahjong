@@ -58,6 +58,29 @@ class TestCheckSelfDrawnWin(unittest.TestCase):
         self.assertGreaterEqual(info["final_hu"], 10)
         self.assertIn("details", info)
 
+    def test_physical_draw_beats_higher_scoring_tile_in_same_hand(self):
+        hand = ["3p"] * 3 + ["3m", "4m", "5m"] + ["1s", "2s", "3s", "5s", "6s", "7s"] + ["8m"] * 2
+        self.assertIsNone(check_self_drawn_win(hand, [], "2p", "E", win_tile=None))
+        info = check_self_drawn_win(hand, [], "2p", "E", win_tile="7s")
+        self.assertIsNotNone(info)
+        self.assertEqual(info["win_tile"], "7s")
+        groups = info["details"]["best_decomposition"]["winning_hand_groups"]
+        winning = [g for g in groups if g["winning_tile_index"] is not None]
+        self.assertEqual(len(winning), 1)
+        self.assertEqual(winning[0]["tiles"][winning[0]["winning_tile_index"]], "7s")
+
+    def test_drawn_joker_stays_physical_win_tile_after_substitution(self):
+        hand = ["S"] * 3 + ["9m"] * 3 + ["F", "5m", "6m", "F", "8s", "8s", "4p", "4p"]
+        info = check_self_drawn_win(hand, [], "F", "E", win_tile="F")
+        self.assertIsNotNone(info)
+        self.assertEqual(info["win_tile"], "F")
+        decomposition = info["details"]["best_decomposition"]
+        self.assertEqual(decomposition["win_tile"], "F")
+        marked = [tile for group in decomposition["winning_hand_groups"]
+                  for tile in group["display_tiles"] if tile["is_win_tile"]]
+        self.assertEqual(len(marked), 1)
+        self.assertEqual(marked[0]["code"], "F")
+
     def test_not_win_returns_none(self):
         hand = [
             "1m",
@@ -144,6 +167,7 @@ class TestSelfWinRecommendApi(unittest.TestCase):
             "melds": [],
             "discards": [],
             "dealer_tile": "9p",
+            "latest_drawn_tile": "5m",
             "seat_wind": "E",
             "round_wind": "E",
             "is_dealer": False,
@@ -174,6 +198,12 @@ class TestSelfWinRecommendApi(unittest.TestCase):
         self.assertTrue(data.get("can_self_win"))
         self.assertIsNotNone(data.get("self_win_info"))
         self.assertTrue(data["self_win_info"]["is_hard_hu"])
+        without_draw = dict(payload)
+        without_draw.pop("latest_drawn_tile")
+        no_draw = self.client.post("/api/recommend", json=without_draw)
+        self.assertEqual(no_draw.status_code, 200, no_draw.text)
+        self.assertFalse(no_draw.json()["can_self_win"])
+        self.assertIsNone(no_draw.json()["self_win_info"])
 
 
 if __name__ == "__main__":
