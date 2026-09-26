@@ -12,7 +12,7 @@ const claimedIndex = computed(() => props.meld.meld_type === 'chi' && props.meld
   </span>
 </template>
 <style scoped>
-.meld-tile-group { gap:4px; isolation:isolate; }
+.meld-tile-group { gap:4px; isolation:isolate; flex-wrap:nowrap; flex-shrink:0; }
 .meld-tile-group :deep(.mahjong-tile) { position:relative; flex:0 0 auto; margin-left:0; margin-right:0; z-index:1; }
 .meld-tile-group :deep(.mahjong-tile.sideways) { width:var(--th); height:var(--tw); }
 </style>

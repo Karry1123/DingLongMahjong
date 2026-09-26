@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { tileLabel } from '../constants/tiles.js'
 import { windLabel } from '../utils/seatLayout.js'
 import { getGameRecord, listGameRecords } from '../services/api.js'
+import { useOrientation } from '../composables/useOrientation.js'
 
 const props = defineProps({ currentGameId: { type: String, default: '' } })
 const emit = defineEmits(['close'])
@@ -14,6 +15,7 @@ const activeRecord = ref(null)
 const activeIndex = ref(0)
 const loadingRecord = ref('')
 const controller = new AbortController()
+const { stageTransform } = useOrientation(1080, 560, 16, 1)
 
 const orderedRecords = computed(() => {
   const rows = [...records.value]
@@ -103,7 +105,7 @@ onUnmounted(() => { controller.abort(); window.removeEventListener('keydown', on
 <template>
   <Teleport to="body">
     <div class="history-backdrop" @click.self="emit('close')">
-      <section class="history-modal" role="dialog" aria-modal="true" aria-label="复盘历史">
+      <section class="history-modal" :style="{ transform: stageTransform }" role="dialog" aria-modal="true" aria-label="复盘历史">
         <header class="history-header">
           <div>
             <h2>{{ activeRecord ? `牌谱复盘 · ${activeRecord.game_id}` : '复盘历史' }}</h2>
@@ -166,8 +168,8 @@ onUnmounted(() => { controller.abort(); window.removeEventListener('keydown', on
 </template>
 
 <style scoped>
-.history-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:12px; background:#001a16b8; backdrop-filter:blur(9px); }
-.history-modal { display:flex; flex-direction:column; width:min(1240px,96vw); max-height:75vh; overflow:hidden; border:1px solid #d9b65c99; border-radius:18px; background:linear-gradient(145deg,#082f2beF,#063b34f5); box-shadow:0 24px 70px #000a; color:#fef3c7; }
+.history-backdrop { position:fixed; inset:0; z-index:100; overflow:hidden; background:#001a16dc; backdrop-filter:blur(9px); }
+.history-modal { box-sizing:border-box; position:absolute; top:50%; left:50%; display:flex; flex-direction:column; width:1080px; height:560px; overflow:hidden; border:1px solid #d9b65c99; border-radius:18px; background:linear-gradient(145deg,#082f2bef,#063b34f5); box-shadow:0 24px 70px #000a; color:#fef3c7; transform-origin:center center; }
 .history-header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex:none; padding:13px 18px; border-bottom:1px solid #d9b65c55; }
 .history-header h2 { font-size:1.15rem; font-weight:800; }.history-header p { color:#a7cfc5; font-size:.75rem; }
 .history-header-actions { display:flex; gap:6px; }.history-header-actions button,.history-actions button,.history-replay-controls button { border:1px solid #d9b65c88; border-radius:7px; padding:5px 8px; font-size:.75rem; white-space:nowrap; }.history-header-actions button:hover,.history-actions button:hover,.history-replay-controls button:hover { background:#6b501c; }
@@ -177,5 +179,4 @@ onUnmounted(() => { controller.abort(); window.removeEventListener('keydown', on
 .history-result-badge { overflow:hidden; width:max-content; max-width:100%; border-radius:999px; padding:2px 7px; background:#743a37; color:#ffe2df; font-size:.75rem; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }.history-result-badge.is-self { background:#145f42; color:#bbf7d0; }.history-result-badge.is-draw { background:#475569; color:#e2e8f0; }.history-outcome .history-lazi { color:#fbbf24; font-weight:700; }
 .history-scores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; min-width:0; }.history-score { border-left:1px solid #41786d; padding-left:6px; }.history-score strong { font-size:.75rem; }.history-score b { font-size:.88rem; line-height:1; }.score-positive { color:#86efac; }.score-negative { color:#fda4af; }.history-score .history-score-detail { color:#e3d5ae; }.history-actions { display:flex; flex-direction:column; gap:4px; }.history-actions button { padding:4px 5px; }.history-actions button:last-child { background:#b48b25; color:#112c22; font-weight:800; }.history-actions button:disabled { opacity:.5; }
 .history-error { flex:none; padding:5px 18px; color:#fda4af; font-size:.8rem; }.history-replay { min-height:0; overflow:auto; padding:12px 18px; }.history-replay-controls { display:flex; justify-content:space-between; gap:10px; font-size:.8rem; }.history-replay-controls > div { display:flex; gap:5px; }.history-replay-controls button:disabled { opacity:.4; }.history-replay > input { width:100%; margin:12px 0; accent-color:#fbbf24; }.history-replay-seats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }.history-replay-seats article { min-width:0; border:1px solid #41786d; border-radius:8px; padding:8px; background:#052e2b; }.history-replay-seats h3 { font-size:.8rem; font-weight:800; }.history-replay-seats p { margin-top:5px; color:#c9ddd3; font-size:.75rem; line-height:1.7; }.history-replay-tile { display:inline-block; margin:1px; border:1px solid #d8d4bb; border-radius:3px; padding:0 3px; background:#fffdf0; color:#183b39; }.history-replay-meld { display:inline-block; margin-right:5px; color:#fde68a; }
-@media (max-width:720px) { .history-modal { width:98vw; }.history-replay-seats { grid-template-columns:1fr; } }
 </style>

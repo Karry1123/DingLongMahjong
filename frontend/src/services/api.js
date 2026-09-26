@@ -6,6 +6,7 @@
  * - POST /api/settle         终局筹码结算
  */
 import { ref } from 'vue'
+import { cacheLocalRecords, readLocalRecords, LOCAL_MAX_RECORDS } from '../utils/gameRecordCache.js'
 
 // 开发环境走 Vite /api 代理；生产环境由 Vercel 构建变量指定 Render 域名。
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
@@ -291,10 +292,18 @@ export async function postGameRecord(payload, options = {}) {
   if (!res.ok) {
     throw new Error(`轨迹落盘失败：${await _readError(res)}`)
   }
-  return res.json()
+  const meta = await res.json()
+  if (meta.game_id && meta.summary) {
+    cacheLocalRecords([{ summary: meta.summary, record: {
+      ...payload, game_id: meta.game_id, timestamp: meta.timestamp,
+    } }])
+  }
+  return meta
 }
 
 export async function getGameRecord(gameId, options = {}) {
+  const cached = readLocalRecords().find(row => row.summary.game_id === gameId)?.record
+  if (cached) return cached
   const res = await fetchWithWakeNotice(`${API_BASE}/api/game/records/${encodeURIComponent(gameId)}`, {
     signal: options.signal,
   })
@@ -303,11 +312,17 @@ export async function getGameRecord(gameId, options = {}) {
 }
 
 export async function listGameRecords(options = {}) {
+  const cached = readLocalRecords()
+  if (cached.length) return { records: cached.map(row => row.summary) }
+  // Bootstrap existing installations once; subsequent history is device-local.
   const res = await fetchWithWakeNotice(`${API_BASE}/api/game/records`, {
     signal: options.signal,
   })
   if (!res.ok) throw new Error(`牌谱列表读取失败：${await _readError(res)}`)
-  return res.json()
+  const result = await res.json()
+  const records = (result.records || []).slice(0, LOCAL_MAX_RECORDS)
+  cacheLocalRecords(records.map(summary => ({ summary })))
+  return { records }
 }
 
 export async function getOpponentThreats(payload, options = {}) {

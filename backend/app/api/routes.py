@@ -32,6 +32,19 @@ router = APIRouter(prefix="/api", tags=["mahjong"])
 def recommend_discard(request: HandRequest) -> RecommendResponse:
     """根据暗手、副露、对手公开信息与「得」，返回进攻/防守净 EV 切牌推荐。"""
     slots = len(request.hand_tiles) + 3 * len(request.melds)
+    if len(request.hand_tiles) == 1 and len(request.melds) == 4:
+        from app.core.ev_engine import _collect_ukeire
+
+        waits = _collect_ukeire(
+            remain_raw=request.hand_tiles, rem_map=get_remaining_tiles(request),
+            dealer_tile=request.dealer_tile, seat_wind=request.seat_wind,
+            is_dealer=request.is_dealer, needed_melds=0, melds=request.melds,
+        )
+        return RecommendResponse(
+            candidates=[], shanten=0,
+            effective_tiles=[{"tile": row["tile"], "rem": row["rem"]} for row in waits],
+            effective_count=sum(row["rem"] for row in waits),
+        )
     if slots != 14:
         raise HTTPException(
             status_code=400,
@@ -221,7 +234,8 @@ def save_game_record_api(request: GameRecordRequest) -> GameRecordResponse:
     return GameRecordResponse(ok=True, round_id=meta["round_id"],
                               game_id=meta["game_id"], timestamp=meta["timestamp"],
                               path=meta["path"], absolute_path=meta["path"],
-                              bytes_written=meta["bytes_written"], steps_count=meta["steps_count"])
+                              bytes_written=meta["bytes_written"], steps_count=meta["steps_count"],
+                              summary=meta["summary"])
 
 
 @router.api_route("/game/records", methods=["GET", "HEAD"])
@@ -232,7 +246,7 @@ def fetch_game_record_summaries() -> dict:
     return {"records": list_game_record_summaries()}
 
 
-@router.get("/game/records/{game_id}")
+@router.api_route("/game/records/{game_id}", methods=["GET", "HEAD"])
 def fetch_game_record(game_id: str) -> dict:
     """按 GM 编号取回可重放的起手、牌墙、动作与终局结果。"""
     from app.core.record_manager import get_game_record

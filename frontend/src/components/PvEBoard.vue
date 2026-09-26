@@ -52,7 +52,7 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
 <style scoped>
 .pve-table { position:relative; padding:0; border:0; border-radius:0; background:radial-gradient(ellipse at center,#17604c99,#052e2c 85%); box-shadow:none; }
 .table-compass { position:relative; width:100%; height:100%; margin:0; }
-.opponent-seat { position:absolute; width:510px; height:260px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.opponent-seat { position:absolute; width:36%; height:260px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .opponent-seat.active .seat-header { color:#fde68a; text-shadow:0 0 12px #fbbf2466; }
 .top { top:4px; left:50%; width:760px; height:190px; transform:translateX(-50%); }
 .left { top:50%; left:0; transform:translateY(-50%); }
@@ -76,7 +76,7 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
 .opponent-seat :deep([aria-label="副露牌组"]) { gap:2px; padding-top:0; padding-bottom:2px; }
 .opponent-seat > :deep(.discard-river) { position:absolute; display:grid; gap:3px 3px; min-height:0; }
 .opponent-seat > :deep(.discard-river) .mahjong-tile { --tw:24px; --th:32px; margin-bottom:0; }
-.top > :deep(.discard-river) { top:82px; left:50%; grid-template-columns:repeat(10,24px); transform:translateX(-50%); }
+.top > :deep(.discard-river) { top:64px; left:50%; grid-template-columns:repeat(10,24px); transform:translateX(-50%); }
 .left > :deep(.discard-river) { top:50%; right:0; grid-template-columns:repeat(4,24px); transform:translateY(-50%); }
 .right > :deep(.discard-river) { top:50%; left:0; grid-template-columns:repeat(4,24px); transform:translateY(-50%); }
 .table-center { position:absolute; z-index:2; top:50%; left:50%; transform:translate(-50%,-50%); }

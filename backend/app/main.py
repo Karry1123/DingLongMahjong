@@ -23,7 +23,7 @@ def _parse_allowed_origins(raw: str) -> list[str]:
 
 allowed_origins = _parse_allowed_origins(os.getenv("ALLOWED_ORIGINS", ""))
 
-app = FastAPI(title="Mahjong EV API")
+app = FastAPI(title="Mahjong EV API", version="0.2.1-beta")
 
 app.add_middleware(
     CORSMiddleware,

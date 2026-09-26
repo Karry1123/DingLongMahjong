@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.2.0-beta",
+  "version": "0.2.1-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:stage": "node scripts/pve-stage-smoke.mjs",
     "test:layout-worst": "node scripts/pve-worst-case.mjs",
-    "test:layout-landscape": "node scripts/pve-landscape.mjs"
+    "test:layout-landscape": "node scripts/pve-landscape.mjs",
+    "test:zoom-review": "node scripts/pve-zoom-review.mjs"
   },
   "dependencies": {
     "vue": "^3.5.42"

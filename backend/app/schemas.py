@@ -129,7 +129,7 @@ class HandRequest(BaseModel):
 
     hand_tiles: List[str] = Field(
         ...,
-        min_length=2,
+        min_length=1,
         max_length=14,
         description="自家门清手牌（未副露部分）",
     )
@@ -379,8 +379,11 @@ class TurnActionChoice(BaseModel):
 class RecommendResponse(BaseModel):
     """切牌推荐响应。"""
 
-    best_tile: str = Field(
-        ...,
+    shanten: Optional[int] = None
+    effective_tiles: List[dict] = Field(default_factory=list)
+    effective_count: int = 0
+    best_tile: Optional[str] = Field(
+        None,
         pattern=_TILE_PATTERN,
         description="推荐最优切牌",
     )
@@ -912,4 +915,5 @@ class GameRecordResponse(BaseModel):
     steps_count: int
     game_id: Optional[str] = None
     timestamp: Optional[str] = None
+    summary: Optional[dict] = None
 

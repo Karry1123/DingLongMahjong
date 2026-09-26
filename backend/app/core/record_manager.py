@@ -1,4 +1,4 @@
-"""Completed PvE game archives. A transaction keeps the latest ten games."""
+"""Completed PvE game archives. A transaction keeps the latest 200 games."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "game_records.sqlite3"
-MAX_RECORDS = 10
+MAX_RECORDS = 200
 _WIND_ORDER = ("E", "S", "W", "N")
 _WIND_NAMES = {"E": "东风", "S": "南风", "W": "西风", "N": "北风"}
 _HONOR_NAMES = {**_WIND_NAMES, "C": "红中", "F": "发财", "P": "白板"}
@@ -169,7 +169,7 @@ def archive_completed_game(record: dict[str, Any], *, db_path: Path | None = Non
             saved = json.loads(zlib.decompress(existing[2]))
             return {"game_id": existing[0], "round_id": round_id,
                     "timestamp": existing[1], "steps_count": len(saved.get("steps") or []),
-                    "bytes_written": len(existing[2]), "path": str(path)}
+                    "bytes_written": len(existing[2]), "path": str(path), "summary": _summary(saved)}
         timestamp = datetime.now(timezone.utc).isoformat()
         payload = dict(record)
         payload["timestamp"] = timestamp
@@ -188,7 +188,7 @@ def archive_completed_game(record: dict[str, Any], *, db_path: Path | None = Non
         )""", (MAX_RECORDS,))
     return {"game_id": game_id, "round_id": round_id, "timestamp": timestamp,
             "steps_count": len(record.get("steps") or []), "bytes_written": len(encoded),
-            "path": str(path)}
+            "path": str(path), "summary": _summary(payload)}
 
 
 def get_game_record(game_id: str, *, db_path: Path | None = None) -> dict[str, Any] | None:
@@ -218,7 +218,7 @@ def _archive_postgres(record: dict[str, Any], round_id: str, url: str) -> dict[s
             saved = json.loads(zlib.decompress(existing[2]))
             return {"game_id": existing[0], "round_id": round_id,
                     "timestamp": existing[1], "steps_count": len(saved.get("steps") or []),
-                    "bytes_written": len(existing[2]), "path": "postgresql"}
+                    "bytes_written": len(existing[2]), "path": "postgresql", "summary": _summary(saved)}
         timestamp = datetime.now(timezone.utc).isoformat()
         for _ in range(8):
             game_id = f"GM-{uuid.uuid4().hex[:6].upper()}"
@@ -235,4 +235,4 @@ def _archive_postgres(record: dict[str, Any], round_id: str, url: str) -> dict[s
         )""", (MAX_RECORDS,))
     return {"game_id": game_id, "round_id": round_id, "timestamp": timestamp,
             "steps_count": len(record.get("steps") or []), "bytes_written": len(encoded),
-            "path": "postgresql"}
+            "path": "postgresql", "summary": _summary(payload)}

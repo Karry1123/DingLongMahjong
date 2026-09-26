@@ -1204,6 +1204,11 @@ function onStartNextRound(payload) {
   )).then(() => { localRecommend.value = null }).catch((e) => { analyzeError.value = e?.message || String(e) })
 }
 
+function onReturnToSettlement() {
+  showRoundSummaryModal.value = false
+  showGameOverModal.value = true
+}
+
 async function onContinuePveCircle() {
   try {
     localRecommend.value = null
@@ -1889,7 +1894,7 @@ async function onReset(clearHistory = false) {
       @next-round="onStartNextRound"
       @review-history="() => {}"
     />
-    <PvECircleSummary v-if="gameMode === 'PVE' && showRoundSummaryModal" :round-count="roundCount" :scores="cumulativeScores" :seat-wind="seatWind" @continue="onContinuePveCircle" @exit="onExitPve" />
+    <PvECircleSummary v-if="gameMode === 'PVE' && showRoundSummaryModal" :round-count="roundCount" :scores="cumulativeScores" :seat-wind="seatWind" @back="onReturnToSettlement" @continue="onContinuePveCircle" @exit="onExitPve" />
     </div>
     <footer class="app-version-footer mt-4 text-center text-xs text-teal-200/55" aria-label="当前版本">{{ appVersion }}</footer>
   </div>
@@ -1907,16 +1912,18 @@ html.game-stage-scroll-lock, body.game-stage-scroll-lock,
 html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%; height:100%; overflow:hidden; overscroll-behavior:none; touch-action:manipulation; }
 .viewport-wrapper.is-stage-active > .game-stage { overflow:hidden; }
 .viewport-wrapper.is-stage-active > .game-stage.pve-stage-shell { box-sizing:border-box; width:1280px !important; height:720px !important; min-height:0 !important; padding:10px 16px !important; overflow:hidden !important; }
-.viewport-wrapper.is-stage-active .pve-session-view { width:100%; height:100%; min-height:0; overflow:hidden; }
+.viewport-wrapper.is-stage-active .pve-session-view { position:relative; width:100%; height:100%; min-height:0; overflow:hidden; }
 .viewport-wrapper.is-stage-active .pve-session-view > header,
 .viewport-wrapper.is-stage-active .pve-workbench > header,
 .viewport-wrapper.is-stage-active .pve-table > header,
 .viewport-wrapper.is-stage-active .pve-landscape-hint { display:none !important; }
-.viewport-wrapper.is-stage-active .pve-game-main { position:relative; display:grid !important; grid-template-columns:minmax(0,1fr); grid-template-rows:36px minmax(0,1fr) 164px !important; gap:6px !important; width:100%; height:100%; max-width:none; min-height:0; padding:0 !important; overflow:hidden; }
+.viewport-wrapper.is-stage-active .pve-game-main { position:absolute; top:0; left:0; display:grid !important; grid-template-columns:minmax(0,1fr); grid-template-rows:36px minmax(0,1fr) 94px !important; gap:0 !important; width:83.333333%; height:83.333333%; max-width:none; min-height:0; padding:0 !important; overflow:hidden; transform:scale(1.2); transform-origin:top left; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] { grid-row:1; width:100%; height:36px; min-height:0; padding:2px 10px; overflow:hidden; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] > :not(:first-child) { display:none; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] > :first-child { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; height:100%; margin:0; padding:0 4px; font-size:13px; }
 .viewport-wrapper.is-stage-active .pve-game-main > .pve-table { grid-row:2; width:100%; height:100%; min-height:0; padding:0; overflow:visible; border:0; border-radius:0; }
+.viewport-wrapper.is-stage-active .pve-game-main > p[role="alert"] { position:absolute; z-index:110; right:12px; bottom:104px; max-width:420px; margin:0; padding:8px 12px; font-size:12px; box-shadow:0 8px 24px #001b1770; }
+.viewport-wrapper.is-stage-active .pve-game-main:has(> p[role="alert"]) > .pve-situation-hud { display:none; }
 .viewport-wrapper.is-stage-active .pve-game-main > .pve-workbench { display:contents !important; }
 .viewport-wrapper.is-stage-active .pve-workbench > .pve-self-controls { grid-row:3; height:100%; min-height:0; position:relative; overflow:visible; margin:0; }
 .viewport-wrapper.is-stage-active .pve-self-controls > * { min-height:0; margin:0 !important; }
@@ -1931,15 +1938,15 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-self-hand .pve-hand-anchor > .pve-drawn-slot { width:44px; min-width:44px; margin-left:16px; padding:0; border:0; }
 .viewport-wrapper.is-stage-active .pve-self-hand [aria-label="手牌槽位"] button[role="listitem"] { width:44px; height:59px; min-width:0; }
 .viewport-wrapper.is-stage-active .pve-self-hand [aria-label="手牌槽位"] .mahjong-tile { --tw:44px; --th:59px; --face-font:24px; --honor-font:30px; }
-.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds { position:absolute; z-index:8; bottom:165px; left:60px; box-sizing:border-box; width:480px; max-width:none; height:auto; min-height:0; display:flex; flex-direction:column; gap:3px; padding:4px; overflow:visible; border:0; background:transparent; box-shadow:none; --pve-meld-width:36px; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds { position:absolute; z-index:8; bottom:95px; left:24px; box-sizing:border-box; width:304px; max-width:calc(40% - 24px); height:auto; min-height:0; display:flex; flex-direction:column; gap:3px; padding:4px; overflow:visible; border:0; background:transparent; box-shadow:none; --pve-meld-width:32px; }
 .viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > div:first-child { display:flex; margin:0; }
 .viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds h2 { font-size:13px; line-height:1.2; }
-.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > [aria-label="已录入副露"] { display:flex; flex-wrap:wrap; align-items:flex-end; gap:4px 8px; margin:0; overflow:visible; }
+.viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > [aria-label="已录入副露"] { display:grid; grid-template-columns:repeat(2,max-content); align-items:end; gap:4px 8px; margin:0; overflow:visible; }
 .viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > [aria-label="已录入副露"] > * { width:auto; flex:0 0 auto; gap:0; margin:0; padding:0; border:0; background:transparent; }
 .viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds > [aria-label="已录入副露"] > * > span:first-child { display:none; }
 .viewport-wrapper.is-stage-active .pve-self-controls > .compact-melds .mahjong-tile { --tw:var(--pve-meld-width); --th:calc(var(--tw)*4/3); }
-.viewport-wrapper.is-stage-active .pve-workbench > .pve-ev-slot { position:absolute !important; z-index:35; right:12px; bottom:230px; width:260px; max-height:190px; overflow:visible; }
-.viewport-wrapper.is-stage-active .pve-workbench > .pve-ev-slot:has(.action-prompt-wrap) { position:absolute !important; left:50%; right:auto; bottom:180px; z-index:100; transform:translateX(-50%); width:700px; height:auto; min-height:0; max-height:none; overflow:visible; display:flex; flex-direction:column; align-items:center; }
+.viewport-wrapper.is-stage-active .pve-workbench > .pve-ev-slot { position:absolute !important; z-index:35; right:12px; bottom:154px; width:260px; max-height:190px; overflow:visible; }
+.viewport-wrapper.is-stage-active .pve-workbench > .pve-ev-slot:has(.action-prompt-wrap) { position:absolute !important; left:50%; right:auto; bottom:104px; z-index:100; transform:translateX(-50%); width:700px; height:auto; min-height:0; max-height:none; overflow:visible; display:flex; flex-direction:column; align-items:center; }
 .viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-wrap,
 .viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel { height:auto; max-height:none; overflow:visible; }
 .viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel > header { display:block; }
@@ -1959,7 +1966,7 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-metrics small { font-size:8px; }
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-more { flex-basis:25px; font-size:8px; }
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-drawer { width:100%; max-height:210px; }
-.viewport-wrapper.is-stage-active .pve-situation-hud { position:absolute; z-index:32; right:18px; bottom:177px; max-width:360px; padding:7px 12px; border:1px solid #d4af5870; border-radius:999px; background:#063b32e8; color:#fde68a; font-size:13px; font-weight:600; line-height:1.3; text-align:right; box-shadow:0 4px 12px #001b1740; pointer-events:none; }
+.viewport-wrapper.is-stage-active .pve-situation-hud { position:absolute; z-index:32; right:18px; bottom:101px; max-width:360px; padding:7px 12px; border:1px solid #d4af5870; border-radius:999px; background:#063b32e8; color:#fde68a; font-size:13px; font-weight:600; line-height:1.3; text-align:right; box-shadow:0 4px 12px #001b1740; pointer-events:none; }
 .viewport-wrapper.is-stage-active .pve-situation-hud.risk-high { border-color:#fb718580; color:#ffe4e6; }
 .viewport-wrapper.is-stage-active .app-version-footer { display:none; }
 </style>

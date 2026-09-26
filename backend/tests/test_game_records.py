@@ -78,13 +78,14 @@ class TestGameRecords(unittest.TestCase):
             self.assertEqual(record["config"]["initial_wall_tiles"], ["9s", "8s"])
             self.assertEqual(record["steps"][0]["self_recommendation"]["candidates"][0]["tile"], "9s")
 
-    def test_fifo_evicts_oldest_after_ten_and_uses_timestamp(self):
+    def test_fifo_evicts_oldest_after_200_and_uses_timestamp(self):
         with tempfile.TemporaryDirectory() as temp:
             db = Path(temp) / "records.sqlite3"
             first = archive_completed_game(completed("round-0"), db_path=db)["game_id"]
-            for i in range(1, 10):
+            for i in range(1, 200):
                 latest = archive_completed_game(completed(f"round-{i}"), db_path=db)["game_id"]
-            self.assertEqual(MAX_RECORDS, 10)
+            self.assertEqual(MAX_RECORDS, 200)
+            self.assertEqual(len(list_game_record_summaries(db_path=db)), 200)
             self.assertIsNotNone(get_game_record(first, db_path=db))
             # The oldest timestamp wins over insertion order if an imported row is older.
             import sqlite3
@@ -92,15 +93,15 @@ class TestGameRecords(unittest.TestCase):
                 connection.execute("UPDATE game_records SET timestamp=? WHERE game_id=?",
                                    ("2000-01-01T00:00:00+00:00", latest))
                 connection.commit()
-            eleventh = archive_completed_game(completed("round-10"), db_path=db)["game_id"]
+            next_record = archive_completed_game(completed("round-200"), db_path=db)["game_id"]
             self.assertIsNotNone(get_game_record(first, db_path=db))
             self.assertIsNone(get_game_record(latest, db_path=db))
-            self.assertIsNotNone(get_game_record(eleventh, db_path=db))
-            twelfth = archive_completed_game(completed("round-11"), db_path=db)["game_id"]
+            self.assertIsNotNone(get_game_record(next_record, db_path=db))
+            last_record = archive_completed_game(completed("round-201"), db_path=db)["game_id"]
             self.assertIsNone(get_game_record(first, db_path=db))
-            self.assertIsNotNone(get_game_record(twelfth, db_path=db))
+            self.assertIsNotNone(get_game_record(last_record, db_path=db))
             with closing(sqlite3.connect(db)) as connection:
-                self.assertEqual(connection.execute("SELECT COUNT(*) FROM game_records").fetchone()[0], 10)
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM game_records").fetchone()[0], 200)
 
 
 class TestOpponentThreats(unittest.TestCase):
@@ -133,11 +134,26 @@ class TestGameRecordApi(unittest.TestCase):
             head = client.head("/api/game/records")
             self.assertEqual(head.status_code, 200, head.text)
             self.assertEqual(head.content, b"")
+            detail_head = client.head(f"/api/game/records/{game_id}")
+            self.assertEqual(detail_head.status_code, 200)
+            self.assertEqual(detail_head.content, b"")
+            self.assertEqual(posted.json()["summary"]["game_id"], game_id)
             self.assertEqual(listed.json()["records"][0]["game_id"], game_id)
             self.assertEqual(listed.json()["records"][0]["self_score"]["net"], 0)
             self.assertNotIn("initial_wall_tiles", listed.text)
             self.assertNotIn("initial_hands", listed.text)
             self.assertEqual(client.get("/api/game/records/GM-000000").status_code, 404)
+
+    def test_cloud_lookup_survives_local_ten_game_window(self):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"GAME_RECORD_DB_PATH": str(Path(temp) / "records.sqlite3")}):
+            client = TestClient(app)
+            first = archive_completed_game(completed("first"))["game_id"]
+            for i in range(10):
+                archive_completed_game(completed(f"later-{i}"))
+            self.assertEqual(len(client.get("/api/game/records").json()["records"]), 11)
+            response = client.get(f"/api/game/records/{first}")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["config"]["initial_wall_tiles"], ["9s", "8s"])
 
     def test_threat_endpoint_reports_three_melds(self):
         client = TestClient(app)

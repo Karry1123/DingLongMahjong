@@ -35,4 +35,5 @@ backend/visual-tests.log
 *.mp4
 *.mov
 *.wav
+!frontend/public/audio/tiles/*.wav
 *.psd
