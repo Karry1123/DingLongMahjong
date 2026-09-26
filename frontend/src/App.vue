@@ -164,6 +164,7 @@ function enterFullscreenOnMobileStart() {
   }
 }
 const pveStartLoading = ref(false)
+const exitingGame = ref(false)
 const pveConfigOpen = ref(false)
 const enableEV = ref(true)
 function openPveConfig() {
@@ -1218,13 +1219,19 @@ async function onContinuePveCircle() {
 }
 
 async function onExitPve() {
+  if (exitingGame.value) return
+  exitingGame.value = true
+  activeUiMode.value = ''
+  localRecommend.value = null
+  recommendFetchKey.value = ''
+  abortCurrentRecommend()
   try {
+    // Remove the game canvas before resetting its perspective or fullscreen size.
+    await nextTick()
     if (isFullscreen.value) await exitFullscreen()
     await exitPveGame()
-    activeUiMode.value = ''
-    localRecommend.value = null
-    recommendFetchKey.value = ''
   } catch (e) { analyzeError.value = e?.message || String(e) }
+  finally { exitingGame.value = false }
 }
 
 /** 荒牌流局（可选入口） */
@@ -1373,10 +1380,10 @@ async function onReset(clearHistory = false) {
       <h1 class="mt-3 text-4xl font-bold text-amber-50 sm:text-5xl">选择对局模式</h1>
       <p class="mt-3 max-w-xl text-sm leading-6 text-teal-100/70">使用实时净 EV 辅助练习，或进入全景沙盘自由推演。</p>
       <div class="mt-9 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
-        <button class="rounded-3xl border border-amber-300/60 bg-amber-400/15 p-7 text-left transition hover:-translate-y-1 hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading" @click="openPveConfig">
+        <button class="rounded-3xl border border-amber-300/60 bg-amber-400/15 p-7 text-left transition hover:-translate-y-1 hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading || exitingGame" @click="openPveConfig">
           <span class="text-2xl">人机对战</span><span class="mt-2 block text-sm text-amber-100/70">带 EV 辅助 · 三家 AI 自主决策</span>
         </button>
-        <button class="rounded-3xl border border-teal-300/35 bg-teal-900/40 p-7 text-left transition hover:-translate-y-1 hover:bg-teal-800/50 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading" @click="chooseSandboxMode">
+        <button class="rounded-3xl border border-teal-300/35 bg-teal-900/40 p-7 text-left transition hover:-translate-y-1 hover:bg-teal-800/50 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading || exitingGame" @click="chooseSandboxMode">
           <span class="text-2xl text-teal-50">全景上帝视角沙盘</span><span class="mt-2 block text-sm text-teal-100/65">自定义牌局 · 手动推演四方行动</span>
         </button>
       </div>
@@ -1928,11 +1935,11 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-workbench > .pve-self-controls { grid-row:3; height:100%; min-height:0; position:relative; overflow:visible; margin:0; }
 .viewport-wrapper.is-stage-active .pve-self-controls > * { min-height:0; margin:0 !important; }
 .viewport-wrapper.is-stage-active .pve-self-controls > .pve-self-hand { position:absolute; bottom:0; left:0; width:100%; height:94px; padding:4px 8px; overflow:hidden; }
-.viewport-wrapper.is-stage-active .pve-self-hand > :first-child { position:absolute; z-index:2; top:5px; right:8px; width:250px; display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin:0; text-align:right; }
+.viewport-wrapper.is-stage-active .pve-self-hand > :first-child { position:absolute; z-index:2; top:5px; right:8px; width:max-content; max-width:250px; display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin:0; text-align:right; pointer-events:none; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child h2 { font-size:12px; line-height:1; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child .pve-hand-caption { font-size:10px; line-height:1.2; white-space:nowrap; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child > div:last-child { display:flex; flex-wrap:nowrap; gap:4px; }
-.viewport-wrapper.is-stage-active .pve-self-hand > :first-child button { padding:3px 6px; font-size:10px; }
+.viewport-wrapper.is-stage-active .pve-self-hand > :first-child button { padding:3px 6px; font-size:10px; pointer-events:auto; }
 .viewport-wrapper.is-stage-active .pve-self-hand .pve-hand-anchor { position:absolute; top:auto; bottom:24px; left:50%; transform:translateX(-50%); display:flex; flex-wrap:nowrap; justify-content:flex-start; align-items:flex-end; gap:5px; width:697px; min-width:697px; margin:0; white-space:nowrap; }
 .viewport-wrapper.is-stage-active .pve-self-hand .pve-hand-anchor > div { display:flex; flex-wrap:nowrap; justify-content:flex-start; align-items:flex-end; gap:5px; width:auto; flex:0 0 auto; }
 .viewport-wrapper.is-stage-active .pve-self-hand .pve-hand-anchor > .pve-drawn-slot { width:44px; min-width:44px; margin-left:16px; padding:0; border:0; }

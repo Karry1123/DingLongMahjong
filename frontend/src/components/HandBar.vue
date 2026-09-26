@@ -170,7 +170,8 @@ function handleTileClick(item) {
   if (props.disabled && isJoker(item.code)) return
   if (props.disabled) return
   if (isDiscardReady.value) {
-    if (props.wallDriven && typeof window !== 'undefined' && window.matchMedia('(orientation: portrait) and (max-width: 768px)').matches) {
+    const isDrawnTile = item.index === splitHand.value.drawn?.index
+    if (props.wallDriven && !isDrawnTile && typeof window !== 'undefined' && window.matchMedia('(orientation: portrait) and (max-width: 768px)').matches) {
       if (selectedTileIndex.value !== item.index) {
         selectedTileIndex.value = item.index
         return
