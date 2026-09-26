@@ -895,6 +895,19 @@ export function useGameSession(initial = {}) {
     return opps[oi].hand_tiles
   }
 
+  /** PvE manual hand order. A moved draw joins the main hand until the next draw. */
+  function moveSelfTileInHand(fromIndex, toIndex) {
+    const hand = roundState.handTiles
+    if (!Number.isInteger(fromIndex) || fromIndex < 0 || fromIndex >= hand.length ||
+        !Number.isInteger(toIndex) || toIndex < 0 || toIndex > hand.length) return hand
+    if (toIndex === fromIndex || toIndex === fromIndex + 1) return hand
+    roundState.handTiles = moveTileInList(hand, fromIndex, toIndex)
+    clearDrawnMarker(roundState.seatWind)
+    handLayoutPinned.value = { ...handLayoutPinned.value, [roundState.seatWind]: true }
+    logTurn('moveSelfTileInHand', { fromIndex, toIndex })
+    return roundState.handTiles
+  }
+
   /**
    * 设置某座「摸入挂右」标记（自家同时写 latestDrawnTile）。
    * @param {string} seat
@@ -4550,6 +4563,7 @@ export function useGameSession(initial = {}) {
     clearRecommendAbortController,
     handLayoutPinned,
     moveJokerInHand,
+    moveSelfTileInHand,
     clearHandLayoutPin,
     applyAutoDeal,
     discardFromGodView,

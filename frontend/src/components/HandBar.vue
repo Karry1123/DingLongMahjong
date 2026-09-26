@@ -105,6 +105,8 @@ const emit = defineEmits({
     payload &&
     typeof payload.fromIndex === 'number' &&
     typeof payload.toIndex === 'number',
+  'reorder-tile': (payload) =>
+    payload && Number.isInteger(payload.fromIndex) && Number.isInteger(payload.toIndex),
 })
 
 /** 仅当父组件显式开启 discardMode 且非 SETUP 时才切牌 */
@@ -136,11 +138,15 @@ const emptySlotCount = computed(() =>
 
 const dragFrom = ref(null)
 const dropHover = ref(null)
+const handAnchor = ref(null)
+const pointerDrag = ref(null)
+let suppressClickUntil = 0
 const selectedTileIndex = ref(null)
 watch(tiles, () => { selectedTileIndex.value = null })
 
 /** 百搭可挪：有财神即可插嵌（切牌/移除仍受 disabled 约束） */
 const canArrangeJoker = computed(() => !!props.dealerTile)
+const canArrangeTile = computed(() => props.wallDriven && tiles.value.length > 1)
 
 function isHighlight(code) {
   return !!code && !!props.highlightTile && code === props.highlightTile
@@ -158,6 +164,7 @@ function isProxy(code) {
  * @param {{ code: string, index: number }} item
  */
 function handleTileClick(item) {
+  if (Date.now() < suppressClickUntil) return
   if (!item?.code) return
   // 百搭在只读座位：点击不移除/不切
   if (props.disabled && isJoker(item.code)) return
@@ -191,6 +198,58 @@ function toggleAutoSort() {
 function emitMoveJoker(fromIndex, toIndex) {
   if (fromIndex === toIndex) return
   emit('move-joker', { fromIndex, toIndex })
+}
+
+function insertionAt(clientX, clientY) {
+  const buttons = [...(handAnchor.value?.querySelectorAll('button[data-hand-index]') || [])]
+  if (!buttons.length) return null
+  const centers = buttons.map((button) => {
+    const rect = button.getBoundingClientRect()
+    return { index: Number(button.dataset.handIndex), x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+  })
+  const first = centers[0]
+  const last = centers[centers.length - 1]
+  const distance = Math.hypot(last.x - first.x, last.y - first.y) || 1
+  const axisX = (last.x - first.x) / distance
+  const axisY = (last.y - first.y) / distance
+  const pointerPosition = (clientX - first.x) * axisX + (clientY - first.y) * axisY
+  const closest = centers.reduce((best, center) => {
+    const position = (center.x - first.x) * axisX + (center.y - first.y) * axisY
+    const gap = Math.abs(pointerPosition - position)
+    return gap < best.gap ? { center, position, gap } : best
+  }, { center: first, position: 0, gap: Infinity })
+  return Math.max(0, Math.min(tiles.value.length,
+    closest.center.index + (pointerPosition > closest.position ? 1 : 0)))
+}
+
+function onTilePointerDown(event, item) {
+  if (!canArrangeTile.value || event.button !== 0) return
+  pointerDrag.value = { id: event.pointerId, fromIndex: item.index, x: event.clientX, y: event.clientY, active: false, insertAt: null }
+  event.currentTarget.setPointerCapture?.(event.pointerId)
+}
+
+function onTilePointerMove(event) {
+  const drag = pointerDrag.value
+  if (!drag || drag.id !== event.pointerId) return
+  if (!drag.active && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 8) return
+  drag.active = true
+  drag.insertAt = insertionAt(event.clientX, event.clientY)
+  event.preventDefault()
+}
+
+function onTilePointerUp(event) {
+  const drag = pointerDrag.value
+  if (!drag || drag.id !== event.pointerId) return
+  if (drag.active) {
+    event.preventDefault()
+    suppressClickUntil = Date.now() + 350
+    if (drag.insertAt != null) emit('reorder-tile', { fromIndex: drag.fromIndex, toIndex: drag.insertAt })
+  }
+  pointerDrag.value = null
+}
+
+function onTilePointerCancel(event) {
+  if (pointerDrag.value?.id === event.pointerId) pointerDrag.value = null
 }
 
 function onDragStart(e, item) {
@@ -262,6 +321,9 @@ function tileButtonClass(item, { drawn = false } = {}) {
       ? 'ring-2 ring-fuchsia-400/70 cursor-grab active:cursor-grabbing'
       : '',
     dropHover.value === item.index ? 'ring-2 ring-lime-300/80 scale-105' : '',
+    pointerDrag.value?.active && pointerDrag.value.fromIndex === item.index ? 'hand-dragging' : '',
+    pointerDrag.value?.active && pointerDrag.value.insertAt === item.index && pointerDrag.value.fromIndex !== item.index ? 'hand-insert-before' : '',
+    pointerDrag.value?.active && pointerDrag.value.insertAt === tiles.value.length && item.index === tiles.value.length - 1 && pointerDrag.value.fromIndex !== item.index ? 'hand-insert-after' : '',
     selectedTileIndex.value === item.index ? 'hand-tile-selected -translate-y-2 ring-2 ring-amber-200 z-[2]' : '',
   ]
 }
@@ -359,6 +421,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
     </div>
 
     <div
+      ref="handAnchor"
       class="flex flex-wrap items-end gap-1.5 sm:gap-2"
       :class="wallDriven ? 'pve-hand-anchor' : ''"
       role="list"
@@ -401,8 +464,9 @@ function tileButtonClass(item, { drawn = false } = {}) {
             type="button"
             role="listitem"
             :class="tileButtonClass(item)"
+            :data-hand-index="item.index"
             :aria-pressed="wallDriven && isDiscardReady ? selectedTileIndex === item.index : undefined"
-            :draggable="isJoker(item.code) && canArrangeJoker"
+            :draggable="!wallDriven && isJoker(item.code) && canArrangeJoker"
             :aria-disabled="disabled && !isJoker(item.code)"
             :title="
               setupMode
@@ -412,6 +476,10 @@ function tileButtonClass(item, { drawn = false } = {}) {
                   : `移出 ${tileLabel(item.code)}`
             "
             @click="handleTileClick(item)"
+            @pointerdown="onTilePointerDown($event, item)"
+            @pointermove="onTilePointerMove"
+            @pointerup="onTilePointerUp"
+            @pointercancel="onTilePointerCancel"
             @dragstart="onDragStart($event, item)"
             @dragover="onDragOver($event, item)"
             @dragleave="onDragLeave"
@@ -445,8 +513,9 @@ function tileButtonClass(item, { drawn = false } = {}) {
           type="button"
           role="listitem"
           :class="tileButtonClass(splitHand.drawn, { drawn: true })"
+          :data-hand-index="splitHand.drawn.index"
           :aria-pressed="wallDriven && isDiscardReady ? selectedTileIndex === splitHand.drawn.index : undefined"
-          :draggable="isJoker(splitHand.drawn.code) && canArrangeJoker"
+          :draggable="!wallDriven && isJoker(splitHand.drawn.code) && canArrangeJoker"
           :aria-disabled="disabled && !isJoker(splitHand.drawn.code)"
           :title="
             isDiscardReady
@@ -454,6 +523,10 @@ function tileButtonClass(item, { drawn = false } = {}) {
               : tileLabel(splitHand.drawn.code)
           "
           @click="handleTileClick(splitHand.drawn)"
+          @pointerdown="onTilePointerDown($event, splitHand.drawn)"
+          @pointermove="onTilePointerMove"
+          @pointerup="onTilePointerUp"
+          @pointercancel="onTilePointerCancel"
           @dragstart="onDragStart($event, splitHand.drawn)"
           @dragover="onDragOver($event, splitHand.drawn)"
           @dragleave="onDragLeave"
@@ -493,6 +566,14 @@ function tileButtonClass(item, { drawn = false } = {}) {
 
 <style scoped>
 .pve-stable-hand { position: relative; }
+.pve-stable-hand button[role="listitem"] { touch-action:none; user-select:none; }
+.pve-stable-hand button[role="listitem"].hand-dragging { z-index:5; opacity:.55; transform:translateY(-9px) scale(1.05); box-shadow:0 12px 22px #0008; }
+.pve-stable-hand button[role="listitem"].hand-insert-before { transform:translateX(9px); outline:3px solid #fcd34d; outline-offset:2px; }
+.pve-stable-hand button[role="listitem"].hand-insert-after { outline:3px solid #fcd34d; outline-offset:2px; }
+.pve-stable-hand button[role="listitem"].hand-insert-before::before,
+.pve-stable-hand button[role="listitem"].hand-insert-after::after { content:""; position:absolute; z-index:6; top:4px; bottom:4px; width:4px; border-radius:4px; background:#fcd34d; box-shadow:0 0 9px #fbbf24; pointer-events:none; }
+.pve-stable-hand button[role="listitem"].hand-insert-before::before { left:-11px; }
+.pve-stable-hand button[role="listitem"].hand-insert-after::after { right:-9px; }
 .pve-stable-hand .hand-move-move,
 .pve-stable-hand .hand-move-enter-active,
 .pve-stable-hand .hand-move-leave-active { transition: none !important; }

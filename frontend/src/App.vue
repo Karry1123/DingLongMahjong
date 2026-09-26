@@ -43,6 +43,19 @@ const appVersion = `v${appInfo.version}`
 const soundEngine = createSoundEngine()
 const soundMuted = ref(false)
 const soundVolume = ref(70)
+function unlockSoundFromGesture() {
+  if (!soundMuted.value) soundEngine.unlock()
+}
+onMounted(() => {
+  document.addEventListener('pointerdown', unlockSoundFromGesture, { passive: true })
+  document.addEventListener('touchstart', unlockSoundFromGesture, { passive: true })
+  document.addEventListener('keydown', unlockSoundFromGesture)
+})
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', unlockSoundFromGesture)
+  document.removeEventListener('touchstart', unlockSoundFromGesture)
+  document.removeEventListener('keydown', unlockSoundFromGesture)
+})
 watch([soundMuted, soundVolume], () => {
   soundEngine.setVolume(soundVolume.value / 100)
   soundEngine.setMuted(soundMuted.value)
@@ -123,6 +136,7 @@ const {
   latestDrawnBySeat,
   recommendDrawToken,
   moveJokerInHand,
+  moveSelfTileInHand,
   handLayoutPinned,
   abortCurrentRecommend,
   beginRecommendFetch,
@@ -1672,6 +1686,7 @@ async function onReset(clearHistory = false) {
               toIndex,
             })
         "
+        @reorder-tile="({ fromIndex, toIndex }) => moveSelfTileInHand(fromIndex, toIndex)"
         @manual-sort="manualSortHand"
       />
 
