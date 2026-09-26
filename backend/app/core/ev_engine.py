@@ -2,7 +2,8 @@
 
 对齐 rule.md §5 / §6 与 scoring.calculate_hu_points：
     进攻 EV_attack(D)
-        · 听牌 / 一向听：Σ_T (Rem(T)/TotalRem) · (H_final(T) × 庄闲系数)
+        · 听牌：Σ_T Rem(T)/8 · (H_final(T) × 庄闲系数)
+          8 为标准两面等待张数基准，保留不同切法的进张概率差。
           庄家系数 ×3，闲家 ×2；进张按自摸估；**无自摸加番、无辣子封顶**。
         · 多向听（≥2 或进张折现为 0）：
           EV_attack ≈ 有效进张×质量权重 + 搭子成型分 + 役牌潜力(×Rem衰减)
@@ -213,9 +214,8 @@ def calculate_best_discards(
             remain_logical, 0, needed_melds=needed_melds
         )
 
-        # 切出 D 后：手牌少一张 D，Rem(D) 相应 +1（供进张权重）
-        rem_after = dict(table_rem)
-        rem_after[discard] = rem_after.get(discard, 0) + 1
+        # D 从手牌转入牌河；可摸的未知剩余张数不变。
+        rem_after = table_rem
 
         # 听牌才做胡分/进张穷举；一向听及以上只用进张枚数 + 深向听近似
         light_ukeire = shanten >= 1
@@ -287,13 +287,10 @@ def calculate_best_discards(
                 - max(shanten, 0) * _DEEP_SHANTEN_UNIT
             )
         else:
-            # ukeire_attack 是「已经摸中胡张」的条件均值。切牌排序还须计入
-            # 摸中机会，否则高胡数的窄听会压过进张更多的两面听。
-            overlap = _overlap_pair_ryanmen_shape(hand_tiles, dealer_tile)
+            # 条件均分乘以进张机会；所有听牌形都使用相同分母。
             attack_ev = float(ukeire_attack) * (
                 effective_count / _TENPAI_RYANMEN_BASELINE
-                if shanten == 0 and overlap and discard in overlap["choices"]
-                else 1.0
+                if shanten == 0 else 1.0
             )
         attack_ev += shape_upgrade_bonus + anti_pong_bonus
 

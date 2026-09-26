@@ -60,7 +60,7 @@ class TestJokerDragonSequenceOverlap(unittest.TestCase):
         self.assertGreater(candidates[1]["ev_score"], candidates[0]["ev_score"])
         self.assertIn("保护对子顺子复合形", candidates[0]["note"])
 
-    def test_cut_surplus_four_sou_instead_of_live_green_dragon(self):
+    def test_surplus_four_sou_and_green_dragon_compare_by_full_ev(self):
         melds = [
             _m(MeldType.CHI, ["1p", "2p", "3p"]),
             _m(MeldType.CHI, ["5m", "6m", "7m"]),
@@ -77,12 +77,13 @@ class TestJokerDragonSequenceOverlap(unittest.TestCase):
             opponents=opponents, include_self_gang=False,
         )
         by_tile = {c["tile"]: c for c in result["candidates"]}
-        self.assertEqual(result["best_tile"], "4s")
         self.assertIn("4s", by_tile)
         self.assertIn("F", by_tile)
         self.assertEqual(by_tile["4s"]["shanten"], 0)
-        self.assertGreater(by_tile["4s"]["ev_score"], by_tile["F"]["ev_score"])
+        self.assertEqual(by_tile["F"]["shanten"], 0)
+        self.assertGreater(by_tile["F"]["effective_count"], by_tile["4s"]["effective_count"])
         self.assertGreater(by_tile["4s"]["est_final_points"], by_tile["F"]["est_final_points"])
+        self.assertEqual(result["best_tile"], max(by_tile.values(), key=lambda c: c["ev_score"])["tile"])
         self.assertIn("锁定完整顺子", by_tile["4s"]["note"])
         self.assertIn("三元番潜力", by_tile["4s"]["note"])
         self.assertFalse(by_tile["F"]["is_safe_all"])
@@ -124,6 +125,31 @@ class TestEvUsesRealScoring(unittest.TestCase):
             _m(MeldType.CHI, ["2m", "3m", "4m"]),
         ]
         self.hand = ["1p", "1p", "4p", "4p", "9p"]
+
+    def test_drawn_six_man_beats_five_man_with_more_waits_and_lower_risk(self):
+        # Screenshot: F is the joker; 8s on the table leaves one copy to draw.
+        hand = ["F", "5m", "6m", "4p", "6p", "8s", "8s", "6m"]
+        melds = [_m(MeldType.PONG, ["S"] * 3), _m(MeldType.PONG, ["9m"] * 3)]
+        opponents = [
+            PlayerState(seat_wind="W", discards=["8m", "1m"]),
+            PlayerState(seat_wind="N", discards=["1p", "9s"]),
+            PlayerState(seat_wind="S", discards=["N", "W", "2s", "8s"]),
+        ]
+        result = calculate_best_discards(
+            hand_tiles=hand, dealer_tile="F", is_dealer=True, seat_wind="E",
+            melds=melds, opponents=opponents,
+            discarded_tiles=["1m", "1p", "9s", "8m", "1m", "1p", "9s", "N", "W", "2s", "8s"],
+            include_self_gang=False,
+        )
+        by_tile = {c["tile"]: c for c in result["candidates"]}
+        five, six = by_tile["5m"], by_tile["6m"]
+        self.assertEqual((five["shanten"], six["shanten"]), (0, 0))
+        self.assertEqual((five["effective_count"], six["effective_count"]), (9, 14))
+        self.assertEqual(next(t["rem"] for t in five["effective_tiles"] if t["tile"] == "8s"), 1)
+        self.assertEqual(next(t["rem"] for t in six["effective_tiles"] if t["tile"] == "F"), 2)
+        self.assertLess(max(six["deal_in_risks"].values()), max(five["deal_in_risks"].values()))
+        self.assertGreater(six["ev_score"], five["ev_score"])
+        self.assertEqual(result["best_tile"], "6m")
 
     def test_discard_9p_matches_scoring_module(self):
         result = calculate_best_discards(
