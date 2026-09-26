@@ -21,7 +21,7 @@ export function spokenAction(action, tile) {
   return { CHI: '吃！', PONG: '碰！', GANG: '杠！', WIN: '胡了！' }[action] || ''
 }
 
-/** Predecoded clips for WeChat, browser speech elsewhere, and synthesized table cues. */
+/** Fetch/decode clips without media elements; speech is a compatibility fallback. */
 export function createSoundEngine(browser = globalThis) {
   let volume = 0.7
   let muted = false
@@ -35,7 +35,7 @@ export function createSoundEngine(browser = globalThis) {
   let voiceWaitExpired = false
   let primingUtterance = null
   let speechUnlocked = false
-  const preferClips = /MicroMessenger/i.test(browser.navigator?.userAgent || '')
+  const preferClips = !!((browser.AudioContext || browser.webkitAudioContext) && browser.fetch)
   const clipBuffers = new Map()
   const clipLoads = new Map()
   const activeSources = new Set()
@@ -79,6 +79,8 @@ export function createSoundEngine(browser = globalThis) {
     if (clipLoads.has(code)) return clipLoads.get(code)
     const load = (async () => {
       try {
+        // Keep WAVs on the fetch/ArrayBuffer path. Audio elements (including
+        // muted preload pools and blob URLs) can trigger download extensions.
         const response = await browser.fetch(`${CLIP_BASE}${code}.wav`)
         if (!response.ok) return false
         clipBuffers.set(code, await decodeClip(await response.arrayBuffer()))

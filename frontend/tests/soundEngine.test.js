@@ -105,18 +105,25 @@ test('missing speech API falls back without throwing', () => {
   assert.equal(tones, 2)
 })
 
-test('WeChat preloads decoded tile clips and plays named tiles without speech synthesis', async () => {
+for (const userAgent of ['MicroMessenger', 'Chrome']) {
+test(`${userAgent} preloads via fetch and reuses decoded buffers without media elements`, async () => {
   const requested = []
   const sources = []
   const listeners = new Map()
   let spoken = 0
+  let decoded = 0
+  let bytesRead = 0
   class AudioContext {
     state = 'suspended'
     currentTime = 0
     sampleRate = 16000
     destination = {}
     resume() { this.state = 'running'; return Promise.resolve() }
-    decodeAudioData() { return Promise.resolve({ duration: 0.4 }) }
+    decodeAudioData(bytes) {
+      assert.ok(bytes instanceof ArrayBuffer)
+      decoded++
+      return Promise.resolve({ duration: 0.4 })
+    }
     createBuffer() { return { getChannelData: () => new Float32Array(400) } }
     createBufferSource() {
       const source = { playbackRate: { value: 1 }, connect() { return this }, start(time) { this.startedAt = time }, stop() {} }
@@ -128,12 +135,14 @@ test('WeChat preloads decoded tile clips and plays named tiles without speech sy
     close() {}
   }
   const browser = {
-    navigator: { userAgent: 'MicroMessenger' }, AudioContext,
+    navigator: { userAgent }, AudioContext,
+    Audio: class { constructor() { assert.fail('Audio elements must never be used') } },
     document: {
+      createElement() { assert.fail('Media elements must never be created') },
       addEventListener: (name, callback) => listeners.set(name, callback),
       removeEventListener: (name) => listeners.delete(name),
     },
-    fetch: async (url) => { requested.push(url); return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) } },
+    fetch: async (url) => { requested.push(url); return { ok: true, arrayBuffer: async () => { bytesRead++; return new ArrayBuffer(8) } } },
     SpeechSynthesisUtterance: class { constructor(text) { this.text = text } },
     speechSynthesis: { getVoices: () => [{ name: 'Huihui', lang: 'zh-CN' }], speak: () => { spoken++ }, cancel() {} },
   }
@@ -141,14 +150,22 @@ test('WeChat preloads decoded tile clips and plays named tiles without speech sy
   listeners.get('WeixinJSBridgeReady')()
   await engine.unlock()
   assert.equal(requested.length, 38)
+  assert.equal(bytesRead, 38)
+  assert.equal(decoded, 38)
   assert.ok(requested.some(url => url.endsWith('/audio/tiles/1m.wav')))
   engine.playAction({ action: 'DISCARD', tile: '1m', seat: 'E', selfSeat: 'E' })
   assert.equal(spoken, 0)
   assert.equal(sources.length, 3) // Two table taps and one spoken tile clip.
   assert.ok(sources[2].startedAt >= 0.14)
+  await engine.unlock()
+  engine.playAction({ action: 'DISCARD', tile: '1m', seat: 'E', selfSeat: 'E' })
+  assert.equal(sources[5].buffer, sources[2].buffer)
+  assert.equal(requested.length, 38)
+  assert.equal(decoded, 38)
   engine.stop(true)
   assert.equal(listeners.has('WeixinJSBridgeReady'), false)
 })
+}
 
 test('WeChat can play the requested tile while other clips are still loading', async () => {
   let releaseOtherClips
