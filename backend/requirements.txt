@@ -1,4 +1,5 @@
 fastapi>=0.115,<1
 uvicorn>=0.30,<1
+websockets>=14,<17
 pydantic>=2.7,<3
 psycopg[binary]>=3.2,<4

@@ -1,9 +1,10 @@
 import os
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from app.core.origins import LanCORSMiddleware
 
 from app.api.routes import router
+from app.api.rooms import router as room_router
 
 _LOCAL_ORIGINS = [
     "https://ding-long-mahjong.vercel.app",
@@ -23,18 +24,18 @@ def _parse_allowed_origins(raw: str) -> list[str]:
 
 allowed_origins = _parse_allowed_origins(os.getenv("ALLOWED_ORIGINS", ""))
 
-app = FastAPI(title="顶龙麻将", version="0.2.3-beta")
+app = FastAPI(title="顶龙麻将", version="0.3.1-beta")
 
 app.add_middleware(
-    CORSMiddleware,
+    LanCORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"^https://[a-zA-Z0-9-]+\.vercel\.app$",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(router)
+app.include_router(room_router)
 
 
 @app.get("/health")

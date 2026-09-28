@@ -7,9 +7,10 @@
  */
 import { ref } from 'vue'
 import { cacheLocalRecords, readLocalRecords, LOCAL_MAX_RECORDS } from '../utils/gameRecordCache.js'
+import { resolveApiBase } from './apiBase.js'
 
 // 开发环境走 Vite /api 代理；生产环境由 Vercel 构建变量指定 Render 域名。
-const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+const API_BASE = resolveApiBase(import.meta.env?.VITE_API_BASE_URL || '')
 const WAKE_MESSAGE = '云端计算引擎唤醒中，首次加载约需数十秒，请稍候...'
 const slowRequests = new Set()
 let requestSequence = 0

@@ -4,13 +4,13 @@ import { tileLabel } from '../constants/tiles.js'
 import { windLabel } from '../utils/seatLayout.js'
 
 const SEATS = ['E', 'S', 'W', 'N']
-const AI_THINK_MS = 3000
+const AI_THINK_MS = 6000
 const priority = (type) => ({ ming_gang: 2, pong: 2, chi: 1 })[type] || 0
 
 /** One serial driver owns all AI actions. Waking during an awaited step is never lost. */
 export function usePvEAutomation(session, options = {}) {
   const recommend = options.recommend || getRecommendDecision
-  const delayMs = options.delayMs || (() => AI_THINK_MS)
+  const delayMs = options.delayMs || ((kind) => kind === 'response' ? 3000 : AI_THINK_MS)
   const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
   const busy = ref(false)
   const thinkingSeat = ref('')
@@ -67,7 +67,7 @@ export function usePvEAutomation(session, options = {}) {
         busy.value = true
         thinkingSeat.value = huSeat
         status.value = `${windLabel(huSeat)}风 AI 正在思考和牌…`
-        await sleep(delayMs())
+        await sleep(delayMs('response'))
         if (!valid(epoch, snapshot)) return false
         const robKong = !!s.lastStepResult.value?._pending_add_kong
         await s.declareOpponentWin({ seat: huSeat, winType: robKong ? 'rob_kong' : 'catch_win', winTile: claimed, discarderSeat: provider })
@@ -90,7 +90,7 @@ export function usePvEAutomation(session, options = {}) {
       busy.value = true
       thinkingSeat.value = call.seat
       status.value = `${windLabel(call.seat)}风 AI 正在思考${{ chi: '吃牌', pong: '碰牌', ming_gang: '明杠' }[call.type]}…`
-      await sleep(delayMs())
+      await sleep(delayMs('response'))
       if (!valid(epoch, snapshot)) return false
       const tiles = call.type === 'chi' ? call.chiCombos[0] : Array(call.type === 'pong' ? 3 : 4).fill(claimed)
       await s.executeOpponentMeld({ seat: call.seat, meld_type: call.type, tiles, provider_seat: provider, claimed_tile: claimed })
@@ -103,7 +103,6 @@ export function usePvEAutomation(session, options = {}) {
     busy.value = true
     thinkingSeat.value = seat
     status.value = `${windLabel(seat)}风 AI 正在思考切牌…`
-    const thinkingTimer = sleep(delayMs())
     // This is idempotent: chi/pong already has a discard-ready hand, so no extra draw.
     await s.ensureGodViewDrawForSeat(seat)
     if (!active() || epoch !== generation || s.currentTurnSeat.value !== seat || s.isResponseWindow.value) return false
@@ -112,6 +111,8 @@ export function usePvEAutomation(session, options = {}) {
       throw new Error(`${windLabel(seat)}风 AI 手牌张数异常，无法评估切牌`)
     }
     const snapshot = key.value
+    const startedAt = Date.now()
+    const thinkingTimer = sleep(delayMs('discard'))
     const payload = {
       hand_tiles: [...state.hand_tiles], melds: state.melds, discards: state.discards,
       dealer_tile: s.roundState.dealerTile, seat_wind: seat, round_wind: s.roundState.roundWind,
@@ -122,7 +123,9 @@ export function usePvEAutomation(session, options = {}) {
       })),
     }
     // Think time overlaps the network request rather than adding latency before it.
-    const [rec] = await Promise.all([recommend(payload, { signal: controller.signal }), thinkingTimer])
+    const rec = await recommend(payload, { signal: controller.signal })
+    if (rec.can_self_win || rec.self_win_info?.is_win) await sleep(Math.max(0, delayMs('response') - (Date.now() - startedAt)))
+    else await thinkingTimer
     if (!valid(epoch, snapshot)) return false
     s.setPendingAiRecommend(seat, rec)
     if (rec.can_self_win || rec.self_win_info?.is_win) {

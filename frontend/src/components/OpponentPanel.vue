@@ -1,5 +1,6 @@
 <script setup>
 import MahjongTile from './MahjongTile.vue'
+import MeldTiles from './MeldTiles.vue'
 /**
  * 三方对手公开信息：弃牌河 + 副露。
  * - 串行出牌：仅 currentTurnSeat 对手可打出
@@ -859,16 +860,7 @@ function claimHint(seat) {
               <span class="text-[10px] text-amber-100/90">
                 {{ MELD_TYPE_LABEL[m.meld_type] || m.meld_type }}
               </span>
-              <span class="flex flex-wrap gap-0.5">
-                <span
-                  v-for="(t, ti) in m.tiles"
-                  :key="ti"
-                  class="inline-flex h-7 min-w-5 px-1 items-center justify-center rounded border text-[9px] font-bold"
-                  :class="tileSuitClass(t)"
-                >
-                  <MahjongTile :code="t" style="--tw:22px; --th:29px; margin-bottom:0" />
-                </span>
-              </span>
+              <MeldTiles :meld="m" :dealer-tile="dealerTile" style="--tw:22px; --th:29px" />
               <span
                 v-if="!tableLocked"
                 class="ml-auto text-[10px] text-teal-500"

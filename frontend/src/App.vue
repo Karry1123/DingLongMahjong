@@ -24,8 +24,13 @@ import GodOpeningCeremony from './components/GodOpeningCeremony.vue'
 import DiscardRiver from './components/DiscardRiver.vue'
 import PlayerWorkbench from './components/PlayerWorkbench.vue'
 import { usePvEAutomation } from './composables/usePvEAutomation.js'
+import { usePvEClocks } from './composables/usePvEClocks.js'
+import SeatClock from './components/SeatClock.vue'
 import PvECircleSummary from './components/PvECircleSummary.vue'
 import PveStartDialog from './components/PveStartDialog.vue'
+import HomeModeSelect from './components/HomeModeSelect.vue'
+import PvpLobby from './components/PvpLobby.vue'
+import { pvpRoute } from './utils/pvpEntry.js'
 import { useGameSession } from './composables/useGameSession.js'
 import { useHuPreview } from './composables/useHuPreview.js'
 import { gameStatusHint, createGameStatusTracker } from './utils/gameStatusHint.js'
@@ -35,15 +40,22 @@ import { cloudWakeMessage, getRecommendDecision, getOpponentThreats, isAbortErro
 import { relativeOpponents, tileLabel } from './constants/tiles.js'
 import { DEALER_SEAT, windLabel } from './utils/seatLayout.js'
 import { createSoundEngine } from './utils/soundEngine.js'
+import { createScreenWakeLock } from './utils/screenWakeLock.js'
 import appInfo from '../package.json'
 
 const appVersion = `v${appInfo.version}`
+const dissolvedMessage = ref('')
+function roomDissolved(message) { closePvpOpening(); soundEngine.stop(); closePvpMode(); dissolvedMessage.value = message }
+watch(dissolvedMessage, async message => { if (message) { await nextTick(); document.querySelector('[data-dismiss-room]')?.focus() } })
 
 // ---------------------------------------------------------------------------
 // 会话状态（单一真相源）
 // ---------------------------------------------------------------------------
 
 const soundEngine = createSoundEngine()
+const screenWakeLock = createScreenWakeLock()
+onMounted(() => screenWakeLock.start())
+onUnmounted(() => { void screenWakeLock.stop() })
 const soundMuted = ref(false)
 const soundVolume = ref(70)
 function unlockSoundFromGesture() {
@@ -65,6 +77,13 @@ watch([soundMuted, soundVolume], () => {
 }, { immediate: true })
 onUnmounted(() => soundEngine.stop(true))
 const openingRound = ref(null)
+function showPvpOpening({ gameId, dealerTile, revealUntil }) {
+  soundEngine.stop()
+  document.querySelector('.game-stage')?.scrollTo({ top:0 })
+  openingRound.value = { tile:dealerTile, id:gameId, mode:'PVP', revealUntil }
+  void soundEngine.playOpening()
+}
+function closePvpOpening() { if (openingRound.value?.mode === 'PVP') completeGodOpening(false) }
 let openingSequence = 0, resolveOpening = null
 function completeGodOpening(completed = true) {
   openingRound.value = null
@@ -85,6 +104,7 @@ function showGodOpening({ dealerTile }) {
 }
 onUnmounted(() => completeGodOpening(false))
 const session = useGameSession({ onAction: soundEngine.playAction, onPveOpening: showGodOpening })
+watch(() => [session.gameState.value, session.gameMode.value], () => { void screenWakeLock.request() })
 const {
   roundState,
   currentPhase,
@@ -168,9 +188,23 @@ const {
   currentRecommendAbortController,
 } = session
 
-const activeUiMode = ref('')
+const activeUiMode = ref(pvpRoute(location.hash) ? 'PVP' : '')
+const pvpPlaying = ref(false)
+watch(pvpPlaying, playing => { if (playing) void screenWakeLock.request() })
+const entryLayout = computed(() => !activeUiMode.value || activeUiMode.value === 'PVP' && !pvpPlaying.value)
+function choosePvpMode() { location.hash = '/pvp'; activeUiMode.value = 'PVP' }
+function closePvpMode() {
+  history.replaceState(null, '', `${location.pathname}${location.search}`)
+  activeUiMode.value = ''
+}
+function syncEntryRoute() {
+  if (pvpRoute(location.hash)) activeUiMode.value = 'PVP'
+  else if (activeUiMode.value === 'PVP') activeUiMode.value = ''
+}
+onMounted(() => window.addEventListener('hashchange', syncEntryRoute))
+onUnmounted(() => window.removeEventListener('hashchange', syncEntryRoute))
 const sandboxLeaving = ref(false)
-const stageActive = computed(() => gameMode.value === 'PVE' && activeUiMode.value === 'PVE')
+const stageActive = computed(() => gameMode.value === 'PVE' && activeUiMode.value === 'PVE' || activeUiMode.value === 'PVP' && pvpPlaying.value)
 watch(gameMode, mode => { if (mode !== 'PVE') completeGodOpening(false) })
 onMounted(() => {
   document.documentElement.classList.add('game-stage-scroll-lock')
@@ -548,6 +582,7 @@ const canSelfWin = computed(() => {
   if (!(handReadyToDiscard.value || isMyDiscardTurn.value)) return false
   return !!selfWinInfo.value?.is_win
 })
+const { clocks:pveClocks, timeBanks:pveTimeBanks, error:pveTimerError } = usePvEClocks(session, { canSelfWin:()=>canSelfWin.value, onSelfWin:()=>onDeclareSelfWin() })
 const huPreviewPayload = computed(() => {
   if (!isPlaying.value || pveOpening.value) return null
   const actions = activeCallDecision.value?.available_actions || activeCallDecision.value?.candidates?.map(row => row.action) || []
@@ -1422,26 +1457,20 @@ async function onReset(clearHistory = false) {
   <div
     class="game-stage app-shell min-h-screen bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 px-4 py-8 sm:px-6 sm:py-10"
     :style="{ transform: stageTransform }"
-    :class="[stageActive ? 'pve-stage-shell' : '', { 'is-stage-active': stageActive, 'is-home-stage': !activeUiMode }]"
+    :class="[stageActive ? 'pve-stage-shell' : '', { 'is-stage-active': stageActive, 'is-home-stage': !activeUiMode, 'is-entry-stage': entryLayout }]"
   >
-    <GodOpeningCeremony v-if="openingRound" :key="openingRound.id" :dealer-tile="openingRound.tile" @complete="completeGodOpening()" />
-    <section v-if="!activeUiMode" class="home-screen mx-auto flex min-h-[75vh] max-w-5xl flex-col items-center justify-center text-center">
-      <p class="text-sm font-semibold tracking-[0.25em] text-amber-300">实战练习 · 智能决策</p>
-      <h1 class="mt-3 text-4xl font-bold text-amber-50 sm:text-5xl">顶龙麻将</h1>
-      <p class="mt-3 max-w-xl text-sm leading-6 text-teal-100/70">使用实时净 EV 辅助练习，或进入全景沙盘自由推演。</p>
-      <div class="mt-9 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
-        <button class="rounded-3xl border border-amber-300/60 bg-amber-400/15 p-7 text-left transition hover:-translate-y-1 hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading || exitingGame" @click="openPveConfig">
-          <span class="text-2xl">人机对战</span><span class="mt-2 block text-sm text-amber-100/70">带 EV 辅助 · 三家 AI 自主决策</span>
-        </button>
-        <button class="rounded-3xl border border-teal-300/35 bg-teal-900/40 p-7 text-left transition hover:-translate-y-1 hover:bg-teal-800/50 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading || exitingGame" @click="chooseSandboxMode">
-          <span class="text-2xl text-teal-50">全景上帝视角沙盘</span><span class="mt-2 block text-sm text-teal-100/65">自定义牌局 · 手动推演四方行动</span>
-        </button>
-      </div>
+    <GodOpeningCeremony v-if="openingRound" :key="openingRound.id" :dealer-tile="openingRound.tile" :reveal-until="openingRound.revealUntil || 0" @complete="completeGodOpening()" />
+    <div v-if="dissolvedMessage" class="pvp-dissolved-overlay" @keydown.esc="dissolvedMessage = ''" @keydown.tab.prevent>
+      <section class="pvp-dissolved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="room-dissolved-title"><h2 id="room-dissolved-title">房间已解散</h2><p>{{ dissolvedMessage }}</p><button type="button" data-dismiss-room @click="dissolvedMessage = ''">返回主页</button></section>
+    </div>
+    <section v-if="!activeUiMode" :inert="!!dissolvedMessage || undefined" class="home-screen mx-auto flex min-h-[75vh] max-w-5xl flex-col items-center justify-center text-center">
+      <HomeModeSelect :busy="pveStartLoading || exitingGame" @pve="openPveConfig" @pvp="choosePvpMode" @sandbox="chooseSandboxMode" />
       <p v-if="pveStartLoading" class="mt-5 text-sm text-teal-100" role="status">正在连接云端计算引擎并初始化对局…</p>
       <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
       <p v-if="errorMsg" class="mt-5 text-sm text-rose-200">{{ errorMsg }}</p>
       <PveStartDialog v-if="pveConfigOpen" v-model:enableEV="enableEV" :busy="pveStartLoading" @close="pveConfigOpen = false" @start="choosePveMode" />
     </section>
+    <PvpLobby v-else-if="activeUiMode === 'PVP'" :key="activeUiMode" :opening="!!openingRound" :sound-muted="soundMuted" :sound-volume="soundVolume" @fullscreen="enterFullscreenOnMobileStart" @playing="pvpPlaying = $event" @home="closePvpMode" @dissolved="roomDissolved" @opening="showPvpOpening" @opening-end="closePvpOpening" @sound="soundEngine.playAction($event)" @mute="soundMuted = !soundMuted; if (!soundMuted) soundEngine.unlock()" @volume="soundVolume = $event" />
     <div v-else :class="gameMode === 'PVE' ? 'pve-session-view' : ''">
     <header class="mb-8 text-center">
       <h1
@@ -1701,7 +1730,12 @@ async function onReset(clearHistory = false) {
         :ai-status="aiStatus"
         :ai-announcement="aiAnnouncement"
         :thinking-seat="aiThinkingSeat"
+        :clocks="pveClocks"
+        :time-banks="pveTimeBanks"
       />
+      <SeatClock v-if="gameMode === 'PVE'" class="pve-self-clock" :wind="seatWind" :clock="pveClocks[seatWind]" :bank-ms="pveTimeBanks[seatWind]" />
+      <span v-if="gameMode === 'PVE'" class="pve-self-time-label">自家 · {{ windLabel(seatWind) }}风</span>
+      <p v-if="gameMode === 'PVE' && pveTimerError" role="alert">{{ pveTimerError }}</p>
 
       <div v-if="gameMode === 'PVE'" class="pve-situation-hud game-status-hint" :class="`risk-${opponentWarning.level}`" role="status" aria-live="polite">
         <Transition name="situation-hint" mode="out-in"><span :key="opponentWarning.text">{{ opponentWarning.text }}</span></Transition>
@@ -1958,11 +1992,16 @@ async function onReset(clearHistory = false) {
 </template>
 
 <style>
+.pvp-dissolved-overlay { position:fixed; inset:0; z-index:160; display:grid; place-items:center; padding:20px; background:#001b17c9; backdrop-filter:blur(5px); }.pvp-dissolved-dialog { width:min(100%,420px); padding:28px; border:1px solid #d5b16a80; border-radius:20px; background:#123e32; color:#f4e1b0; text-align:center; }.pvp-dissolved-dialog h2 { font-size:22px; }.pvp-dissolved-dialog p { margin:18px 0; overflow-wrap:anywhere; }.pvp-dissolved-dialog button { padding:10px 20px; border-radius:10px; background:#d5b875; color:#173f30; }
 .viewport-wrapper:has(.god-opening) [data-god-slot] .mahjong-tile { opacity:0; }
 .viewport-wrapper { position:fixed; top:0; left:0; z-index:20; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:#06221d; }
 .viewport-wrapper > .game-stage { box-sizing:border-box; position:absolute; top:50%; left:50%; width:1280px !important; height:720px !important; min-height:0 !important; overflow:auto; padding:24px 32px !important; transform-origin:center center; }
 .viewport-wrapper > .game-stage.is-home-stage { overflow:hidden; padding:36px 64px !important; }
 .viewport-wrapper .home-screen { width:100%; max-width:1080px; min-height:100%; }
+.viewport-wrapper > .game-stage.is-entry-stage { padding:20px 32px !important; overflow:hidden; display:flex; flex-direction:column; background:radial-gradient(ellipse at 20% 0%,#24574766,transparent 60%),linear-gradient(145deg,#0a3028,#06221e); }
+.viewport-wrapper > .game-stage.is-entry-stage:has(.god-opening) { overflow:hidden; }
+.viewport-wrapper .is-entry-stage .home-screen { flex:1; min-height:0 !important; }
+.is-entry-stage > .app-version-footer { flex-shrink:0; padding-top:0; margin-top:8px; }
 .viewport-wrapper.is-sandbox-leaving .god-view { opacity:0; transform:translateY(4px); transition:opacity 150ms ease, transform 150ms ease; }
 .viewport-wrapper.is-stage-active { overscroll-behavior:none; }
 html.game-stage-scroll-lock, body.game-stage-scroll-lock,
@@ -1985,6 +2024,8 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-workbench > .pve-self-controls { grid-row:3; height:100%; min-height:0; position:relative; overflow:visible; margin:0; }
 .viewport-wrapper.is-stage-active .pve-self-controls > * { min-height:0; margin:0 !important; }
 .viewport-wrapper.is-stage-active .pve-self-controls > .pve-self-hand { position:absolute; bottom:0; left:0; width:100%; height:94px; padding:4px 8px; overflow:hidden; }
+.viewport-wrapper.is-stage-active .pve-self-clock { position:absolute; z-index:14; left:12px; bottom:30px; min-width:110px; }
+.viewport-wrapper.is-stage-active .pve-self-time-label { position:absolute; z-index:14; left:12px; bottom:5px; color:#dfd0a1; font-size:11px; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child { position:absolute; z-index:2; top:5px; right:8px; width:max-content; max-width:250px; display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin:0; text-align:right; pointer-events:none; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child h2 { font-size:12px; line-height:1; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child .pve-hand-caption { font-size:10px; line-height:1.2; white-space:nowrap; }

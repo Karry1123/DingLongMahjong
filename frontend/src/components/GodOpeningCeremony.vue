@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import MahjongTile from './MahjongTile.vue'
 import { tileLabel } from '../constants/tiles.js'
-const props = defineProps({ dealerTile: { type:String, required:true } })
+const props = defineProps({ dealerTile: { type:String, required:true }, revealUntil: { type:Number, default:0 } })
 const emit = defineEmits(['complete'])
 const overlay = ref(null), phase = ref('reveal'), destination = ref(null)
 let revealTimer, flightTimer
@@ -32,7 +32,7 @@ onMounted(() => {
   revealTimer=setTimeout(() => {
     locateSlot(); phase.value='flight'
     flightTimer=setTimeout(() => emit('complete'),600)
-  },3000)
+  }, props.revealUntil ? Math.max(0, props.revealUntil-Date.now()) : 3000)
   window.addEventListener('resize',onResize)
 })
 onUnmounted(() => {

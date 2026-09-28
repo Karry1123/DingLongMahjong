@@ -1,7 +1,7 @@
 # 本地语音与图形牌面
 
-运行后端：在 `backend` 执行 `.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000`。
-运行前端：在 `frontend` 执行 `npm run dev -- --host 127.0.0.1 --port 5178`。
+运行后端：在 `backend` 执行 `.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000`。
+运行前端：在 `frontend` 执行 `npm run dev -- --host 0.0.0.0 --port 5178`。
 
 - 游戏：<http://127.0.0.1:5178/>
 - 全部条筒牌面及字牌试听：<http://127.0.0.1:5178/?preview=tiles>

@@ -2,6 +2,21 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSoundEngine, spokenAction, voiceProfileForSeat } from '../src/utils/soundEngine.js'
 
+test('turn reminder plays a short two-tone Web Audio cue and obeys mute without speech or downloads',()=>{
+  const tones=[],requests=[]
+  class Context {
+    currentTime=0;state='running';destination={}
+    createOscillator(){return {frequency:{set value(v){tones.push(v)}},connect(){return this},start(){},stop(){}}}
+    createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){return this}}}
+    close(){}
+  }
+  const engine=createSoundEngine({AudioContext:Context,fetch:url=>requests.push(url)})
+  engine.playAction({action:'TURN'})
+  assert.deepEqual(tones,[660,880]);assert.deepEqual(requests,[])
+  engine.setMuted(true);engine.playAction({action:'TURN'});assert.equal(tones.length,2)
+  engine.stop(true)
+})
+
 function deferredClipEngine(fetch) {
   const played = []
   const spoken = []

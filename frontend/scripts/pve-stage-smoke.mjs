@@ -90,7 +90,7 @@ try {
   }
   await command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
   await capture('home-portrait')
-  await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.includes('全景上帝视角沙盘')).click()`)
+  await evaluate(`document.querySelector('[data-mode="sandbox"]').click()`)
   await until(() => evaluate(`!!document.querySelector('.god-view-return')`))
   assert.ok(await evaluate(`(() => {
     const button=document.querySelector('.god-view-return'), rect=button.getBoundingClientRect();
@@ -114,6 +114,12 @@ try {
   await command('Emulation.setTouchEmulationEnabled', { enabled: false })
   await evaluate(`document.querySelector('#app').__vue_app__._instance.setupState.enableEV=true`)
   await until(() => evaluate(`!!document.querySelector('.pve-discard-hud .hud-tile')`))
+
+  await until(() => evaluate(`!document.querySelector('.god-opening')&&!!document.querySelector('[data-clock-wind="E"]')`))
+  assert.equal(await evaluate(`document.querySelectorAll('[data-bank-wind]').length`),4)
+  await until(() => evaluate(`document.querySelector('[data-clock-wind="E"]').dataset.timerStage==='bank'`))
+  assert.ok(await evaluate(`Number(document.querySelector('[data-bank-wind="E"] b').textContent)>=29`))
+  await capture('pve-time-bank-active')
 
   const viewports = [[390, 844, true], [393, 852, true], [844, 390, true], [1280, 720, false], [1920, 1080, false]]
   const results = []
@@ -274,8 +280,14 @@ try {
     })()`)
     assert.ok(panel.panelFits && panel.panelClearOfHand && !panel.scroll && panel.buttons.length===2 && panel.buttons.every(button=>button.visible&&button.hit&&button.name&&button.previewVisible&&button.height>=78&&button.height<=110), `${width}x${height}: clipped action bar ${JSON.stringify(panel)}`)
   }
-  await evaluate(`(() => {const state=document.querySelector('#app').__vue_app__._instance.setupState;state.currentPhase='MY_TURN_DISCARD';state.lastStepResult=null})()`)
-  assert.ok(await evaluate(`document.querySelector('.pve-situation-hud').textContent.includes('牌局平稳进行中')`))
+  await evaluate(`(() => {
+    const state=document.querySelector('#app').__vue_app__._instance.setupState;
+    state.currentPhase='MY_TURN_DISCARD';state.lastStepResult=null;
+    state.statusTracker.reset();state.wallTiles=Array(82).fill('9m');state.turnCount=1;
+    state.opponentThreats=[];state.roundState.discards=[];state.roundState.melds=[];
+    state.roundState.opponents.forEach(opponent=>{opponent.discards=[];opponent.melds=[]});
+  })()`)
+  await until(() => evaluate(`document.querySelector('.pve-situation-hud').textContent.includes('牌局平稳')`))
   await evaluate(`(() => {
     const state=document.querySelector('#app').__vue_app__._instance.setupState;
     state.wallTiles=state.wallTiles.slice(0,55);
@@ -283,13 +295,13 @@ try {
     state.roundState.opponents.forEach(opponent=>{opponent.discards=['1p','2p','3p','7p','8p'];opponent.melds=[]});
     state.roundState.opponents[0].melds=[{meld_type:'pong',tiles:['E','E','E']}];
   })()`)
-  await until(() => evaluate(`document.querySelector('.pve-situation-hud')?.textContent.includes('已完成一组副露')`))
+  await until(() => evaluate(`document.querySelector('.pve-situation-hud')?.textContent.includes('牌局步入中盘')`))
   await evaluate(`(() => {
     const state=document.querySelector('#app').__vue_app__._instance.setupState;
     state.wallTiles=state.wallTiles.slice(0,50);
     state.roundState.opponents[0].melds.push({meld_type:'pong',tiles:['C','C','C']});
   })()`)
-  await until(() => evaluate(`document.querySelector('.pve-situation-hud')?.textContent.includes('听牌概率极高')`))
+  await until(() => evaluate(`document.querySelector('.pve-situation-hud')?.textContent.includes('大番')`))
   for (const [width, height, mobile] of viewports) {
     await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile })
     await sleep(250)
@@ -332,8 +344,19 @@ try {
   await until(() => evaluate(`!![...document.querySelectorAll('button')].find(button=>button.textContent.includes('人机对战'))`))
   await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.includes('人机对战')).click()`)
   await until(() => evaluate(`!![...document.querySelectorAll('button')].find(button=>button.textContent.includes('开始对战'))`))
+  await evaluate(`(()=>{const input=document.querySelector('[aria-label="人机对战设置"] input[type="checkbox"]');input.checked=true;input.dispatchEvent(new Event('change',{bubbles:true}))})()`)
   await evaluate(`[...document.querySelectorAll('button')].find(button=>button.textContent.includes('开始对战')).click()`)
-  await until(() => evaluate(`!!document.querySelector('.pve-self-win-prompt')`), 30000)
+  await until(() => evaluate(`!!document.querySelector('.pve-self-hand')&&!document.querySelector('.god-opening')`))
+  // This is a layout/settlement fixture. Seed the draw result with real scoring
+  // so it does not depend on the separate asynchronous EV request lifecycle.
+  await evaluate(`(async()=>{
+    const s=document.querySelector('#app').__vue_app__._instance.setupState,hand=[...s.roundState.handTiles],tile=s.latestDrawnTile;
+    hand.splice(hand.lastIndexOf(tile),1);
+    const response=await fetch('/api/calculate-hu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hand_tiles:hand,melds:s.roundState.melds,win_tile:tile,is_zimo:true,seat_wind:s.seatWind,dealer_tile:s.dealerTile,is_dealer:true})});
+    if(!response.ok)throw new Error(await response.text());
+    s.lastStepResult={self_win_info:{...await response.json(),is_win:true,win_tile:tile}};
+  })()`)
+  await until(() => evaluate(`!!document.querySelector('.pve-self-win-prompt')`))
   for (const [width, height] of [[390, 844], [844, 390], [1280, 720]]) {
     await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 1000 })
     await sleep(150)
@@ -347,7 +370,7 @@ try {
         inline:!!panel.closest('.pve-ev-slot')&&!document.querySelector('.pve-self-win-overlay'),buttonSize:button?.offsetHeight,
         label:button?.textContent.trim(),noDetails:!panel.querySelector('dl,ul,details')};
     })()`)
-    assert.ok(controls.panelFits&&controls.buttonFits&&controls.buttonHit&&controls.inline&&controls.buttonSize>=44&&controls.label.startsWith('胡')&&controls.noDetails, `${width}x${height}: self-win controls clipped ${JSON.stringify(controls)}`)
+    assert.ok(controls.panelFits&&controls.buttonFits&&controls.buttonHit&&controls.inline&&controls.buttonSize>=44&&controls.label.startsWith('自摸')&&controls.noDetails, `${width}x${height}: self-win controls clipped ${JSON.stringify(controls)}`)
   }
   const settleButton = await evaluate(`(() => {const r=document.querySelector('.pve-self-win-prompt .self-win-button').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`)
   await command('Input.dispatchMouseEvent', { type:'mousePressed', x:settleButton.x, y:settleButton.y, button:'left', clickCount:1 })

@@ -281,6 +281,7 @@ export function createSoundEngine(browser = globalThis) {
   }
   function playAction({ action, tile, seat, selfSeat, isZimo = false }) {
     if (disposed || muted || volume === 0) return
+    if (action === 'TURN') { fallbackCue(); return }
     const text = spokenAction(action, tile, isZimo)
     if (!text) return
     tap(action === 'WIN')

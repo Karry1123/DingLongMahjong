@@ -22,7 +22,7 @@ async function fixture(onAction) {
   return s
 }
 
-test('a fast AI recommendation waits for the full three-second thinking timer', async () => {
+test('a fast AI recommendation waits for the full six-second thinking timer', async () => {
   const actions = []
   const s = await fixture((event) => actions.push(event))
   let observedLockedTurn = false
@@ -44,7 +44,7 @@ test('a fast AI recommendation waits for the full three-second thinking timer', 
     assert.deepEqual(actions[0], { action: 'DISCARD', seat: 'E', tile: 'N', selfSeat: 'E' })
     await waitFor(() => recommendations.includes('S') && finishThinking)
     assert.ok(observedLockedTurn, 'regression must exercise a turn update under loading')
-    assert.equal(durations[0], 3000)
+    assert.equal(durations[0], 6000)
     assert.equal(driver.thinkingSeat.value, 'S')
     assert.equal(s.roundState.opponents.find((o) => o.seat_wind === 'S').discards.length, 0)
     finishThinking()
@@ -63,12 +63,29 @@ test('a slow AI recommendation executes as soon as the result arrives after the 
   try {
     await s.discardTile('N', s.roundState.handTiles.indexOf('N'))
     await waitFor(() => resolveDecision)
-    assert.equal(durations[0], 3000)
+    assert.equal(durations[0], 6000)
     assert.equal(s.roundState.opponents.find((o) => o.seat_wind === 'S').discards.length, 0)
     const tile = s.roundState.opponents.find((o) => o.seat_wind === 'S').hand_tiles[0]
     resolveDecision({ best_tile: tile })
     await waitFor(() => s.roundState.opponents.find((o) => o.seat_wind === 'S').discards.includes(tile))
   } finally { driver.stop() }
+})
+
+test('AI meld response waits three seconds before executing the selected claim', async () => {
+  const s = await fixture(), durations=[], claims=[]
+  s.lastDiscardSeat.value='N'
+  s.roundState.opponents.find(o=>o.seat_wind==='N').discards.push('3p')
+  s.currentPhase.value='OPPONENT_DISCARD_ACTION'
+  s.lastStepResult.value={_response_tile:'3p',_table_responses:[{seat:'W',types:['pong']}],need_self_action:false}
+  s.executeOpponentMeld=async claim=>{claims.push(claim);s.gameState.value='GAME_OVER'}
+  let release
+  const driver=usePvEAutomation(s,{sleep:ms=>{durations.push(ms);return new Promise(resolve=>{release=resolve})}})
+  try{
+    await waitFor(()=>release)
+    assert.deepEqual(durations,[3000]);assert.equal(claims.length,0)
+    release();await waitFor(()=>claims.length===1)
+    assert.deepEqual(claims[0],{seat:'W',meld_type:'pong',tiles:['3p','3p','3p'],provider_seat:'N',claimed_tile:'3p'})
+  }finally{driver.stop()}
 })
 
 test('AI upgrades a one-pin pong, draws replacement, and never discards the fourth tile', async () => {

@@ -4,3 +4,7 @@
 
 /* Every view uses the same fixed 1280×720 stage. */
 .pve-landscape-hint { display:none; }
+
+html.pvp-immersive-fullscreen, body.pvp-immersive-fullscreen { position:fixed; inset:0; width:100%; height:100%; overflow:hidden; overscroll-behavior:none; }
+html.pvp-immersive-fullscreen .viewport-wrapper { position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; overflow:hidden; z-index:9999; touch-action:none; }
+html.pvp-immersive-fullscreen .landscape-winner-hand { overscroll-behavior:contain; touch-action:pan-y; }

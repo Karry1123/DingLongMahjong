@@ -37,9 +37,15 @@ const props = defineProps({
     default: () => [],
   },
   isRoundOver: { type: Boolean, default: false },
+  pvp: Boolean,
+  players: {type:Array,default:()=>[]},
+  nextConfirmed: Boolean,
+  nextCount: {type:Number,default:0},
+  humanCount: {type:Number,default:0},
 })
 
-const emit = defineEmits(['next-round', 'review-history'])
+const emit = defineEmits(['next-round', 'review-history', 'leave'])
+const nextLabel = computed(() => props.pvp ? (props.nextConfirmed ? '等待中' : props.isRoundOver ? '开始下一圈' : '开始下一局') : props.isRoundOver ? '查看本圈总结' : '开始下一局')
 
 const showHistory = ref(false)
 const expandedInherent = ref({})
@@ -98,7 +104,7 @@ const winnerNet = computed(() => {
 
 const dealerStatusLabel = computed(() => {
   const dealerWin = !!props.info?.is_dealer_win
-  if (isDraw.value) return '流局 · 连庄'
+  if (isDraw.value) return props.pvp ? '流局 · 轮庄' : '流局 · 连庄'
   return dealerWin ? '庄家连庄' : '庄家下庄'
 })
 
@@ -262,7 +268,7 @@ const seatCards = computed(() => {
     const isDealerSeat = seat === props.dealerSeat || !!d.is_dealer
     return {
       seat,
-      role,
+      role: props.pvp ? (props.players.find(player=>player.seat_wind===seat)?.nickname || role) : role,
       badge: `${role} · ${windLabel(seat)}风(${isDealerSeat ? '庄' : '闲'})`,
       isWinner,
       isDealer: isDealerSeat,
@@ -279,13 +285,14 @@ const seatCards = computed(() => {
       winTile: d.win_tile || (isWinner ? props.info?.win_tile : null),
       melds: d.melds || [],
       inherent,
+      scoringGroups: d.scoring_groups || [],
       winningGroups: isWinner ? winnerGroups(d) : [],
       hu: isWinner ? huDetail.value : null,
     }
   })
 })
 const winningCard = computed(() => seatCards.value.find((card) => card.isWinner) || null)
-const settlementSideCards = computed(() => isDraw.value ? seatCards.value : seatCards.value.filter((card) => !card.isWinner))
+const settlementSideCards = computed(() => props.pvp || isDraw.value ? seatCards.value : seatCards.value.filter((card) => !card.isWinner))
 const fullTileName = (tile) => ({ E: '东风', S: '南风', W: '西风', N: '北风', C: '红中', F: '发财', P: '白板' })[tile] || tileLabel(tile)
 const winnerBreakdown = computed(() => {
   if (huDetail.value.scoreItems.length) return huDetail.value.scoreItems
@@ -322,6 +329,7 @@ const mutualTransfers = computed(() => props.info?.payments?.mutual_settlement_t
 
 function formatSeat(seat) {
   if (!seat) return '—'
+  if (props.pvp) return `${props.players.find(player=>player.seat_wind===seat)?.nickname || '牌友'}(${windLabel(seat)}风)`
   if (seat === props.seatWind) return `自家(${windLabel(seat)})`
   const o = props.opponents.find((x) => x.seat_wind === seat)
   const role = o?.role ? `${o.role}·` : ''
@@ -364,6 +372,7 @@ function toggleInherent(seat) {
 }
 
 function onNextRound() {
+  if (props.pvp && props.nextConfirmed) return
   emit('next-round', {
     lastWinnerSeat: isDraw.value ? null : winnerSeat.value,
     isDealerWin: !!props.info?.is_dealer_win,
@@ -396,7 +405,7 @@ function settlementReason(card) {
 </script>
 
 <template>
-  <GameHistoryModal v-if="showHistory" :current-game-id="info.game_id || ''" @close="showHistory = false" />
+  <GameHistoryModal v-if="!pvp && showHistory" :current-game-id="info.game_id || ''" @close="showHistory = false" />
   <!-- 最小化：右下角胶囊，沙盘完全可操作 -->
   <div
     v-if="isMinimized"
@@ -437,8 +446,9 @@ function settlementReason(card) {
           type="button"
           class="flex-1 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 px-3 py-2 text-xs font-black text-amber-950 shadow transition hover:brightness-105"
           @click="onNextRound"
+          :disabled="pvp && nextConfirmed"
         >
-          {{ isRoundOver ? '查看本圈总结' : '开始下一局' }}
+          {{ nextLabel }} <span v-if="pvp" class="next-ready-count">({{ nextCount }}/{{ humanCount }})</span>
         </button>
       </div>
     </div>
@@ -448,6 +458,7 @@ function settlementReason(card) {
   <div
     v-else
     class="game-over-overlay fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/80 p-2 backdrop-blur-sm sm:p-4"
+    :class="{'pvp-result':pvp}"
     role="dialog"
     aria-modal="true"
     aria-label="对局结束结算"
@@ -461,7 +472,7 @@ function settlementReason(card) {
             <span>本局结算</span>
             <button type="button" title="最小化，查看牌桌" @click="minimizePanel">收起</button>
           </div>
-          <h2>{{ headline }}</h2>
+          <h2 :id="pvp ? 'pvp-result-title' : undefined">{{ headline }}</h2>
           <p class="landscape-settlement-score" v-if="!isDraw">
             <strong>{{ finalHu }} 胡</strong>
             <span v-if="huDetail.fan">{{ huDetail.fan }} 翻</span>
@@ -478,7 +489,7 @@ function settlementReason(card) {
             <p>成牌面子与雀头 <span v-if="info.win_tile || winningCard.winTile">胡张 {{ tileLabel(info.win_tile || winningCard.winTile) }}</span></p>
             <div class="landscape-winner-groups">
               <div v-for="(group, index) in winningCard.winningGroups" :key="index" class="landscape-winner-group" :title="groupCaption(group)">
-                <MahjongTile v-for="(tile, tileIndex) in group.display_tiles" :key="tileIndex" class="settlement-mini-tile" :class="{ 'is-winning-tile': tile.is_win_tile }" :code="tile.code" :title="tileNote(tile) || tileLabel(tile.code)" />
+                <MahjongTile v-for="(tile, tileIndex) in group.display_tiles" :key="tileIndex" class="settlement-mini-tile" :class="{ 'is-winning-tile': tile.is_win_tile }" :code="tile.code" :face-down="group.kind === 'an_gang' && tileIndex !== 1" :title="tileNote(tile) || tileLabel(tile.code)" />
               </div>
             </div>
             <div class="landscape-winner-breakdown">
@@ -489,26 +500,34 @@ function settlementReason(card) {
           </div>
           <p v-if="copyStatus" role="status" class="landscape-settlement-copy">{{ copyStatus }}</p>
           <div class="landscape-settlement-actions">
-            <button type="button" class="landscape-settlement-next" @click="onNextRound">{{ isRoundOver ? '查看本圈总结' : '开始下一局' }}</button>
-            <button type="button" class="landscape-settlement-history-button" @click="onToggleHistory">{{ showHistory ? '返回结算明细' : '查看复盘历史' }}</button>
+            <button type="button" class="landscape-settlement-next" :class="{'next-round-button':pvp}" :disabled="pvp && nextConfirmed" @click="onNextRound">{{ nextLabel }} <span v-if="pvp" class="next-ready-count">({{ nextCount }}/{{ humanCount }})</span></button>
+            <button v-if="!pvp" type="button" class="landscape-settlement-history-button" @click="onToggleHistory">{{ showHistory ? '返回结算明细' : '查看复盘历史' }}</button>
+            <template v-else><p class="next-round-note">所有真人确认后同步开局。</p><button type="button" class="settlement-leave" @click="emit('leave')">离席返回主页</button></template>
           </div>
         </section>
         <section class="landscape-settlement-details">
           <h3>四方结算明细</h3>
           <div class="landscape-settlement-seats">
-            <article v-for="card in settlementSideCards" :key="card.seat" class="landscape-settlement-seat" :class="{ 'is-winner': card.isWinner }">
+            <article v-for="card in settlementSideCards" :key="card.seat" :data-settlement-wind="card.seat" class="landscape-settlement-seat" :class="{ 'is-winner': card.isWinner }">
               <div class="landscape-settlement-seat-main">
                 <strong>{{ card.role }} · {{ windLabel(card.seat) }}风<span v-if="card.isDealer"> · 庄</span></strong>
                 <b :class="card.net > 0 ? 'positive' : card.net < 0 ? 'negative' : ''">{{ card.net >= 0 ? '+' : '' }}{{ card.net }}</b>
               </div>
               <p>{{ settlementReason(card) }} · 累计 {{ card.total >= 0 ? '+' : '' }}{{ card.total }}</p>
-              <div class="landscape-seat-tiles" :aria-label="`${card.role}最终持牌与副露`">
+              <div v-if="!pvp" class="landscape-seat-tiles" :aria-label="`${card.role}最终持牌与副露`">
                 <MahjongTile v-for="(tile, index) in card.handTiles" :key="`hand-${index}`" class="settlement-mini-tile" :code="tile" />
                 <span v-for="(meld, meldIndex) in card.melds" :key="`meld-${meldIndex}`" class="landscape-seat-meld">
-                  <MahjongTile v-for="(tile, tileIndex) in meld.tiles" :key="tileIndex" class="settlement-mini-tile" :code="tile" />
+                  <MahjongTile v-for="(tile, tileIndex) in meld.tiles" :key="tileIndex" class="settlement-mini-tile" :code="tile" :face-down="meld.meld_type === 'an_gang' && tileIndex !== 1" />
                 </span>
               </div>
-              <div class="landscape-seat-breakdown">
+              <div v-else-if="!card.isWinner" class="landscape-scoring-groups" aria-label="有胡数的牌组">
+                <div v-for="(group,index) in card.scoringGroups" :key="index" class="scoring-group">
+                  <span class="landscape-seat-meld"><MahjongTile v-for="(tile,tileIndex) in group.tiles" :key="tileIndex" class="settlement-mini-tile" :code="tile" :face-down="group.kind === 'an_gang' && tileIndex !== 1" /></span>
+                  <small>{{ group.label }}</small>
+                </div>
+                <span v-if="!card.scoringGroups.length">无计分牌组</span>
+              </div>
+              <div v-if="!pvp" class="landscape-seat-breakdown">
                 <span v-for="(item, index) in card.inherent.items" :key="index">{{ inherentItemLabel(item) }}</span>
                 <span v-if="!card.inherent.items.length">固有底胡 {{ card.inherent.calculated_points }}胡</span>
                 <span v-for="(fan, index) in card.inherent.fan_details" :key="`fan-${index}`">{{ fan.label || fan.name }}</span>
@@ -518,6 +537,7 @@ function settlementReason(card) {
         </section>
       </div>
       <header
+        v-if="!pvp"
         class="relative shrink-0 bg-gradient-to-r from-rose-700 via-amber-500 to-yellow-400 px-4 py-4 text-center sm:px-6 sm:py-5"
       >
         <div class="absolute right-2 top-2 flex gap-1 sm:right-3 sm:top-3">
@@ -567,7 +587,7 @@ function settlementReason(card) {
         </p>
       </header>
 
-      <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4">
+      <div v-if="!pvp" class="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4">
         <!-- 四方门风卡片 -->
         <section class="mb-4">
           <h3 class="mb-2 text-sm font-semibold text-amber-100">
@@ -630,6 +650,7 @@ function settlementReason(card) {
                     </p>
                     <div class="inline-flex flex-nowrap items-end gap-1 pb-3 pt-1">
                       <MahjongTile v-for="(dt, di) in grp.display_tiles" :key="di" :code="dt.code"
+                        :face-down="grp.kind === 'an_gang' && di !== 1"
                         :sideways="dt.is_win_tile || (grp.kind === 'chi' && grp.source === 'open' && dt.code === grp.claimed_tile)"
                         :badge="dt.is_win_tile ? winBadge : undefined"
                         :note="tileNote(dt)" />
@@ -864,6 +885,7 @@ function settlementReason(card) {
       </div>
 
       <footer
+        v-if="!pvp"
         class="shrink-0 space-y-2 border-t border-teal-800/55 px-4 py-4 sm:px-5"
       >
         <button
@@ -887,6 +909,12 @@ function settlementReason(card) {
 
 <style scoped>
 .landscape-settlement { display:none; }
+.landscape-scoring-groups { display:flex; flex-wrap:wrap; gap:3px 10px; font-size:11px; color:#d1fae5; }
+.scoring-group { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.scoring-group small { font-size:10px; line-height:1.1; white-space:nowrap; }
+.next-round-note { font-size:11px; color:#a6cdb5; }
+.landscape-settlement-next:disabled { opacity:.65; cursor:default; }
+.settlement-leave { border:1px solid #5eead477; color:#d1fae5; }
 /* The outer game stage is always 1280×720, regardless of physical orientation. */
 .game-over-overlay { padding:16px; }
 .game-over-panel { width:1080px; max-width:none; height:560px; max-height:none; overflow:hidden; }

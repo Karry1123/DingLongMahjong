@@ -5,6 +5,7 @@ import { windLabel } from '../utils/seatLayout.js'
 import MahjongTile from './MahjongTile.vue'
 import MeldTiles from './MeldTiles.vue'
 import DiscardRiver from './DiscardRiver.vue'
+import SeatClock from './SeatClock.vue'
 const props = defineProps({
   seatWind: { type: String, default: 'E' }, currentTurnSeat: String, dealerSeat: String,
   dealerTile: String, opponents: { type: Array, default: () => [] },
@@ -12,40 +13,44 @@ const props = defineProps({
   cumulativeScores: { type: Object, default: () => ({}) }, roundCount: { type: Number, default: 1 },
   wallCount: { type: Number, default: 0 },
   aiStatus: String, aiAnnouncement: String, thinkingSeat: String,
+  tableWaiting: Boolean,
+  clocks: { type: Object, default: () => ({}) },
+  timeBanks: { type: Object, default: () => ({}) }, serverOffset: { type:Number, default:0 },
 })
 const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind, role }, i) => {
   const opp = props.opponents.find(o => o.seat_wind === seat_wind) || {}
-  return { seat: seat_wind, role, position: ['left','top','right'][i], handCount: opp.hand_tiles?.length ?? 13, melds: opp.melds || [], discards: opp.discards || [] }
+  return { seat: seat_wind, role, nickname: opp.nickname || role, isHost: opp.is_host, position: ['left','top','right'][i], handCount: opp.hand_count ?? opp.hand_tiles?.length ?? 13, melds: opp.melds || [], discards: opp.discards || [] }
 }))
 </script>
 <template>
-  <section class="pve-table" aria-label="四方牌桌">
+  <section class="pve-table" :class="{ 'has-timers': Object.keys(timeBanks).length > 0 }" aria-label="四方牌桌">
     <header class="flex flex-wrap justify-between gap-2 text-sm text-teal-100">
       <span>第 {{ roundCount }} 圈 · 庄家 {{ windLabel(dealerSeat) }}风</span>
-      <span class="text-amber-200">当前 {{ windLabel(currentTurnSeat) }}风行动</span>
+      <span class="text-amber-200">{{ tableWaiting ? '等待玩家决策' : `当前 ${windLabel(currentTurnSeat)}风行动` }}</span>
     </header>
     <div class="table-compass">
-      <article v-for="player in seats" :key="player.seat" :data-seat="player.seat" :data-position="player.position" class="opponent-seat" :class="[player.position, { active: player.seat === currentTurnSeat }]">
+      <article v-for="player in seats" :key="player.seat" :data-seat="player.seat" :data-position="player.position" :data-wind="player.seat" class="opponent-seat round-player" :class="[player.position, { active: !tableWaiting && player.seat === currentTurnSeat }]">
         <header class="seat-header flex justify-between gap-2 text-sm text-teal-50">
-          <b>{{ player.role }} · {{ windLabel(player.seat) }}风 <span v-if="player.seat === dealerSeat" class="text-amber-300">庄</span></b>
-          <span v-if="player.seat === thinkingSeat" class="thinking-indicator" role="status">思考中…</span>
+          <b class="player-caption">{{ player.nickname }} · {{ windLabel(player.seat) }}风 <small v-if="player.isHost" class="host-badge">房主</small> <span v-if="player.seat === dealerSeat" class="text-amber-300">庄</span></b>
+          <SeatClock v-if="Object.hasOwn(timeBanks,player.seat) || clocks[player.seat]" :wind="player.seat" :clock="clocks[player.seat]" :bank-ms="timeBanks[player.seat] ?? 0" :private-bank="timeBanks[player.seat] == null" :server-offset="serverOffset" />
+          <span v-if="!tableWaiting && player.seat === thinkingSeat" class="thinking-indicator" role="status">思考中…</span>
           <span>{{ cumulativeScores[player.seat] || 0 }} 分</span>
         </header>
         <div class="seat-tiles">
-          <div class="concealed-hand" :aria-label="`${player.role}暗手，已隐藏`"><span v-for="n in player.handCount" :key="n" class="tile-back" /></div>
-          <div v-if="player.melds.length" class="meld-area pve-opponent-melds flex flex-wrap gap-2" aria-label="副露"><MeldTiles v-for="(meld,i) in player.melds" :key="i" :meld="meld" :dealer-tile="dealerTile" /></div>
+          <div class="concealed-hand" :aria-label="`${player.nickname}暗手，已隐藏`"><span v-for="n in player.handCount" :key="n" class="tile-back" /></div>
+          <div class="meld-area pve-opponent-melds flex flex-wrap gap-2" :data-meld-wind="player.seat" :data-position="player.position" aria-label="副露"><MeldTiles v-for="(meld,i) in player.melds" :key="i" :meld="meld" :dealer-tile="dealerTile" /></div>
         </div>
-        <DiscardRiver class="pve-river-tiles" :tiles="player.discards" :layout="player.position" />
+        <DiscardRiver class="pve-river-tiles" :data-river-wind="player.seat" :data-position="player.position" :tiles="player.discards" :layout="player.position" />
       </article>
-      <div class="table-center" aria-label="本局财神">
+      <div class="table-center round-god" aria-label="本局财神">
         <div class="center-compass-hud">
           <span class="compass-title">得 · 财神</span>
           <span data-god-slot><MahjongTile v-if="dealerTile" :code="dealerTile" /></span>
-          <span class="compass-count">余牌 <strong>{{ wallCount }}</strong><small>{{ windLabel(currentTurnSeat) }}风行牌</small></span>
+          <span class="compass-count">余牌 <strong>{{ wallCount }}</strong><small>{{ tableWaiting ? '等待玩家决策' : `${windLabel(currentTurnSeat)}风行牌` }}</small></span>
         </div>
         <p class="sr-only" role="status">{{ dealerTile ? tileLabel(dealerTile) : '等待发牌' }}；{{ aiAnnouncement || aiStatus || '等待你的决策' }}</p>
       </div>
-      <div class="self-river" aria-label="自家牌河"><DiscardRiver class="pve-river-tiles" :tiles="selfDiscards" layout="self" /></div>
+      <div class="self-river" :data-river-wind="seatWind" data-position="bottom" aria-label="自家牌河"><DiscardRiver class="pve-river-tiles" :tiles="selfDiscards" layout="self" /></div>
     </div>
   </section>
 </template>
@@ -58,6 +63,14 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
 .left { top:50%; left:0; transform:translateY(-50%); }
 .right { top:50%; right:0; transform:translateY(-50%); }
 .seat-header { height:18px; margin:0; font-size:12px; }
+.player-caption { white-space:nowrap; }
+.host-badge { font:8px sans-serif; padding:1px 3px; border:1px solid #d4af5866; border-radius:3px; color:#e9cc89; }
+.player-clock { color:#f5d68b; white-space:nowrap; font-size:9px; font-variant-numeric:tabular-nums; }
+.has-timers .seat-header { height:36px; align-items:center; gap:6px; }
+.has-timers .top > :deep(.discard-river) { top:100px; }
+.has-timers .left .seat-header,.has-timers .right .seat-header { top:-42px; width:300px; }
+.has-timers .seat-header > b { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.has-timers .seat-header > span:last-child { white-space:nowrap; }
 .thinking-indicator { margin-left:auto; color:#fde68a; font-size:12px; white-space:nowrap; animation:thinking-pulse 1s ease-in-out infinite alternate; }
 @keyframes thinking-pulse { from { opacity:.45; } to { opacity:1; } }
 .seat-tiles { display:flex; align-items:flex-start; gap:8px; }
