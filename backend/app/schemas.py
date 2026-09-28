@@ -117,7 +117,7 @@ class PlayerState(BaseModel):
 
 
 class HandRequest(BaseModel):
-    """决策请求：自家暗手 + 四方公开信息 + 得 / 圈风。
+    """决策请求：自家暗手 + 四方公开信息 + 得 / 轮次元数据。
 
     牌型守恒：
         - 待切（摸牌后 / 副露后）：len(hand_tiles) + 3 * len(melds) == 14
@@ -157,7 +157,7 @@ class HandRequest(BaseModel):
     )
     round_wind: SeatWind = Field(
         "E",
-        description="圈风（场风）E/S/W/N，默认东风圈",
+        description="旧牌谱轮次元数据 E/S/W/N，不参与计番",
     )
     is_dealer: bool = Field(
         ...,
@@ -436,7 +436,7 @@ class CalculateHuRequest(BaseModel):
     seat_wind: SeatWind = Field(..., description="自风 E/S/W/N")
     round_wind: SeatWind = Field(
         "E",
-        description="圈风 E/S/W/N（与门风叠番时各计 1 翻）",
+        description="旧牌谱轮次元数据 E/S/W/N，不参与计番",
     )
     dealer_tile: str = Field(
         ...,
@@ -719,7 +719,7 @@ class SettlementRequest(BaseModel):
     restored_jokers: int = Field(0, ge=0, le=4)
     round_wind: SeatWind = Field(
         "E",
-        description="圈风（字牌刻杠叠番）",
+        description="旧牌谱轮次元数据，不参与计番",
     )
 
 

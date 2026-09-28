@@ -33,6 +33,8 @@ test('self draw and ron show one final result, with no breakdown or tooltip', as
     for (const [info,label] of [[{final_hu:40},'40胡'],[{final_hu:100,is_lazi:true},'辣子']]) {
       const self = await renderToString(createSSRApp(Self,{info:{...info,base_hu:10,fan:4,details:{fans:{门清:1}}}}))
       const ron = await renderToString(createSSRApp(Prompt,{inline:true,dock:true,huInfo:info,callDecision:{available_actions:[{action_type:'hu',tiles:['8m']}]}}))
+      assert.match(self,/自摸<span/)
+      assert.match(ron,/胡<span/)
       for (const html of [self,ron]) {
         assert.match(html,new RegExp(`\\(${label}\\)`))
         assert.doesNotMatch(html,/Tooltip|tooltip|算胡明细|底胡|翻数|牌型胡|H_final/)

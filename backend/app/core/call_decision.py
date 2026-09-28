@@ -4,7 +4,7 @@
 1. 有 HU → 用结算胡数估算即时收益，并与 PASS 的后续期望比较。
 2. 对其余 CHI/PONG/MING_GANG：模拟副露后进入待切，取
    ``calculate_best_discards`` 最优净 EV，再叠加：
-   - 向听阶梯化的门清/硬胡机会成本；
+   - 实际切牌后进入听牌的加速价值；
    - 碰牌激励（幺九/字刻底胡 + 废牌即切加速）。
 3. PASS：按当前等待进张估进攻 EV − 向听×120；极早巡低风险的强单色手另计
    混一色/清一色成型期望，不假设过牌会触发振听。
@@ -49,8 +49,11 @@ from .scoring import (
 )
 from .tenpai_model import estimate_opponents_tenpai
 
-# 门清/硬胡「机会成本」基准（乘向听折现后从副露 EV 扣除）
-_MENQING_HARD_HU_COST = 48.0
+# 直接进听减少等待轮次的价值；庄家另计连庄机会，但仍扣真实放铳风险。
+_CALL_TENPAI_TEMPO_BONUS = 60.0
+_DEALER_TENPAI_CONTINUATION_BONUS = 20.0
+# 已有和牌机会时维持原有 HU/PASS 比较尺度；不用于副露与过牌的重复补偿。
+_WIN_PASS_OPTION_CREDIT = 16.8
 # 碰后切出废牌（客风孤张等）的做牌加速奖励
 _JUNK_CUT_SPEED_BONUS_MIN = 15.0
 _JUNK_CUT_SPEED_BONUS_MAX = 25.0
@@ -139,7 +142,7 @@ def evaluate_call_decision(
         discarded_tiles: 已见废牌（含本张更佳），供 Rem。
 
     Note:
-        ``round_wind`` 传给后续切牌评估，圈风不能当作无役客风。
+        ``round_wind`` 仅保留旧接口兼容，不赋予字牌计番价值。
     """
     if seat_wind not in WINDS:
         raise ValueError(f"seat_wind 非法：{seat_wind!r}")
@@ -210,9 +213,9 @@ def evaluate_call_decision(
             if hu_ev is not None:
                 # 过牌面对现成和张只保留后续 EV 的折现值；不把等待收益当成即时兑现。
                 ev *= 0.55
+                ev += _WIN_PASS_OPTION_CREDIT * hard_disc
             ev += flush_bonus
-            # 深向听：过牌不享受「硬胡全额溢价」；听牌/一向听才保留门清溢价
-            ev += _MENQING_HARD_HU_COST * hard_disc * 0.35
+            # 硬胡由实际成牌计分决定。副露并不取消硬胡，禁止额外虚构门清溢价。
             note = _pass_note(shanten_now, hard_disc)
             if flush_note:
                 note = f"{note}；{flush_note}"
@@ -426,9 +429,9 @@ def _is_suited_tile(tile: str) -> bool:
 
 
 def _pong_yakuhai_fan(tile: str, dealer_tile: str, seat_wind: str, round_wind: str) -> int:
-    """碰出的固定字牌番数；自风与圈风相同可叠加。"""
+    """碰出的固定字牌番数：仅三元牌和自风。"""
     face = _logical_tile(tile, dealer_tile)
-    return int(tile in DRAGONS) + int(face == seat_wind) + int(face == round_wind)
+    return int(tile in DRAGONS) + int(face == seat_wind)
 
 
 def _pong_incentive(
@@ -573,8 +576,7 @@ def _evaluate_call_ev(
             discarded_tiles=discarded_tiles,
             opponents=opponents,
         )
-        # 开杠损失门清：按向听折现扣机会成本
-        ev -= _MENQING_HARD_HU_COST * hard_hu_discount
+        # 岭上枚举已按公开杠和真实番数计分，不重复扣不存在的门清/硬胡成本。
         face = _logical_tile(discarded_tile, dealer_tile)
         hu = (MING_GANG_TERMINAL_HONOR_HU if _is_terminal_or_honor(face)
               else MING_GANG_SIMPLE_HU)
@@ -598,13 +600,17 @@ def _evaluate_call_ev(
     best = result["candidates"][0]
     ev = float(best["ev_score"])
 
-    # 役牌碰出确定的番数足以抵消常规门清机会成本。
-    is_yakuhai_pong = (
-        action.action_type == ActionType.PONG
-        and _pong_yakuhai_fan(discarded_tile, dealer_tile, seat_wind, round_wind) > 0
-    )
-    if not is_yakuhai_pong:
-        ev -= _MENQING_HARD_HU_COST * hard_hu_discount
+    # 用实际切牌后的暗手判向听；切前的 11/14 张不能替代待摸状态。
+    after_discard = list(new_hand)
+    after_discard.remove(str(best['tile']))
+    shanten_after = _hand_shanten(after_discard, new_melds, dealer_tile)
+    # calculate_best_discards 已含明暗刻差额及硬胡番，勿再次惩罚副露。
+    tempo_bonus = 0.0
+    if shanten_before > 0 and shanten_after == 0 and best.get('effective_count', 0) > 0:
+        live_wait_weight = min(1.0, float(best['effective_count']) / 4.0)
+        tempo_bonus = (_CALL_TENPAI_TEMPO_BONUS
+                       + (_DEALER_TENPAI_CONTINUATION_BONUS if is_dealer else 0.0)) * live_wait_weight
+        ev += tempo_bonus
 
     incent = 0.0
     incent_note = ""
@@ -653,8 +659,12 @@ def _evaluate_call_ev(
 
     note_parts = [
         f"副露后最优切 {best['tile']}",
+        f"切牌后向听 {shanten_before}→{shanten_after}",
         f"攻 {best.get('attack_ev', 0)} / 防 {best.get('defense_loss', 0)}",
     ]
+    if tempo_bonus:
+        note_parts.append(f"直接听牌，加速收益 +{tempo_bonus:.2f}"
+                          + ("（含庄家连庄机会）" if is_dealer else ""))
     if incent_note:
         note_parts.append(incent_note)
     if redundant_note:

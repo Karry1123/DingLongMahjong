@@ -221,7 +221,7 @@ class TestGameStepApi(unittest.TestCase):
                         self.assertIn("优先切除无役客风", rec["candidates"][0]["note"])
                     else:
                         west = next(c for c in rec["candidates"] if c["tile"] == "W")
-                        self.assertNotIn("优先切除无役客风孤张", west["note"])
+                        self.assertIn("优先切除无役客风孤张", west["note"])
                         self.assertFalse(west.get("guest_pruning_bonus"))
 
     def test_self_draw_returns_discard_recommend(self):

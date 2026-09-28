@@ -8,7 +8,7 @@ import { HONOR_VOICES } from '../src/utils/soundEngine.js'
 
 test('all packaged voices restore their exact source bytes, including double-word honors', async () => {
   execFileSync(process.execPath, ['scripts/prepare-voice-data.mjs'])
-  for (const code of [...ALL_TILES, 'CHI', 'PONG', 'GANG', 'WIN', 'OPENING']) {
+  for (const code of [...ALL_TILES, 'CHI', 'PONG', 'GANG', 'WIN', 'ZIMO', 'OPENING']) {
     const name = HONOR_VOICES[code]?.file || code
     const data = await readFile(new URL(`../public/audio/data/${name}.dat`, import.meta.url))
     const wav = await readFile(new URL(`../public/audio/tiles/${name}.wav`, import.meta.url))

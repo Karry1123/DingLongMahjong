@@ -82,7 +82,7 @@ class TestGuestWindDiscard(unittest.TestCase):
         )
         west = next(c for c in result["candidates"] if c["tile"] == "W")
         self.assertEqual(result["best_tile"], "W")
-        self.assertNotIn("优先切除无役客风孤张", west["note"])
+        self.assertIn("优先切除无役客风孤张", west["note"])
 
     def test_equal_progress_order_seen_fresh_terminal(self):
         hand = HAND + ["S"]

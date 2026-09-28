@@ -3,7 +3,7 @@
  * 对接 POST /api/game/step，并强制全场可见物理牌 ≤4。
  */
 
-import { computed, reactive, ref, toRaw } from 'vue'
+import { computed, reactive, ref, toRaw, watch } from 'vue'
 import { MAX_PER_TILE, WIND_ORDER } from '../constants/tiles.js'
 import { pveOpponentsForDealer, pveWindForPlayer, remapPveScores } from '../utils/pveSeatMapping.js'
 import * as gameApi from '../services/api.js'
@@ -15,7 +15,7 @@ import {
   DEALER_SEAT,
   windLabel,
 } from '../utils/seatLayout.js'
-import { sortHandTiles, isJokerPhysical, moveTileInList, ensureTileAtEnd } from '../utils/tileSorter.js'
+import { sortHandTiles, isJokerPhysical, isWhiteboardProxy, moveTileInList, ensureTileAtEnd, reconcileHandOrder, sortAroundSpecialTiles, captureSpecialAnchors } from '../utils/tileSorter.js'
 import {
   detectTableResponses,
   isLegalClaimMeld,
@@ -40,7 +40,7 @@ const PHASE_LABEL = {
  *   isDealer?: boolean,
  *   dealerTile?: string,
  *   roundWind?: string,
- *   onAction?: (event: {action: string, tile: string|null, seat: string, selfSeat: string}) => void,
+ *   onAction?: (event: {action: string, tile: string|null, seat: string, selfSeat: string, isZimo: boolean}) => void,
  *   onPveOpening?: (event: {dealerTile: string}) => Promise<boolean>|boolean,
  * }=} initial
  */
@@ -71,9 +71,9 @@ export function useGameSession(initial = {}) {
   const roundState = reactive(createInitialRoundState(initial))
   const gameMode = ref('SANDBOX')
   const pveOpening = ref(false)
-  function emitPveAction(action, seat, tile = null) {
+  function emitPveAction(action, seat, tile = null, isZimo = false) {
     if (gameMode.value !== 'PVE') return
-    try { initial.onAction?.({ action, seat, tile, selfSeat: roundState.seatWind }) }
+    try { initial.onAction?.({ action, seat, tile, selfSeat: roundState.seatWind, ...(action === 'WIN' ? { isZimo } : {}) }) }
     catch (error) { console.warn('[pve sound]', error) }
   }
   // PVE identities stay relative to the user; seat winds rotate each hand.
@@ -115,12 +115,16 @@ export function useGameSession(initial = {}) {
   const recommendDrawToken = ref(0)
   /**
    * 用户手动挪动「得」后锁定该座布局，避免自动理牌立刻把百搭抓回最左。
-   * 摸/切/一键理牌时清除。
+   * 本局持续保留；仅开局或重置清除。
    */
   const handLayoutPinned = ref({ E: false, S: false, W: false, N: false })
+  let selfTileAnchors = []
 
   /** 自动理牌开关（与 HandBar 同步） */
   const autoSortEnabled = ref(true)
+  watch(autoSortEnabled, enabled => {
+    if (enabled) applyHandSort({keepDrawn:!!latestDrawnTile.value})
+  }, {flush:'sync'})
 
   /**
    * 开局座次锁定。未锁定时仅允许改门风/财神；
@@ -505,7 +509,7 @@ export function useGameSession(initial = {}) {
   function applyUpdatedStateFromApi(updated, opts = {}) {
     if (!updated) return
     if (Array.isArray(updated.hand_tiles)) {
-      roundState.handTiles = [...updated.hand_tiles]
+      roundState.handTiles = reconcileHandOrder(roundState.handTiles, updated.hand_tiles)
     }
     if (Array.isArray(updated.melds)) {
       roundState.melds = updated.melds.map((m) => ({
@@ -796,20 +800,15 @@ export function useGameSession(initial = {}) {
   function applyHandSort(opts = {}) {
     const force = !!opts.force
     if (!force && !autoSortEnabled.value) return
-    const self = roundState.seatWind
-    // 手动组牌锁定时，摸牌记录仍保留，但不移动用户摆放的牌。
-    if (handLayoutPinned.value[self] && !force) {
-      return
-    }
-    if (force) clearHandLayoutPin(self)
     const n0 = roundState.handTiles.length
     const keepDrawn = opts.keepDrawn === true
     const drawn =
       keepDrawn && latestDrawnTile.value ? latestDrawnTile.value : undefined
-    const sorted = sortHandTiles(
+    const sorted = sortSelfTiles(
       roundState.handTiles,
       roundState.dealerTile,
       drawn,
+      force,
     )
     console.assert(
       sorted.length === n0,
@@ -820,12 +819,21 @@ export function useGameSession(initial = {}) {
   }
 
   function clearHandLayoutPin(seat) {
+    if (!seat || seat === roundState.seatWind) selfTileAnchors = []
     if (!seat) {
       handLayoutPinned.value = { E: false, S: false, W: false, N: false }
       return
     }
     if (!handLayoutPinned.value[seat]) return
     handLayoutPinned.value = { ...handLayoutPinned.value, [seat]: false }
+  }
+
+  function sortSelfTiles(tiles, dealer = roundState.dealerTile, drawn, force = false) {
+    if (!force && !autoSortEnabled.value) return [...tiles]
+    if (handLayoutPinned.value[roundState.seatWind]) {
+      return sortAroundSpecialTiles(tiles, dealer, drawn, selfTileAnchors)
+    }
+    return sortHandTiles(tiles, dealer, drawn)
   }
 
   /**
@@ -847,8 +855,8 @@ export function useGameSession(initial = {}) {
         throw new Error('百搭移动：源下标无效')
       }
       const tile = hand[fromIndex]
-      if (!isJokerPhysical(tile, dealer)) {
-        throw new Error('仅「得」（百搭）可自由移动插嵌')
+      if (autoSortEnabled.value && !isJokerPhysical(tile, dealer) && !isWhiteboardProxy(tile, dealer)) {
+        throw new Error('自动理牌开启时仅财神或白板替身可拖拽')
       }
       // 摸入挂右：禁止把摸入张挪进主区破坏 Gap（可整段一起挪到末尾前）
       const drawn = latestDrawnBySeat.value?.[seat]
@@ -867,6 +875,7 @@ export function useGameSession(initial = {}) {
 
     if (seat === roundState.seatWind) {
       roundState.handTiles = applyMove(roundState.handTiles)
+      selfTileAnchors = captureSpecialAnchors(roundState.handTiles,dealer,latestDrawnTile.value)
       handLayoutPinned.value = {
         ...handLayoutPinned.value,
         [seat]: true,
@@ -898,8 +907,11 @@ export function useGameSession(initial = {}) {
     const hand = roundState.handTiles
     if (!Number.isInteger(fromIndex) || fromIndex < 0 || fromIndex >= hand.length ||
         !Number.isInteger(toIndex) || toIndex < 0 || toIndex > hand.length) return hand
+    if (autoSortEnabled.value && !isJokerPhysical(hand[fromIndex],roundState.dealerTile) &&
+        !isWhiteboardProxy(hand[fromIndex],roundState.dealerTile)) return hand
     if (toIndex === fromIndex || toIndex === fromIndex + 1) return hand
     roundState.handTiles = moveTileInList(hand, fromIndex, toIndex)
+    selfTileAnchors = captureSpecialAnchors(roundState.handTiles,roundState.dealerTile,latestDrawnTile.value)
     // 排序只改显示位置；真实摸入张要留给自摸判定和结算。
     handLayoutPinned.value = { ...handLayoutPinned.value, [roundState.seatWind]: true }
     logTurn('moveSelfTileInHand', { fromIndex, toIndex })
@@ -946,10 +958,7 @@ export function useGameSession(initial = {}) {
     const dealer = roundState.dealerTile
 
     // 手动插嵌锁定：自家保留拖拽位置与实际摸牌标记。
-    if (handLayoutPinned.value[seat] && !force) {
-      if (seat === roundState.seatWind) {
-        return roundState.handTiles
-      }
+    if (handLayoutPinned.value[seat] && !force && seat !== roundState.seatWind) {
       const oi = roundState.opponents.findIndex((o) => o.seat_wind === seat)
       if (oi < 0) return []
       const opps = roundState.opponents.map((o) => ({
@@ -965,11 +974,11 @@ export function useGameSession(initial = {}) {
       return opps[oi].hand_tiles
     }
 
-    if (force) clearHandLayoutPin(seat)
+    if (force && seat !== roundState.seatWind) clearHandLayoutPin(seat)
 
     if (seat === roundState.seatWind) {
       const n0 = roundState.handTiles.length
-      const sorted = sortHandTiles(roundState.handTiles, dealer, drawn || undefined)
+      const sorted = sortSelfTiles(roundState.handTiles, dealer, drawn || undefined, force)
       console.assert(
         sorted.length === n0,
         `[sortSeatClosedHand/self] ${n0} → ${sorted.length}`,
@@ -1437,9 +1446,8 @@ export function useGameSession(initial = {}) {
     // 快照供撤回（同步，但在 mutate 前一次即可）
     pushSnapshot()
 
-    // 轻量入账：摸牌时解除百搭锁定并先规整前 N 张，再挂右
-    clearHandLayoutPin(self)
-    roundState.handTiles = sortHandTiles(
+    // 保留手动布局；新摸牌独立追加到右侧。
+    roundState.handTiles = sortSelfTiles(
       roundState.handTiles,
       roundState.dealerTile,
       undefined,
@@ -2334,7 +2342,7 @@ export function useGameSession(initial = {}) {
           }
         }
 
-        roundState.handTiles = sortHandTiles(
+        roundState.handTiles = sortSelfTiles(
           hand,
           roundState.dealerTile,
           undefined,
@@ -2429,8 +2437,8 @@ export function useGameSession(initial = {}) {
               ? 13 - 3 * roundState.melds.length
               : 14 - 3 * roundState.melds.length
             if (apiHand.length === expect && roundState.handTiles.length === expect) {
-              roundState.handTiles = sortHandTiles(
-                apiHand,
+              roundState.handTiles = sortSelfTiles(
+                reconcileHandOrder(roundState.handTiles, apiHand),
                 roundState.dealerTile,
                 undefined,
               )
@@ -2568,7 +2576,7 @@ export function useGameSession(initial = {}) {
           { meld_type: 'an_gang', tiles: [face, face, face, face] },
         ]
 
-        roundState.handTiles = sortHandTiles(
+        roundState.handTiles = sortSelfTiles(
           hand,
           roundState.dealerTile,
           undefined,
@@ -2634,8 +2642,8 @@ export function useGameSession(initial = {}) {
             }
             const expect = 13 - 3 * roundState.melds.length
             if (apiHand.length === expect && roundState.handTiles.length === expect) {
-              roundState.handTiles = sortHandTiles(
-                apiHand,
+              roundState.handTiles = sortSelfTiles(
+                reconcileHandOrder(roundState.handTiles, apiHand),
                 roundState.dealerTile,
                 undefined,
               )
@@ -2801,7 +2809,7 @@ export function useGameSession(initial = {}) {
         if (fastAppend) {
           roundState.handTiles = [...roundState.handTiles, tileCode]
         } else {
-          roundState.handTiles = sortHandTiles(
+          roundState.handTiles = sortSelfTiles(
             sanitizeTileList([...roundState.handTiles, tileCode]),
             roundState.dealerTile,
             tileCode,
@@ -2863,7 +2871,7 @@ export function useGameSession(initial = {}) {
               }
               setDrawnMarker(roundState.seatWind, tileCode)
             } else if (roundState.handTiles.length === afterNeed - 1) {
-              roundState.handTiles = sortHandTiles(
+              roundState.handTiles = sortSelfTiles(
                 sanitizeTileList([...roundState.handTiles, tileCode]),
                 roundState.dealerTile,
                 tileCode,
@@ -3000,10 +3008,9 @@ export function useGameSession(initial = {}) {
 
       latestDrawnTile.value = null
       clearDrawnMarker(roundState.seatWind)
-      clearHandLayoutPin(roundState.seatWind)
 
       const nextDiscards = roundState.discards.concat([tile])
-      const sorted = sortHandTiles(
+      const sorted = sortSelfTiles(
         nextHand,
         roundState.dealerTile,
         undefined,
@@ -3173,7 +3180,7 @@ export function useGameSession(initial = {}) {
     const hand = roundState.handTiles.slice()
     hand.splice(index, 1)
     latestDrawnTile.value = null
-    roundState.handTiles = sortHandTiles(hand, roundState.dealerTile, undefined)
+    roundState.handTiles = sortSelfTiles(hand, roundState.dealerTile, undefined)
     roundState.discards = roundState.discards.concat([tile])
     console.assert(roundState.handTiles.length === afterNeed)
     console.assert(roundState.discards.length === discardsBefore + 1)
@@ -4201,7 +4208,7 @@ export function useGameSession(initial = {}) {
         applyRoundScoresFromSettlement(selfWinSettlement.value)
         pushRoundHistory(selfWinSettlement.value)
         gameState.value = 'GAME_OVER'
-        emitPveAction('WIN', winnerSeat, opts.winTile || winInfo.win_tile || null)
+        emitPveAction('WIN', winnerSeat, opts.winTile || winInfo.win_tile || null, !!settlement.is_zimo)
         showGameOverModal.value = true
         currentPhase.value = 'IDLE'
         latestDrawnTile.value = null
@@ -4488,7 +4495,6 @@ export function useGameSession(initial = {}) {
 
   /** 强制一键理牌（忽略开关） */
   function manualSortHand() {
-    clearHandLayoutPin(roundState.seatWind)
     applyHandSort({
       force: true,
       keepDrawn: !!latestDrawnTile.value,

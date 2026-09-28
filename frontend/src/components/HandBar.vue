@@ -11,7 +11,6 @@ import {
   handTilesWithKeys,
   isJokerPhysical,
   isWhiteboardProxy,
-  sortHandTiles,
 } from '../utils/tileSorter.js'
 
 const tiles = defineModel({
@@ -146,7 +145,11 @@ watch(tiles, () => { selectedTileIndex.value = null })
 
 /** 百搭可挪：有财神即可插嵌（切牌/移除仍受 disabled 约束） */
 const canArrangeJoker = computed(() => !!props.dealerTile)
-const canArrangeTile = computed(() => props.wallDriven && tiles.value.length > 1)
+const canArrangeTile = computed(() => (props.wallDriven || !autoSort.value) && tiles.value.length > 1)
+
+function canDragTile(code) {
+  return tiles.value.length > 1 && (!autoSort.value || isJoker(code) || isProxy(code))
+}
 
 function isHighlight(code) {
   return !!code && !!props.highlightTile && code === props.highlightTile
@@ -225,7 +228,7 @@ function insertionAt(clientX, clientY) {
 
 function onTilePointerDown(event, item) {
   if (!canArrangeTile.value || event.button !== 0) return
-  pointerDrag.value = { id: event.pointerId, fromIndex: item.index, x: event.clientX, y: event.clientY, active: false, insertAt: null }
+  pointerDrag.value = { id: event.pointerId, fromIndex: item.index, x: event.clientX, y: event.clientY, active: false, insertAt: null, allowed:canDragTile(item.code) }
   event.currentTarget.setPointerCapture?.(event.pointerId)
 }
 
@@ -234,7 +237,7 @@ function onTilePointerMove(event) {
   if (!drag || drag.id !== event.pointerId) return
   if (!drag.active && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 8) return
   drag.active = true
-  drag.insertAt = insertionAt(event.clientX, event.clientY)
+  if (drag.allowed) drag.insertAt = insertionAt(event.clientX, event.clientY)
   event.preventDefault()
 }
 
@@ -244,7 +247,7 @@ function onTilePointerUp(event) {
   if (drag.active) {
     event.preventDefault()
     suppressClickUntil = Date.now() + 350
-    if (drag.insertAt != null) emit('reorder-tile', { fromIndex: drag.fromIndex, toIndex: drag.insertAt })
+    if (drag.allowed && canDragTile(tiles.value[drag.fromIndex]) && drag.insertAt != null) emit('reorder-tile', { fromIndex: drag.fromIndex, toIndex: drag.insertAt })
   }
   pointerDrag.value = null
 }
@@ -254,7 +257,7 @@ function onTilePointerCancel(event) {
 }
 
 function onDragStart(e, item) {
-  if (!isJoker(item.code) || !canArrangeJoker.value) {
+  if (autoSort.value && ((!isJoker(item.code) && !isProxy(item.code)) || !canArrangeJoker.value)) {
     e.preventDefault()
     return
   }
@@ -293,18 +296,13 @@ function onDragEnd() {
 function nudge(item, dir, e) {
   e?.stopPropagation?.()
   e?.preventDefault?.()
-  if (!canArrangeJoker.value || !isJoker(item.code)) return
+  if (!canArrangeJoker.value || (!isJoker(item.code) && !isProxy(item.code))) return
   const toIndex = dir > 0 ? item.index + 2 : item.index - 1
   if (toIndex < 0 || toIndex > tiles.value.length) return
   emitMoveJoker(item.index, toIndex)
 }
 
 function manualSort() {
-  tiles.value = sortHandTiles(
-    tiles.value,
-    props.dealerTile,
-    props.latestDrawnTile || undefined,
-  )
   emit('manual-sort')
 }
 
@@ -318,11 +316,12 @@ function tileButtonClass(item, { drawn = false } = {}) {
     isHighlight(item.code)
       ? 'hand-champ-glow ring-2 ring-amber-300 scale-105 z-[1]'
       : '',
-    isJoker(item.code)
-      ? 'ring-2 ring-fuchsia-400/70 cursor-grab active:cursor-grabbing'
+    (isJoker(item.code) || isProxy(item.code))
+      ? 'ring-2 ring-fuchsia-400/70'
       : '',
+    canDragTile(item.code) ? 'cursor-grab active:cursor-grabbing' : '',
     dropHover.value === item.index ? 'ring-2 ring-lime-300/80 scale-105' : '',
-    pointerDrag.value?.active && pointerDrag.value.fromIndex === item.index ? 'hand-dragging' : '',
+    pointerDrag.value?.allowed && pointerDrag.value?.active && pointerDrag.value.fromIndex === item.index ? 'hand-dragging' : '',
     pointerDrag.value?.active && pointerDrag.value.insertAt === item.index && pointerDrag.value.fromIndex !== item.index ? 'hand-insert-before' : '',
     pointerDrag.value?.active && pointerDrag.value.insertAt === tiles.value.length && item.index === tiles.value.length - 1 && pointerDrag.value.fromIndex !== item.index ? 'hand-insert-after' : '',
     selectedTileIndex.value === item.index ? 'hand-tile-selected -translate-y-2 ring-2 ring-amber-200 z-[2]' : '',
@@ -389,7 +388,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
             · 右侧为刚摸入
           </span>
           <span v-if="layoutPinned" class="ml-1 text-fuchsia-300/90">
-            · 组牌锁定（摸/切/一键理牌后恢复）
+            · 自定义牌序已保留
           </span>
           <span v-else class="ml-1 text-fuchsia-300/70">
             · 「得」可拖拽或 ◀▶ 插嵌
@@ -439,7 +438,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
           class="relative inline-flex flex-col items-center"
         >
           <div
-            v-if="isJoker(item.code) && canArrangeJoker"
+            v-if="(isJoker(item.code) || isProxy(item.code)) && canArrangeJoker"
             class="mb-0.5 flex gap-0.5"
           >
             <button
@@ -467,7 +466,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
             :class="tileButtonClass(item)"
             :data-hand-index="item.index"
             :aria-pressed="wallDriven && isDiscardReady ? selectedTileIndex === item.index : undefined"
-            :draggable="!wallDriven && isJoker(item.code) && canArrangeJoker"
+            :draggable="!wallDriven && canDragTile(item.code)"
             :aria-disabled="disabled && !isJoker(item.code)"
             :title="
               setupMode
@@ -516,7 +515,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
           :class="tileButtonClass(splitHand.drawn, { drawn: true })"
           :data-hand-index="splitHand.drawn.index"
           :aria-pressed="wallDriven && isDiscardReady ? selectedTileIndex === splitHand.drawn.index : undefined"
-          :draggable="!wallDriven && isJoker(splitHand.drawn.code) && canArrangeJoker"
+          :draggable="!wallDriven && canDragTile(splitHand.drawn.code)"
           :aria-disabled="disabled && !isJoker(splitHand.drawn.code)"
           :title="
             isDiscardReady

@@ -21,7 +21,8 @@ def test_seen_east_is_unique_best_with_more_ukeire(global_river):
     assert result['best_tile'] == 'E'
     east = by['E']
     assert east['effective_count'] == 19
-    assert max(east['deal_in_risks'].values()) == 0.02
+    assert east['deal_in_risks']['N'] == 0
+    assert max(east['deal_in_risks'].values()) == 0.09
     assert east['guest_pruning_bonus'] == 0  # 基础估值本身已修正，无需强抬分。
     for tile in ['1p', '2s', '7p']:
         assert by[tile]['effective_count'] == 18
@@ -34,10 +35,12 @@ def test_seen_east_is_unique_best_with_more_ukeire(global_river):
 def test_wind_single_vs_actual_scoring_identity():
     rem = _build_rem_map(HAND, ['E'], [], '6p')
     assert _yakuhai_potential_score(['E'], '6p', 'S', rem, 'E') == 0
-    assert _yakuhai_potential_score(['E', 'E'], '6p', 'S', rem, 'E') > 0
+    assert _yakuhai_potential_score(['E', 'E'], '6p', 'S', rem, 'E') == 0
+    assert _yakuhai_potential_score(['S', 'S'], '6p', 'S', rem, 'E') > 0
     assert not _is_guest_wind_single('S', ['S'], '6p', 'S', 'E')
-    assert not _is_guest_wind_single('E', ['E'], '6p', 'S', 'E')
+    assert _is_guest_wind_single('E', ['E'], '6p', 'S', 'E')
     assert not _is_guest_wind_single('E', ['E'], 'E', 'S', 'E')
+    # Physical whiteboard retains dragon scoring potential even when its fixed identity is East.
     assert not _is_guest_wind_single('P', ['P'], 'E', 'S', 'E')
 
 

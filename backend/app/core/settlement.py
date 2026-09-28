@@ -6,7 +6,7 @@ Points = 赢家 H_final（§5.1）。
   - 闲家和：庄付全额，其余两闲各付半额；未和各家固有结算胡折半互结。
   - 辣子（Points >= 100）：无论庄闲或和牌方式，三家各付 100；固有胡头继续互结。
 
-固有结算胡 = 固有底胡 × 2^字牌/门风/圈风番（见 scoring.calculate_unwon_player_points）。
+固有结算胡 = 固有底胡 × 2^字牌/门风番（见 scoring.calculate_unwon_player_points）。
 """
 
 from __future__ import annotations
@@ -116,7 +116,7 @@ def calculate_final_settlement(
         hand_tiles / melds / win_tile: 赢家计分用（hand 为未含胡张的门清）。
         wrap_penalty: 必须为 False（§7 禁止包牌）。
         discarder_seat: 捉铳时的出枪方（仅记录，不改变无包牌三人分摊）。
-        round_wind: 圈风（字牌刻杠叠番）。
+        round_wind: 旧牌谱轮次元数据，不参与计番。
 
     Returns:
         含 ``points / win_type / net_by_seat / transfers / payments / wrap_penalty`` 等。

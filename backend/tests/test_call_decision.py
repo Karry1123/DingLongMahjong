@@ -150,14 +150,14 @@ class TestPassVsCallEv(unittest.TestCase):
         scores = {c.action.action_type: c.net_ev for c in decision.candidates}
         self.assertGreater(scores[ActionType.MING_GANG], scores[ActionType.PONG] + 30)
 
-    def test_pong_fan_respects_dragons_seat_and_round_wind(self):
+    def test_pong_fan_respects_dragons_and_seat_only(self):
         self.assertEqual(_pong_yakuhai_fan("C", "N", "W", "E"), 1)
         self.assertEqual(_pong_yakuhai_fan("F", "N", "W", "E"), 1)
         self.assertEqual(_pong_yakuhai_fan("P", "N", "W", "E"), 1)
         self.assertEqual(_pong_yakuhai_fan("W", "N", "W", "E"), 1)
-        self.assertEqual(_pong_yakuhai_fan("E", "N", "W", "E"), 1)
+        self.assertEqual(_pong_yakuhai_fan("E", "N", "W", "E"), 0)
         self.assertEqual(_pong_yakuhai_fan("E", "N", "W", "S"), 0)
-        self.assertEqual(_pong_yakuhai_fan("W", "N", "W", "W"), 2)
+        self.assertEqual(_pong_yakuhai_fan("W", "N", "W", "W"), 1)
 
     def test_red_dragon_pong_beats_pass_with_north_as_dealer_tile(self):
         """西风持中对子、得为北风时，碰中锁定明刻与三元番。"""

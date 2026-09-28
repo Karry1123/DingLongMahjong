@@ -7,7 +7,7 @@ const result = computed(() => huResultLabel(props.info))
 </script>
 <template>
   <div class="self-win-actions" aria-label="自摸操作" aria-live="polite">
-    <button type="button" class="self-win-button" :disabled="disabled" @click="emit('declare')">胡<span v-if="result"> ({{ result }})</span></button>
+    <button type="button" class="self-win-button" :disabled="disabled" @click="emit('declare')">自摸<span v-if="result"> ({{ result }})</span></button>
     <button type="button" class="self-win-pass" :disabled="disabled" @click="emit('dismiss')">暂不胡</button>
   </div>
 </template>

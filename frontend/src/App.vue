@@ -28,6 +28,7 @@ import PvECircleSummary from './components/PvECircleSummary.vue'
 import PveStartDialog from './components/PveStartDialog.vue'
 import { useGameSession } from './composables/useGameSession.js'
 import { useHuPreview } from './composables/useHuPreview.js'
+import { gameStatusHint, createGameStatusTracker } from './utils/gameStatusHint.js'
 import { useOrientation } from './composables/useOrientation.js'
 import { useFullscreen } from './composables/useFullscreen.js'
 import { cloudWakeMessage, getRecommendDecision, getOpponentThreats, isAbortError } from './services/api.js'
@@ -633,8 +634,9 @@ const turnCount = computed(() => Math.floor(totalDiscardCount.value / 4) + 1)
 const opponentThreats = ref([])
 let threatTimer = null
 let threatRequest = null
+let threatRoundId = null
 watch(() => JSON.stringify({
-  mode: gameMode.value, playing: isPlaying.value, dealer: roundState.dealerTile,
+  mode: gameMode.value, playing: isPlaying.value, dealer: roundState.dealerTile, roundId:gameRoundId.value,
   wall: wallTiles.value.length,
   turn: turnCount.value, selfDiscards: roundState.discards,
   opponents: roundState.opponents.map((o) => ({ seat_wind: o.seat_wind,
@@ -642,6 +644,7 @@ watch(() => JSON.stringify({
 }), () => {
   clearTimeout(threatTimer)
   threatRequest?.abort()
+  if (threatRoundId !== gameRoundId.value) { opponentThreats.value=[]; threatRoundId=gameRoundId.value }
   if (gameMode.value !== 'PVE' || !isPlaying.value) { opponentThreats.value = []; return }
   threatTimer = setTimeout(async () => {
     const controller = new AbortController()
@@ -662,19 +665,16 @@ watch(() => JSON.stringify({
 }, { immediate: true })
 onUnmounted(() => { clearTimeout(threatTimer); threatRequest?.abort() })
 
-const opponentWarning = computed(() => {
-  const steady = { level: 'safe', text: '牌局平稳进行中，四家摸打试探...' }
-  if (!isPlaying.value || wallTiles.value.length > 55 || turnCount.value <= 4) return steady
-  const ranked = [...opponentThreats.value].sort((a, b) =>
-    ({ high: 2, warn: 1, safe: 0 })[b.level] - ({ high: 2, warn: 1, safe: 0 })[a.level]
-    || b.probability - a.probability)
-  const threat = ranked[0]
-  if (!threat || threat.level === 'safe') return steady
-  const who = seatRoleMap.value[threat.seat_wind] || `${windLabel(threat.seat_wind)}风`
-  if (threat.level === 'high') return { level: 'high', text: `警告：${who} 听牌概率极高，注意防守，建议跟切熟张！` }
-  if (threat.reason === 'fresh_middle') return { level: 'warn', text: `注意 ${who}，连续切出危险中张，疑似逼近听牌！` }
-  return { level: 'warn', text: `注意 ${who}，已完成一组副露！` }
-})
+const statusTracker = createGameStatusTracker()
+const opponentWarning = ref(gameStatusHint())
+watch(() => ({
+  wallCount:wallTiles.value.length, turnCount:turnCount.value,
+  opponents:roundState.opponents, selfMelds:roundState.melds,
+  seatWind:roundState.seatWind, dealerTile:roundState.dealerTile,
+  threats:opponentThreats.value,
+  selfDiscards:roundState.discards,
+  roundId:gameRoundId.value, playing:isPlaying.value&&gameMode.value==='PVE',
+}), input => { opponentWarning.value=statusTracker.update(input) }, {deep:true,immediate:true})
 
 /**
  * @param {string} seat
@@ -1703,8 +1703,8 @@ async function onReset(clearHistory = false) {
         :thinking-seat="aiThinkingSeat"
       />
 
-      <div v-if="gameMode === 'PVE'" class="pve-situation-hud" :class="`risk-${opponentWarning.level}`" role="status" aria-live="polite">
-        {{ opponentWarning.text }}
+      <div v-if="gameMode === 'PVE'" class="pve-situation-hud game-status-hint" :class="`risk-${opponentWarning.level}`" role="status" aria-live="polite">
+        <Transition name="situation-hint" mode="out-in"><span :key="opponentWarning.text">{{ opponentWarning.text }}</span></Transition>
       </div>
 
       <PlayerWorkbench :pve="gameMode === 'PVE'" :show-recommendation="gameMode !== 'PVE' || canSelfWin || enableEV || decisionDockPhase === 'call'">
@@ -2019,7 +2019,12 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-metrics small { font-size:8px; }
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-more { flex-basis:25px; font-size:8px; }
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-drawer { width:100%; max-height:210px; }
-.viewport-wrapper.is-stage-active .pve-situation-hud { position:absolute; z-index:32; right:18px; bottom:101px; max-width:360px; padding:7px 12px; border:1px solid #d4af5870; border-radius:999px; background:#063b32e8; color:#fde68a; font-size:13px; font-weight:600; line-height:1.3; text-align:right; box-shadow:0 4px 12px #001b1740; pointer-events:none; }
+.game-status-hint { display:flex; align-items:center; height:32px; box-sizing:border-box; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.game-status-hint > span { display:block; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.viewport-wrapper.is-stage-active .pve-situation-hud { position:absolute; z-index:32; right:18px; bottom:101px; max-width:min(360px, calc(100% - 36px)); padding:0 12px; border:1px solid #d4af5870; border-radius:999px; background:#063b32e8; color:#fde68a; font-size:13px; font-weight:600; line-height:1.3; text-align:right; box-shadow:0 4px 12px #001b1740; pointer-events:none; }
 .viewport-wrapper.is-stage-active .pve-situation-hud.risk-high { border-color:#fb718580; color:#ffe4e6; }
+.situation-hint-enter-active, .situation-hint-leave-active { transition:opacity .12s ease; }
+.situation-hint-enter-from, .situation-hint-leave-to { opacity:0; }
+@media(prefers-reduced-motion:reduce) { .situation-hint-enter-active, .situation-hint-leave-active { transition:none; } }
 .viewport-wrapper.is-stage-active .app-version-footer { display:none; }
 </style>

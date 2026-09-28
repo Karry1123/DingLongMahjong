@@ -6,7 +6,7 @@
 未胡者参考胡数 = 牌型胡数 × (2 ^ 翻数)
 
 牌型胡数来自：雀头 / 明刻 / 暗刻 / 明杠 / 暗杠 / 自摸 / 嵌档。
-顺子一律 0 胡。翻数来自：三元刻杠、门风刻杠、圈风刻杠、硬碰硬、得还原、混/清一色。
+顺子一律 0 胡。翻数来自：三元刻杠、门风刻杠、硬碰硬、得还原、混/清一色。
 
 本模块为独立计分入口；EV 引擎等调用方应逐步迁移到 ``calculate_hu_points``。
 """
@@ -60,7 +60,6 @@ CHI_HU = 0  # 顺子恒 0
 # 翻数
 FAN_DRAGON_PUNG_OR_KONG = 1  # 中/发/白 每组刻或杠
 FAN_SEAT_WIND_PUNG_OR_KONG = 1  # 自家门风刻或杠
-FAN_ROUND_WIND_PUNG_OR_KONG = 1  # 圈风刻或杠（可与门风叠加）
 FAN_HARD_HU = 1  # 硬碰硬（无「得」作百搭）
 FAN_RESTORED_JOKER = 1  # 得还原：每张 +1，最多 3
 MAX_RESTORED_JOKER_FAN = 3
@@ -103,7 +102,7 @@ def calculate_hu_points(
         dealer_tile: 本局财神（得）。
         base_hu: 底胡，默认 10。
         restored_jokers: 得还原张数（把「得」按本身牌面使用的张数）。
-        round_wind: 圈风 E/S/W/N（与门风同时成立时可叠番）。
+        round_wind: 兼容旧牌谱的轮次元数据，不参与计番。
 
     Returns:
         含 tile_hu / base_hu / fan / final_hu / is_hard_hu / details 的字典。
@@ -435,7 +434,6 @@ def _score_shape(
     fan = 0
     dragon_groups = 0
     seat_wind_groups = 0
-    round_wind_groups = 0
 
     for item, group in zip(details_melds, decomposition["winning_hand_groups"]):
         if item["type"] == "chi":
@@ -454,12 +452,6 @@ def _score_shape(
                 f"本门风{_WIND_FAN_CN.get(identity, identity)}"
                 f"{kind_cn} (翻番 ×2)"
             )
-        if identity == round_wind:
-            round_wind_groups += 1
-            fan_items.append(
-                f"圈风{_WIND_FAN_CN.get(identity, identity)}"
-                f"{kind_cn} (翻番 ×2)"
-            )
 
     if dragon_groups:
         fans["dragon_pung_kong"] = dragon_groups * FAN_DRAGON_PUNG_OR_KONG
@@ -469,11 +461,6 @@ def _score_shape(
             seat_wind_groups * FAN_SEAT_WIND_PUNG_OR_KONG
         )
         fan += fans["seat_wind_pung_kong"]
-    if round_wind_groups:
-        fans["round_wind_pung_kong"] = (
-            round_wind_groups * FAN_ROUND_WIND_PUNG_OR_KONG
-        )
-        fan += fans["round_wind_pung_kong"]
 
     if is_hard_hu:
         fans["hard_hu"] = FAN_HARD_HU
@@ -943,7 +930,7 @@ def calculate_unwon_base_hu(
     *,
     round_wind: str = "E",
 ) -> dict[str, Any]:
-    """未胡者固有底胡 + 字牌/门风/圈风刻杠加番后的结算胡数。
+    """未胡者固有底胡 + 字牌/门风刻杠加番后的结算胡数。
 
     公式（与和牌者牌型部分一致，不含默认 10 底）：
         calculated_points = total_base_hu × (2 ^ fan_count)
@@ -1082,7 +1069,7 @@ def calculate_unwon_player_points(
     dealer_tile: str,
     round_wind: str = "E",
 ) -> dict[str, Any]:
-    """未和牌方点数：固有底胡 × 2^字牌/门风/圈风番。
+    """未和牌方点数：固有底胡 × 2^字牌/门风番。
 
     可直接传入 ``player`` 字典（含 hand_tiles / melds / seat_wind），
     或显式传入手牌与副露。
@@ -1108,13 +1095,12 @@ def _unwon_yakuhai_fan(
     dealer_tile: str,
     round_wind: str = "E",
 ) -> tuple[int, dict[str, int], list[dict[str, Any]]]:
-    """从固有底胡明细提取三元/门风/圈风刻杠番（雀头不加番）。"""
+    """从固有底胡明细提取三元/门风刻杠番（雀头不加番）。"""
     fan = 0
     fans: dict[str, int] = {}
     fan_details: list[dict[str, Any]] = []
     dragon_n = 0
     seat_n = 0
-    round_n = 0
 
     for item in breakdown:
         kind = str(item.get("kind") or "")
@@ -1159,20 +1145,6 @@ def _unwon_yakuhai_fan(
                     "label": f"{label} (+1番)",
                 }
             )
-        if identity == round_wind:
-            round_n += 1
-            wind_cn = _WIND_FAN_CN.get(identity, identity)
-            label = f"圈风{kind_cn}{wind_cn}"
-            fan_details.append(
-                {
-                    "name": label,
-                    "kind": "round_wind",
-                    "tile": identity,
-                    "fan": 1,
-                    "multiplier": 2,
-                    "label": f"{label} (+1番)",
-                }
-            )
 
     if dragon_n:
         fans["dragon_pung_kong"] = dragon_n * FAN_DRAGON_PUNG_OR_KONG
@@ -1180,9 +1152,6 @@ def _unwon_yakuhai_fan(
     if seat_n:
         fans["seat_wind_pung_kong"] = seat_n * FAN_SEAT_WIND_PUNG_OR_KONG
         fan += fans["seat_wind_pung_kong"]
-    if round_n:
-        fans["round_wind_pung_kong"] = round_n * FAN_ROUND_WIND_PUNG_OR_KONG
-        fan += fans["round_wind_pung_kong"]
 
     return fan, fans, fan_details
 

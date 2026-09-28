@@ -1,0 +1,118 @@
+{
+  "hand_tiles": [
+    "1m",
+    "1m",
+    "5p",
+    "6p",
+    "6p",
+    "7p",
+    "8p",
+    "8p",
+    "9p",
+    "2s",
+    "3s",
+    "4s",
+    "C"
+  ],
+  "melds": [],
+  "discards": [
+    "E",
+    "5m",
+    "2p"
+  ],
+  "dealer_tile": "1s",
+  "seat_wind": "E",
+  "round_wind": "E",
+  "is_dealer": true,
+  "turn_count": 5,
+  "opponents": [
+    {
+      "seat_wind": "S",
+      "is_dealer": false,
+      "melds": [
+        {
+          "meld_type": "chi",
+          "claimed_tile": "8m",
+          "provider_seat": "E",
+          "tiles": [
+            "7m",
+            "8m",
+            "9m"
+          ]
+        },
+        {
+          "meld_type": "chi",
+          "claimed_tile": "8s",
+          "provider_seat": "E",
+          "tiles": [
+            "7s",
+            "8s",
+            "9s"
+          ]
+        }
+      ],
+      "discards": [
+        "N",
+        "9m",
+        "2m",
+        "9s"
+      ]
+    },
+    {
+      "seat_wind": "W",
+      "is_dealer": false,
+      "melds": [
+        {
+          "meld_type": "pong",
+          "claimed_tile": "E",
+          "provider_seat": "S",
+          "tiles": [
+            "E",
+            "E",
+            "E"
+          ]
+        }
+      ],
+      "discards": [
+        "F",
+        "6m",
+        "C",
+        "9s"
+      ]
+    },
+    {
+      "seat_wind": "N",
+      "is_dealer": false,
+      "melds": [
+        {
+          "meld_type": "pong",
+          "claimed_tile": "W",
+          "provider_seat": "E",
+          "tiles": [
+            "W",
+            "W",
+            "W"
+          ]
+        },
+        {
+          "meld_type": "chi",
+          "claimed_tile": "8s",
+          "provider_seat": "W",
+          "tiles": [
+            "6s",
+            "7s",
+            "8s"
+          ]
+        }
+      ],
+      "discards": [
+        "S",
+        "9s",
+        "8m",
+        "6s",
+        "9m",
+        "1m"
+      ]
+    }
+  ]
+}

@@ -8,7 +8,7 @@ export const HONOR_VOICES = Object.freeze({
   P: { text: '白板', file: 'baiban' },
 })
 
-const CLIP_CODES = [...ALL_TILES, 'CHI', 'PONG', 'GANG', 'WIN', 'OPENING']
+const CLIP_CODES = [...ALL_TILES, 'CHI', 'PONG', 'GANG', 'WIN', 'ZIMO', 'OPENING']
 const CLIP_SET = new Set(CLIP_CODES)
 const CLIP_BASE = `${(import.meta.env?.BASE_URL || '/').replace(/\/?$/, '/')}audio/data/`
 
@@ -24,8 +24,9 @@ export function voiceProfileForSeat(selfSeat, seat) {
   return PROFILES[role] || PROFILES.self
 }
 
-export function spokenAction(action, tile) {
+export function spokenAction(action, tile, isZimo = false) {
   if (action === 'DISCARD') return tile ? (HONOR_VOICES[tile]?.text || tileLabel(tile)) : ''
+  if (action === 'WIN' && isZimo) return '自摸！'
   return { CHI: '吃！', PONG: '碰！', GANG: '杠！', WIN: '胡了！' }[action] || ''
 }
 
@@ -278,13 +279,13 @@ export function createSoundEngine(browser = globalThis) {
     speechTimeout = setTimeout(() => { synth.cancel(); fallbackCue(); done() }, 3500)
     try { synth.speak(utterance); synth.resume?.() } catch { fallbackCue(); done() }
   }
-  function playAction({ action, tile, seat, selfSeat }) {
+  function playAction({ action, tile, seat, selfSeat, isZimo = false }) {
     if (disposed || muted || volume === 0) return
-    const text = spokenAction(action, tile)
+    const text = spokenAction(action, tile, isZimo)
     if (!text) return
     tap(action === 'WIN')
     const profile = voiceProfileForSeat(selfSeat, seat)
-    const code = action === 'DISCARD' ? tile : action
+    const code = action === 'DISCARD' ? tile : action === 'WIN' && isZimo ? 'ZIMO' : action
     if ((preferClips || !synth?.speak) && CLIP_SET.has(code) && context?.decodeAudioData && browser.fetch) {
       const sequence = ++clipSequence
       if (playClip(code, profile)) return

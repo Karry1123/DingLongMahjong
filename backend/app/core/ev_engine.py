@@ -841,11 +841,11 @@ def _is_guest_wind_single(
     tile: str, hand_tiles: list[str], dealer_tile: str,
     seat_wind: str, round_wind: str,
 ) -> bool:
-    """非本门风、非圈风的客风单张。"""
+    """非本门风、非财神的客风单张。"""
     return (
         tile in WINDS
         and tile in hand_tiles
-        and tile not in (dealer_tile, seat_wind, round_wind)
+        and tile not in (dealer_tile, seat_wind)
         and _hand_identity_counts(hand_tiles, dealer_tile).get(tile, 0) == 1
     )
 
@@ -1097,7 +1097,7 @@ def _deep_quality_ukeire_count(
 
     原始进张仍由向听穷举决定，折现只用于远期进攻估值。真正财神
     的万能进张不折现；白板按固定替身身份计数，不会给其他字牌凑刻。
-    已有字牌对子/刻子、自风、圈风均不受客风孤张折现影响。
+    已有字牌对子/刻子、自风均不受客风孤张折现影响。
     """
     total = 0.0
     counts = _hand_identity_counts(remain_raw, dealer_tile)
@@ -1108,7 +1108,7 @@ def _deep_quality_ukeire_count(
             rem *= _ORPHAN_TERMINAL_UKEIRE_SCALE
         identity = _logical_tile(tile, dealer_tile)
         if (shanten > 1 and tile != dealer_tile and tile != "P"
-                and identity in WINDS and identity not in {seat_wind, round_wind}
+                and identity in WINDS and identity != seat_wind
                 and counts.get(identity, 0) == 1):
             rem *= _GUEST_SINGLE_PAIR_UKEIRE_SCALE
         total += rem
@@ -1303,12 +1303,12 @@ def _discard_cut_urgency(
 def _yakuhai_identities(
     dealer_tile: str, seat_wind: str, round_wind: str = "E",
 ) -> set[str]:
-    """可计翻的役牌逻辑身份：中/发/白 + 门风 + 圈风（§5.3）。"""
+    """可计翻的役牌逻辑身份：中/发/白 + 本门风。"""
     dragons = {"C", "F"}
     # 得=白时，物理 P 即白板役牌；否则 P 已被映射为得牌，不计入白
     if dealer_tile == "P":
         dragons.add("P")
-    return dragons | {seat_wind, round_wind}
+    return dragons | {seat_wind}
 
 
 def _hand_identity_counts(
@@ -1368,10 +1368,10 @@ def _yakuhai_potential_score(
         elif n == 2:
             score += _YAKUHAI_PAIR_POTENTIAL
         elif n == 1:
-            if tile == round_wind or _is_guest_wind_single(
+            if _is_guest_wind_single(
                 tile, hand_tiles, dealer_tile, seat_wind, round_wind
             ):
-                continue  # 圈风/客风单张不赋予隐形保留分；对子/成刻仍按规则估值。
+                continue  # 客风单张不赋予隐形保留分；对子/成刻仍按规则估值。
             rem_n = _identity_supply_rem(tile, dealer_tile, rem)
             score += _YAKUHAI_SINGLE_POTENTIAL * _honor_rem_factor(rem_n)
     return score
@@ -1397,8 +1397,6 @@ def _guest_wind_hold_penalty(
         if wind == seat_wind:
             continue
         n = int(counts.get(wind, 0))
-        if wind == round_wind:
-            continue
         if n == 1:
             rem_n = _identity_supply_rem(wind, dealer_tile, rem)
             # Rem≤1 → 1.5×；Rem=2 → 1.2×；否则原值
@@ -2300,7 +2298,7 @@ def _discard_candidate_note(
     # 场见客风 + 保留白板替身
     if "切除场见客风" in structure_note or (
         identity in WINDS
-        and identity not in (seat_wind, round_wind)
+        and identity != seat_wind
         and rem_n <= 2
         and _is_pure_isolated_tile(
             discard, list(remain_raw) + [discard], dealer_tile
@@ -2382,7 +2380,7 @@ def _discard_candidate_note(
         )
 
     # 客风孤张优先用专用文案（与「纯序数孤张」区分）
-    if identity in WINDS and identity not in (seat_wind, round_wind):
+    if identity in WINDS and identity != seat_wind:
         has_complex = shape_score >= (_SHAPE_PAIR + _SHAPE_RYANMEN * 0.5)
         has_yakuhai = yakuhai_score >= _YAKUHAI_SINGLE_POTENTIAL * 0.4
         if has_complex and has_yakuhai:

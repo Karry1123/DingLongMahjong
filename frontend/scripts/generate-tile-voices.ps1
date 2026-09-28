@@ -28,6 +28,7 @@ $labels['CHI'] = '吃'
 $labels['PONG'] = '碰'
 $labels['GANG'] = '杠'
 $labels['WIN'] = '胡了'
+$labels['ZIMO'] = '自摸'
 
 $honorFiles = @{ E='dongfeng'; S='nanfeng'; W='xifeng'; N='beifeng'; C='hongzhong'; F='facai'; P='baiban' }
 $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer

@@ -358,8 +358,8 @@ class TestDragonAnkoFan(unittest.TestCase):
         self.assertGreaterEqual(r["fan"], 2)
         self.assertEqual(r["final_hu"], (r["tile_hu"] + 10) * (2 ** r["fan"]))
 
-    def test_seat_and_round_wind_stack(self):
-        """门风=圈风=东：东风刻叠两番。"""
+    def test_seat_wind_counts_once_even_with_legacy_round_wind(self):
+        """门风东仅一番，旧圈风字段不能叠番。"""
         melds = [
             _m(MeldType.PONG, ["E"] * 3),
             _m(MeldType.CHI, ["2m", "3m", "4m"]),
@@ -376,9 +376,9 @@ class TestDragonAnkoFan(unittest.TestCase):
             round_wind="E",
         )
         self.assertEqual(r["details"]["fans"].get("seat_wind_pung_kong"), 1)
-        self.assertEqual(r["details"]["fans"].get("round_wind_pung_kong"), 1)
+        self.assertNotIn("round_wind_pung_kong", r["details"]["fans"])
         self.assertTrue(any("本门风" in x for x in r["details"]["fan_items"]))
-        self.assertTrue(any("圈风" in x for x in r["details"]["fan_items"]))
+        self.assertFalse(any("圈风" in x for x in r["details"]["fan_items"]))
 
 
 if __name__ == "__main__":

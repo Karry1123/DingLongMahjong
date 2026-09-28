@@ -47,10 +47,11 @@ try {
   await command('Page.navigate', { url: process.env.PVE_URL || 'http://127.0.0.1:5178/' })
   await until(() => evaluate(`!!document.querySelector('#app')?.__vue_app__`))
   await evaluate(`(() => {
-    const realFetch=window.fetch.bind(window); window.__scores=[];
+    const realFetch=window.fetch.bind(window); window.__scores=[];window.__winAudio=[];
     window.fetch=async(url,init)=>{
       const res=await realFetch(url,init);
       if(String(url).endsWith('/calculate-hu')) window.__scores.push({body:JSON.parse(init.body),score:await res.clone().json(),status:res.status});
+      if(['/WIN.dat','/ZIMO.dat'].some(name=>String(url).endsWith(name)))window.__winAudio.push({url:String(url),status:res.status});
       return res;
     };
     window.__huFixture=(zimo,capped)=>{
@@ -86,12 +87,17 @@ try {
           noDialog:!document.querySelector('.pve-self-win-overlay,[aria-label="自摸操作"][role="dialog"]'),noTooltip:!b.hasAttribute('title'),
           noDetails:!document.querySelector('.self-win-actions dl,.self-win-actions ul,.self-win-actions details')};
       })()`)
-      assert.equal(layout.label,`胡 (${capped?'辣子':expected.score.final_hu+'胡'})`)
+      assert.equal(layout.label,`${zimo?'自摸':'胡'} (${capped?'辣子':expected.score.final_hu+'胡'})`)
       assert.ok(layout.fits&&layout.textFits&&layout.noDialog&&layout.noTooltip&&layout.noDetails,JSON.stringify(layout))
       results.push({zimo,capped,width,height,...layout})
       const shot=await command('Page.captureScreenshot',{format:'png'})
       await writeFile(`tests/artifacts/hu-preview/${zimo?'zimo':'ron'}-${capped?'cap':'normal'}-${width}.png`,Buffer.from(shot.data,'base64'))
     }
+    await evaluate(`(()=>{const s=document.querySelector('#app').__vue_app__._instance.setupState;s.soundMuted=false;document.querySelector('${selector}').click()})()`)
+    await until(()=>evaluate(`document.querySelector('#app').__vue_app__._instance.setupState.gameState==='GAME_OVER'`))
+    assert.equal(await evaluate(`document.querySelector('#app').__vue_app__._instance.setupState.selfWinSettlement.is_zimo`),zimo)
+    await until(()=>evaluate(`window.__winAudio.some(a=>a.url.endsWith('/${zimo?'ZIMO':'WIN'}.dat')&&a.status===200)`))
+    results.push({zimo,capped,voice:zimo?'ZIMO':'WIN',settled:true})
   }
   console.log(JSON.stringify({status:'passed',requests:await evaluate('window.__scores.length'),results},null,2))
 } finally {

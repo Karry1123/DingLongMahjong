@@ -44,6 +44,6 @@ def test_guest_pair_progress_is_discounted_without_losing_real_ukeire():
     assert quality(['N', 'E']) == pytest.approx(5.05)  # A joker does not upgrade a guest pair's quality.
     assert quality(['N', 'N']) == 7  # Established pair: a third copy completes a triplet.
     assert quality(['N'], seat='N') == 7
-    assert quality(['N'], circle='N') == 7
+    assert quality(['N'], circle='N') == pytest.approx(5.05)
     assert quality(['N'], dealer='N') == 7  # Drawing the real wildcard stays full value.
     assert _deep_quality_ukeire_count(['N'], waits, 'E', seat_wind='W', shanten=1) == 7

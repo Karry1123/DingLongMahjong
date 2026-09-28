@@ -17,15 +17,16 @@ class TestOpponentWarningGate(unittest.TestCase):
             {"meld_type": "chi", "tiles": ["2p", "3p", "4p"]},
         ]}
 
-    def test_first_five_rounds_are_quiet_even_with_three_melds(self):
+    def test_visible_three_melds_warn_immediately_even_early(self):
         three_melds = {**self.two_melds, "melds": self.two_melds["melds"] + [
             {"meld_type": "pong", "tiles": ["C"] * 3}
         ]}
         for wall in (80, 70, 64, 56):
             result = assess_opponent_threats([three_melds], "C", wall, turn_count=3)[0]
-            self.assertEqual((result["level"], result["reason"]), ("safe", "early_round"))
+            self.assertEqual((result["level"], result["reason"]), ("high", "high_tenpai"))
             self.assertNotIn("shanten", result)
-        self.assertEqual(assess_opponent_threats([three_melds], "C", 50, turn_count=4)[0]["level"], "safe")
+        self.assertEqual(assess_opponent_threats([three_melds], "C", 50, turn_count=4)[0]["level"], "high")
+        self.assertEqual(assess_opponent_threats([self.two_melds], "C", 57, turn_count=6)[0]["level"], "warn")
 
     def test_midgame_meld_and_fresh_middle_prompts(self):
         one_meld = {**self.two_melds, "discards": ["1m", "9p"], "melds": self.two_melds["melds"][:1]}
@@ -41,7 +42,7 @@ class TestOpponentWarningGate(unittest.TestCase):
         ]}
         self.assertEqual(assess_opponent_threats([three], "C", 55, turn_count=6)[0]["reason"], "high_tenpai")
         closed = {"seat_wind": "W", "discards": [], "melds": []}
-        self.assertEqual(assess_opponent_threats([closed], "C", 25, turn_count=6)[0]["level"], "safe")
+        self.assertEqual(assess_opponent_threats([closed], "C", 25, turn_count=6)[0]["level"], "warn")
 
     def test_threat_api_rejects_private_hand_fields(self):
         response = TestClient(app).post("/api/game/threats", json={

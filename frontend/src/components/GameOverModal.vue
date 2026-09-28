@@ -142,8 +142,8 @@ const huDetail = computed(() => {
     baseHu: props.info?.base_hu ?? props.info?.hu_detail?.base_hu ?? 10,
     tileHu: props.info?.tile_hu ?? props.info?.hu_detail?.tile_hu ?? null,
     fan: props.info?.hu_detail?.fan ?? props.info?.fan ?? 0,
-    fans,
-    fanItems,
+    fans:Object.fromEntries(Object.entries(fans).filter(([key])=>key!=='round_wind_pung_kong')),
+    fanItems:fanItems.filter(item=>!String(item).includes('圈风')),
     scoreItems: d.score_items || [],
     pairs: d.pairs || [],
     melds: d.melds || [],
@@ -161,7 +161,6 @@ const FAN_LABELS = {
   hard_hu: '硬碰硬',
   dragon_pung_kong: '三元刻/杠',
   seat_wind_pung_kong: '门风刻/杠',
-  round_wind_pung_kong: '圈风刻/杠',
   restored_jokers: '得还原',
   half_flush: '混一色',
   full_flush: '清一色',
@@ -246,7 +245,7 @@ const seatCards = computed(() => {
             ),
             items: inherentRaw.items || [],
             breakdown: inherentRaw.breakdown || inherentRaw.hu_details || [],
-            fan_details: inherentRaw.fan_details || [],
+            fan_details: (inherentRaw.fan_details || []).filter(item=>item.kind!=='round_wind'),
             fans: inherentRaw.fans || {},
           }
         : {

@@ -114,7 +114,7 @@ class TestOpponentThreats(unittest.TestCase):
         ]}], "1p", 39)[0]
         self.assertEqual(safe["level"], "safe")
         self.assertIn(warned["level"], ("warn", "high"))
-        self.assertEqual(warned["reason"], "many_melds")
+        self.assertEqual(warned["reason"], "high_tenpai")
 
 
 @unittest.skipIf(TestClient is None, "FastAPI test dependency not installed")
@@ -163,4 +163,4 @@ class TestGameRecordApi(unittest.TestCase):
                                      (["1m", "2m", "3m"], ["4m", "5m", "6m"], ["7m", "8m", "9m"])],
                            }]})
         self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["threats"][0]["reason"], "many_melds")
+        self.assertEqual(response.json()["threats"][0]["reason"], "high_tenpai")

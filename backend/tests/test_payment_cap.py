@@ -83,7 +83,8 @@ def test_dealer_winner_cap_does_not_consume_mutual_settlement_budget():
     mutual = result['payments']['mutual_settlement_transactions']
     assert next(t for t in payouts if t['from'] == 'W')['amount'] == 100
     assert next(t for t in payouts if t['from'] == 'W')['raw_amount'] == 100
-    assert next(t for t in mutual if t['from'] == 'W' and t['to'] == 'S')['amount'] == 14
-    assert next(t for t in mutual if t['from'] == 'N' and t['to'] == 'S')['amount'] == 7
-    assert result['net_by_seat'] == {'E': 300.0, 'S': -79.0, 'W': -114.0, 'N': -107.0}
+    # South's own-wind pung has one fan; the legacy round_wind never adds a second.
+    assert next(t for t in mutual if t['from'] == 'W' and t['to'] == 'S')['amount'] == 6
+    assert next(t for t in mutual if t['from'] == 'N' and t['to'] == 'S')['amount'] == 3
+    assert result['net_by_seat'] == {'E': 300.0, 'S': -91.0, 'W': -106.0, 'N': -103.0}
     assert sum(result['net_by_seat'].values()) == 0

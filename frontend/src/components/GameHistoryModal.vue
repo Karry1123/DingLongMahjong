@@ -124,7 +124,7 @@ onUnmounted(() => { controller.abort(); window.removeEventListener('keydown', on
             <article v-for="record in orderedRecords" :key="record.game_id" class="history-row" :class="{ 'is-current': record.game_id === currentGameId }">
               <div class="history-identity">
                 <div class="history-id-line"><strong>{{ record.game_id }}</strong><button type="button" :aria-label="`复制 ${record.game_id}`" :title="`复制 ${record.game_id}`" @click="copyId(record.game_id)">{{ copiedId === record.game_id ? '✓' : '⧉' }}</button></div>
-                <small>{{ record.circle_index ? `第 ${record.circle_index} 圈` : '已归档' }} · {{ windLabel(record.round_wind) }}风局</small>
+                <small>{{ record.circle_index ? `第 ${record.circle_index} 圈` : '已归档' }}</small>
                 <small>{{ timeLabel(record.timestamp) }}</small>
               </div>
               <div class="history-outcome">
