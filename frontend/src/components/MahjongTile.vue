@@ -1,4 +1,5 @@
 <script setup>
+import TileArtwork from './TileArtwork.vue'
 import { computed } from 'vue'
 import { tileLabel } from '../constants/tiles.js'
 const props = defineProps({ code: { type: String, required: true }, sideways: Boolean, badge: String, note: String, large: Boolean })
@@ -9,7 +10,8 @@ const suitName = computed(() => ({ m: '万', p: '筒', s: '条' })[props.code[1]
 <template>
   <span class="mahjong-tile" :class="{ sideways, large, marked: badge }" :data-tile="code" :data-sideways="sideways || undefined" :aria-label="[tileLabel(code), badge, note].filter(Boolean).join(' · ')" :title="[tileLabel(code), note].filter(Boolean).join(' · ')">
     <span class="tile-face" aria-hidden="true">
-      <span v-if="suited" class="characters" :class="`suit-${code[1]}`"><b>{{ '一二三四五六七八九'[number-1] }}</b><b>{{ suitName }}</b></span>
+      <TileArtwork v-if="suited && code[1] !== 'm'" :code="code" />
+      <span v-else-if="suited" class="characters" :class="`suit-${code[1]}`"><b>{{ '一二三四五六七八九'[number-1] }}</b><b>{{ suitName }}</b></span>
       <span v-else-if="code === 'P'" class="white-dragon" />
       <b v-else class="honor" :class="code === 'C' ? 'text-red-700' : code === 'F' ? 'text-emerald-700' : ''">{{ tileLabel(code) }}</b>
     </span>
@@ -24,7 +26,7 @@ const suitName = computed(() => ({ m: '万', p: '筒', s: '条' })[props.code[1]
 .sideways { width:var(--th); height:var(--tw); aspect-ratio:4/3; }
 .sideways .tile-face { inset:auto; left:50%; top:50%; width:var(--tw); height:var(--th); transform:translate(-50%,-50%) rotate(90deg); }
 .characters { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; width:100%; font-family:serif; font-size:calc(var(--tw)*.4); font-weight:700; line-height:.9; text-align:center; }
-.suit-m { color:#b4232d; } .suit-p { color:#185a91; } .suit-s { color:#177247; }
+.suit-m { gap:calc(var(--tw)*.10); color:#b4232d; } .suit-p { color:#185a91; } .suit-s { color:#177247; }
 .honor { max-width:100%; font-size:calc(var(--tw)*.56); line-height:1; font-family:serif; white-space:nowrap; }
 .white-dragon { width:65%; height:70%; border:max(1px,calc(var(--tw)*.055)) double #225c91; border-radius:3px; }
 .marked .tile-face { outline:2px solid #fbbf24; }

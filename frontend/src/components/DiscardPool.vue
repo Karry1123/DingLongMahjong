@@ -1,4 +1,5 @@
 <script setup>
+import MahjongTile from './MahjongTile.vue'
 import { computed, ref } from 'vue'
 import {
   MAX_PER_TILE,
@@ -138,7 +139,7 @@ function clearAll() {
         :key="`sum-${code}-${i}`"
         class="rounded-md border border-slate-500/40 bg-slate-800/50 px-1.5 py-0.5 text-[10px] text-slate-200"
       >
-        {{ tileLabel(code) }}
+        <MahjongTile :code="code" style="--tw:22px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
       </span>
     </div>
 
@@ -173,7 +174,7 @@ function clearAll() {
           :title="`移除 ${tileLabel(code)}`"
           @click="removeOne(code)"
         >
-          {{ tileLabel(code) }}
+          <MahjongTile :code="code" style="--tw:22px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
         </button>
       </div>
 
@@ -199,7 +200,7 @@ function clearAll() {
               :aria-label="`${tileLabel(code)} 已见 ${countOf(code)}`"
               @click="onKeyClick(code)"
             >
-              {{ tileLabel(code) }}
+              <MahjongTile :code="code" style="--tw:22px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
               <span
                 v-if="countOf(code)"
                 class="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-amber-400 px-0.5 text-[9px] font-bold text-emerald-950"

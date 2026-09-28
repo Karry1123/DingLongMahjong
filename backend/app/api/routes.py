@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from app.api.game_step import process_game_step
 from app.core.ev_engine import calculate_best_discards
 from app.core.pool_tracker import get_remaining_tiles
-from app.core.scoring import calculate_hu_points
+from app.core.scoring import MAX_PAYMENT_PER_PLAYER, calculate_hu_points
 from app.schemas import (
     AutoDealRequest,
     AutoDealResponse,
@@ -147,6 +147,7 @@ def calculate_hu(request: CalculateHuRequest) -> CalculateHuResponse:
         base_hu=result["base_hu"],
         fan=result["fan"],
         final_hu=result["final_hu"],
+        is_lazi=result["final_hu"] >= MAX_PAYMENT_PER_PLAYER,
         is_hard_hu=result["is_hard_hu"],
         details=result["details"],
         others_hu=result.get("others_hu"),

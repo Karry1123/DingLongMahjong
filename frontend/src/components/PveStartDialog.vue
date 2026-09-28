@@ -7,7 +7,7 @@ const emit = defineEmits(['close', 'start', 'update:enableEV'])
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="人机对战设置" @click.self="emit('close')">
     <section class="w-full max-w-md rounded-2xl border border-amber-400/45 bg-teal-950 p-5 text-left text-amber-50 shadow-2xl">
       <header class="flex items-center justify-between">
-        <h2 class="text-xl font-bold">人机对战设置</h2>
+        <h2 class="text-xl font-bold">顶龙麻将 · 人机对战设置</h2>
         <button type="button" class="rounded-lg px-2 py-1 text-teal-200 hover:bg-teal-800" aria-label="关闭设置" @click="emit('close')">✕</button>
       </header>
       <label class="mt-5 flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-teal-600/50 bg-teal-900/50 p-4">

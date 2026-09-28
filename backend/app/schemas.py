@@ -1,4 +1,4 @@
-"""台州麻将决策系统输入/输出数据模型。
+"""顶龙麻将输入/输出数据模型。
 
 牌面编码严格遵循 rule.md §1：
 - 序数牌：1m~9m、1p~9p、1s~9s
@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 # rule.md §1 合法牌面编码
 _TILE_PATTERN = r"^([1-9][mps]|[ESWNCFP])$"
 _TILE_DESCRIPTION = (
-    "台州麻将牌面编码：序数牌 1m~9m / 1p~9p / 1s~9s，"
+    "顶龙麻将牌面编码：序数牌 1m~9m / 1p~9p / 1s~9s，"
     "字牌 E/S/W/N/C/F/P（白板）"
 )
 _TILE_RE = re.compile(_TILE_PATTERN)
@@ -499,6 +499,7 @@ class CalculateHuResponse(BaseModel):
     base_hu: int = Field(..., ge=0, description="底胡")
     fan: int = Field(..., ge=0, description="总翻数")
     final_hu: int = Field(..., ge=0, description="胡牌者最终胡数")
+    is_lazi: bool = Field(False, description="是否达到辣子封顶线")
     is_hard_hu: bool = Field(..., description="是否硬碰硬")
     details: dict = Field(..., description="得分明细（雀头/面子/自摸/嵌档/翻）")
     others_hu: int | None = Field(

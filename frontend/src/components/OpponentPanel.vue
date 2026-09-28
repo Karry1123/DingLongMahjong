@@ -1,4 +1,5 @@
 <script setup>
+import MahjongTile from './MahjongTile.vue'
 /**
  * 三方对手公开信息：弃牌河 + 副露。
  * - 串行出牌：仅 currentTurnSeat 对手可打出
@@ -719,7 +720,7 @@ function claimHint(seat) {
               ]"
               :title="tileLabel(t)"
             >
-              {{ substituteTileLabel(t, dealerTile) }}
+              <MahjongTile :code="t" style="--tw:22px; --th:29px; margin-bottom:0" />
             </span>
           </div>
           <p v-else class="text-xs text-teal-500/70">尚无弃牌</p>
@@ -770,7 +771,7 @@ function claimHint(seat) {
                   :disabled="remaining(code) <= 0 || disabled"
                   @click="pushDiscard(opp.seat_wind, code)"
                 >
-                  {{ tileLabel(code) }}
+                  <MahjongTile :code="code" style="--tw:24px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
                   <span class="block text-[9px] opacity-70">
                     {{ remaining(code) }}
                   </span>
@@ -807,7 +808,7 @@ function claimHint(seat) {
                   :disabled="!canAddMeld('an_gang', code) || disabled"
                   @click="onQuickAnGang(opp.seat_wind, code)"
                 >
-                  {{ tileLabel(code) }}
+                  <MahjongTile :code="code" style="--tw:24px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
                 </button>
               </div>
             </div>
@@ -865,7 +866,7 @@ function claimHint(seat) {
                   class="inline-flex h-7 min-w-5 px-1 items-center justify-center rounded border text-[9px] font-bold"
                   :class="tileSuitClass(t)"
                 >
-                  {{ substituteTileLabel(t, dealerTile) }}
+                  <MahjongTile :code="t" style="--tw:22px; --th:29px; margin-bottom:0" />
                 </span>
               </span>
               <span
@@ -915,7 +916,7 @@ function claimHint(seat) {
                       addMeld(opp.seat_wind, activeMeld.meldType, code)
                     "
                   >
-                    {{ tileLabel(code) }}
+                    <MahjongTile :code="code" style="--tw:24px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
                   </button>
                 </div>
               </template>

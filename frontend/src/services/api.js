@@ -157,6 +157,7 @@ export async function calculateHuPoints(payload, options = {}) {
     win_tile: payload.win_tile,
     is_zimo: payload.is_zimo,
     seat_wind: payload.seat_wind,
+    round_wind: payload.round_wind ?? 'E',
     dealer_tile: payload.dealer_tile,
     restored_jokers: payload.restored_jokers ?? 0,
     base_hu: payload.base_hu ?? 10,

@@ -2,11 +2,82 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSoundEngine, spokenAction, voiceProfileForSeat } from '../src/utils/soundEngine.js'
 
+function deferredClipEngine(fetch) {
+  const played = []
+  const spoken = []
+  class Context {
+    state = 'running'
+    currentTime = 0
+    destination = {}
+    decodeAudioData() { return Promise.resolve({ duration: .5 }) }
+    createBufferSource() { return { playbackRate: {}, connect() { return this }, start() { played.push(this.buffer) }, stop() {} } }
+    createGain() { return { gain: {}, connect() { return this } } }
+    close() {}
+  }
+  const engine = createSoundEngine({ AudioContext: Context, fetch,
+    SpeechSynthesisUtterance: class { constructor(text) { this.text = text } },
+    speechSynthesis: { getVoices: () => [{lang:'zh-CN',name:'Huihui'}], speak: u => spoken.push(u.text), cancel() {} },
+  })
+  return { engine, played, spoken, play: () => engine.playAction({ action:'DISCARD', tile:'E', seat:'E', selfSeat:'E' }) }
+}
+
+test('opening cue fetches and decodes a data asset, caches it, and respects mute', async () => {
+  const urls=[]
+  const h=deferredClipEngine(async url=>{
+    urls.push(url)
+    return {ok:true,arrayBuffer:async()=>new Uint8Array([77,74,86,79,73,67,69,49,1]).buffer}
+  })
+  h.engine.unlock()
+  assert.equal(await h.engine.playOpening(),true)
+  assert.match(urls[0],/OPENING\.dat$/)
+  assert.equal(await h.engine.playOpening(),true)
+  assert.equal(urls.length,1)
+  assert.equal(h.played.length,2)
+  assert.deepEqual(h.spoken,[])
+  h.engine.setMuted(true)
+  assert.equal(await h.engine.playOpening(),false)
+  h.engine.stop(true)
+})
+
+test('empty intercepted responses fall back without automatic retries, next action can retry', async () => {
+  let requests = 0
+  const h = deferredClipEngine(async () => {
+    requests++
+    return { ok:true, arrayBuffer:async () => requests === 1 ? new ArrayBuffer(0) : new Uint8Array([77,74,86,79,73,67,69,49,1]).buffer }
+  })
+  await h.play()
+  assert.equal(requests, 1)
+  assert.deepEqual(h.spoken, ['东风'])
+  assert.equal(h.played.length, 0)
+  await h.play()
+  assert.equal(requests, 2)
+  assert.equal(h.played.length, 1)
+  h.engine.stop(true)
+})
+
+test('disposing while a fetch is pending prevents late playback or new requests', async () => {
+  let release, requests = 0
+  const gate = new Promise(resolve => { release = resolve })
+  const h = deferredClipEngine(async () => {
+    requests++
+    await gate
+    return { ok:true, arrayBuffer:async () => new Uint8Array([77,74,86,79,73,67,69,49,1]).buffer }
+  })
+  const pending = h.play()
+  h.engine.stop(true)
+  release()
+  await pending
+  await h.play()
+  assert.equal(requests, 1)
+  assert.deepEqual(h.played, [])
+  assert.deepEqual(h.spoken, [])
+})
+
 test('tile names and seat profiles follow the relative PvE roles', () => {
   assert.equal(spokenAction('DISCARD', '9p'), '九筒')
   assert.equal(spokenAction('DISCARD', '3s'), '三条')
   assert.equal(spokenAction('DISCARD', '1m'), '一万')
-  assert.equal(spokenAction('DISCARD', 'C'), '中')
+  for (const [code, text] of Object.entries({ E:'东风', S:'南风', W:'西风', N:'北风', C:'红中', F:'发财', P:'白板' })) assert.equal(spokenAction('DISCARD', code), text)
   assert.equal(spokenAction('CHI'), '吃！')
   assert.equal(spokenAction('PONG'), '碰！')
   assert.equal(spokenAction('GANG'), '杠！')
@@ -106,7 +177,7 @@ test('missing speech API falls back without throwing', () => {
 })
 
 for (const userAgent of ['MicroMessenger', 'Chrome']) {
-test(`${userAgent} preloads via fetch and reuses decoded buffers without media elements`, async () => {
+test(`${userAgent} loads on demand via fetch and reuses decoded buffers without media elements`, async () => {
   const requested = []
   const sources = []
   const listeners = new Map()
@@ -142,32 +213,39 @@ test(`${userAgent} preloads via fetch and reuses decoded buffers without media e
       addEventListener: (name, callback) => listeners.set(name, callback),
       removeEventListener: (name) => listeners.delete(name),
     },
-    fetch: async (url) => { requested.push(url); return { ok: true, arrayBuffer: async () => { bytesRead++; return new ArrayBuffer(8) } } },
+    fetch: async (url, options) => { assert.equal(options.headers.Accept, 'application/octet-stream'); requested.push(url); return { ok: true, arrayBuffer: async () => { bytesRead++; return new Uint8Array([77,74,86,79,73,67,69,49,1,2,3,4]).buffer } } },
     SpeechSynthesisUtterance: class { constructor(text) { this.text = text } },
     speechSynthesis: { getVoices: () => [{ name: 'Huihui', lang: 'zh-CN' }], speak: () => { spoken++ }, cancel() {} },
   }
   const engine = createSoundEngine(browser)
   listeners.get('WeixinJSBridgeReady')()
   await engine.unlock()
-  assert.equal(requested.length, 38)
-  assert.equal(bytesRead, 38)
-  assert.equal(decoded, 38)
-  assert.ok(requested.some(url => url.endsWith('/audio/tiles/1m.wav')))
-  engine.playAction({ action: 'DISCARD', tile: '1m', seat: 'E', selfSeat: 'E' })
+  assert.equal(requested.length, 0)
+  assert.equal(decoded, 0)
+  assert.equal(bytesRead, 0)
+  await engine.playAction({ action: 'DISCARD', tile: '1m', seat: 'E', selfSeat: 'E' })
+  assert.deepEqual(requested, ['/audio/data/1m.dat'])
   assert.equal(spoken, 0)
   assert.equal(sources.length, 3) // Two table taps and one spoken tile clip.
   assert.ok(sources[2].startedAt >= 0.14)
   await engine.unlock()
   engine.playAction({ action: 'DISCARD', tile: '1m', seat: 'E', selfSeat: 'E' })
   assert.equal(sources[5].buffer, sources[2].buffer)
-  assert.equal(requested.length, 38)
-  assert.equal(decoded, 38)
+  assert.equal(requested.length, 1)
+  assert.equal(decoded, 1)
+  engine.setMuted(true)
+  await engine.playAction({ action: 'DISCARD', tile: '2p', seat: 'E', selfSeat: 'E' })
+  engine.setMuted(false)
+  engine.setVolume(0)
+  await engine.playAction({ action: 'DISCARD', tile: '2p', seat: 'E', selfSeat: 'E' })
+  assert.equal(requested.length, 1)
   engine.stop(true)
   assert.equal(listeners.has('WeixinJSBridgeReady'), false)
 })
 }
 
-test('WeChat can play the requested tile while other clips are still loading', async () => {
+test('concurrent requests for one tile are deduplicated and cached', async () => {
+  let requests = 0
   let releaseOtherClips
   const otherClips = new Promise(resolve => { releaseOtherClips = resolve })
   const played = []
@@ -185,15 +263,21 @@ test('WeChat can play the requested tile while other clips are still loading', a
   const engine = createSoundEngine({
     navigator: { userAgent: 'MicroMessenger' }, AudioContext,
     fetch: async url => {
-      if (!url.endsWith('/9p.wav')) await otherClips
-      return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) }
+      requests++
+      await otherClips
+      return { ok: true, arrayBuffer: async () => new Uint8Array([77,74,86,79,73,67,69,49,1,2,3,4]).buffer }
     },
   })
-  const preload = engine.unlock()
-  engine.playAction({ action: 'DISCARD', tile: '9p', seat: 'E', selfSeat: 'E' })
-  await new Promise(resolve => setTimeout(resolve, 0))
-  assert.equal(played.length, 3)
+  engine.unlock()
+  assert.equal(requests, 0)
+  const first = engine.playAction({ action: 'DISCARD', tile: '9p', seat: 'E', selfSeat: 'E' })
+  const second = engine.playAction({ action: 'DISCARD', tile: '9p', seat: 'E', selfSeat: 'E' })
+  assert.equal(requests, 1)
   releaseOtherClips()
-  await preload
+  await Promise.all([first, second])
+  assert.equal(played.length, 5) // Four synthesized taps and one latest announcement.
+  await engine.playAction({ action: 'DISCARD', tile: '9p', seat: 'E', selfSeat: 'E' })
+  assert.equal(requests, 1)
+  assert.equal(played.length, 8)
   engine.stop(true)
 })

@@ -112,12 +112,12 @@ try {
     const bounds=button?.getBoundingClientRect();
     const visible=!!bounds&&bounds.width>0&&bounds.height>0&&bounds.top>=0&&bounds.bottom<=innerHeight&&
       document.elementFromPoint(bounds.left+bounds.width/2,bounds.top+bounds.height/2)?.closest('button')===button;
-    const result={visible,winTile:prompt?.textContent.includes('胡张 中'),decisionCard:!!document.querySelector('.pve-discard-hud')};
+    const result={visible,compact:button?.textContent.trim().startsWith('胡')&&!prompt.querySelector('h2,dl,ul,details'),decisionCard:!!document.querySelector('.pve-discard-hud')};
     session.roundState.handTiles=saved.hand;session.roundState.melds=saved.melds;session.roundState.dealerTile=saved.dealer;
     session.currentPhase=saved.phase;session.currentTurnSeat=saved.turn;session.lastStepResult=saved.result;
     return result;
   })()`)
-  assert.deepEqual(jokerSelfWin,{visible:true,winTile:true,decisionCard:false})
+  assert.deepEqual(jokerSelfWin,{visible:true,compact:true,decisionCard:false})
   await evaluate(`document.querySelector('#app').__vue_app__._instance.setupState.roundState.opponents[1].melds=[{meld_type:'chi',tiles:['1m','2m','3m']},{meld_type:'chi',tiles:['4m','5m','6m']},{meld_type:'pong',tiles:['E','E','E']}]`)
   await until(() => evaluate(`window.__threatBodies.length>0`))
   assert.equal(await evaluate(`window.__threatBodies.every(body=>body.opponents.every(opponent=>!Object.keys(opponent).some(key=>/hand|hidden|closed/i.test(key))))`), true)

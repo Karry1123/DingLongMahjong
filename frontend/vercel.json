@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "headers": [
+    { "source": "/audio/data/:file*", "headers": [
+      { "key": "Content-Type", "value": "application/octet-stream" },
+      { "key": "X-Content-Type-Options", "value": "nosniff" }
+    ] }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

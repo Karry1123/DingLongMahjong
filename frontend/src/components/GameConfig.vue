@@ -77,7 +77,7 @@ function onReopen() {
   >
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-lg font-semibold tracking-wide text-amber-50">
-        对局配置
+        顶龙麻将 · 对局配置
       </h2>
       <span
         class="rounded-lg px-2.5 py-1 text-[11px] font-medium"

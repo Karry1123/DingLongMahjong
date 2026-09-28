@@ -270,9 +270,9 @@ try {
       const contained=(r)=>r.left>=viewport.left-1&&r.top>=viewport.top-1&&r.right<=viewport.right+1&&r.bottom<=viewport.bottom+1;
       const hit=(button)=>{const r=button.getBoundingClientRect();return document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2)?.closest('button')===button};
       const overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
-      return {buttons:buttons.map(button=>({name:button.querySelector('.action-label')?.textContent.trim(),height:button.offsetHeight,visible:contained(button.getBoundingClientRect()),hit:hit(button)})),panelFits:contained(rect),panelClearOfHand:!overlap(rect,hand),scroll:[slot,wrap,panel,panel.lastElementChild].some(el=>el.scrollHeight>el.clientHeight+1),rect:rect.toJSON(),hand:hand.toJSON()};
+      return {buttons:buttons.map(button=>({name:button.querySelector('.action-label')?.textContent.trim(),height:button.offsetHeight,visible:contained(button.getBoundingClientRect()),hit:hit(button),previewVisible:button.dataset.action==='pass'||button.querySelector('.action-meld-preview')?.getBoundingClientRect().height>0})),panelFits:contained(rect),panelClearOfHand:!overlap(rect,hand),scroll:[slot,wrap,panel,panel.lastElementChild].some(el=>el.scrollHeight>el.clientHeight+1),rect:rect.toJSON(),hand:hand.toJSON()};
     })()`)
-    assert.ok(panel.panelFits && panel.panelClearOfHand && !panel.scroll && panel.buttons.length===2 && panel.buttons.every(button=>button.visible&&button.hit&&button.name&&button.height>=38&&button.height<=42), `${width}x${height}: clipped action bar ${JSON.stringify(panel)}`)
+    assert.ok(panel.panelFits && panel.panelClearOfHand && !panel.scroll && panel.buttons.length===2 && panel.buttons.every(button=>button.visible&&button.hit&&button.name&&button.previewVisible&&button.height>=78&&button.height<=110), `${width}x${height}: clipped action bar ${JSON.stringify(panel)}`)
   }
   await evaluate(`(() => {const state=document.querySelector('#app').__vue_app__._instance.setupState;state.currentPhase='MY_TURN_DISCARD';state.lastStepResult=null})()`)
   assert.ok(await evaluate(`document.querySelector('.pve-situation-hud').textContent.includes('牌局平稳进行中')`))
@@ -337,21 +337,19 @@ try {
   for (const [width, height] of [[390, 844], [844, 390], [1280, 720]]) {
     await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 1000 })
     await sleep(150)
-    const modal = await evaluate(`(() => {
-      const stage=document.querySelector('.game-stage').getBoundingClientRect();
+    const controls = await evaluate(`(() => {
       const panel=document.querySelector('.pve-self-win-prompt');
       const rect=panel.getBoundingClientRect();
-      const button=[...panel.querySelectorAll('button')].find(item=>item.textContent.includes('确认和牌并结算'));
+      const button=panel.querySelector('.self-win-button');
       const action=button?.getBoundingClientRect();
       const inside=(r)=>r.left>=-1&&r.top>=-1&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1;
       return {panelFits:inside(rect),buttonFits:!!action&&inside(action),buttonHit:!!action&&document.elementFromPoint(action.left+action.width/2,action.top+action.height/2)?.closest('button')===button,
-        centered:Math.abs((rect.left+rect.right-stage.left-stage.right)/2)<2&&Math.abs((rect.top+rect.bottom-stage.top-stage.bottom)/2)<2,
-        detachedFromEvSlot:!panel.closest('.pve-ev-slot'),buttonSize:button?.offsetHeight,
-        title:panel.querySelector('h2')?.textContent.trim()};
+        inline:!!panel.closest('.pve-ev-slot')&&!document.querySelector('.pve-self-win-overlay'),buttonSize:button?.offsetHeight,
+        label:button?.textContent.trim(),noDetails:!panel.querySelector('dl,ul,details')};
     })()`)
-    assert.ok(modal.panelFits&&modal.buttonFits&&modal.buttonHit&&modal.centered&&modal.detachedFromEvSlot&&modal.buttonSize>=44&&modal.title.includes('自摸和牌'), `${width}x${height}: self-win modal clipped ${JSON.stringify(modal)}`)
+    assert.ok(controls.panelFits&&controls.buttonFits&&controls.buttonHit&&controls.inline&&controls.buttonSize>=44&&controls.label.startsWith('胡')&&controls.noDetails, `${width}x${height}: self-win controls clipped ${JSON.stringify(controls)}`)
   }
-  const settleButton = await evaluate(`(() => {const r=[...document.querySelectorAll('.pve-self-win-prompt button')].find(button=>button.textContent.includes('确认和牌并结算')).getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`)
+  const settleButton = await evaluate(`(() => {const r=document.querySelector('.pve-self-win-prompt .self-win-button').getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`)
   await command('Input.dispatchMouseEvent', { type:'mousePressed', x:settleButton.x, y:settleButton.y, button:'left', clickCount:1 })
   await command('Input.dispatchMouseEvent', { type:'mouseReleased', x:settleButton.x, y:settleButton.y, button:'left', clickCount:1 })
   await until(() => evaluate(`!!document.querySelector('[aria-label="对局结束结算"]')`), 30000)

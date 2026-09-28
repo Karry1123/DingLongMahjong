@@ -20,13 +20,13 @@ export function usePvEAutomation(session, options = {}) {
   let running = false, requested = false, stopped = false, failedKey = null
   let generation = 0, controller = new AbortController(), announcementTimer
   const s = session
-  const active = () => !stopped && s.gameMode.value === 'PVE' && s.gameState.value === 'PLAYING'
+  const active = () => !stopped && !s.pveOpening?.value && s.gameMode.value === 'PVE' && s.gameState.value === 'PLAYING'
   const player = (seat) => seat === s.roundState.seatWind
     ? { hand_tiles: s.roundState.handTiles, melds: s.roundState.melds, discards: s.roundState.discards }
     : s.roundState.opponents.find((o) => o.seat_wind === seat)
   const tile = () => s.lastStepResult.value?._response_tile || player(s.lastDiscardSeat.value)?.discards?.at(-1)
   const key = computed(() => JSON.stringify([
-    s.gameMode.value, s.gameState.value, s.gameRoundId.value, s.currentTurnSeat.value,
+    s.gameMode.value, s.gameState.value, s.pveOpening?.value, s.gameRoundId.value, s.currentTurnSeat.value,
     s.currentPhase.value, s.lastDiscardSeat.value, tile(), s.pendingHuQueue.value,
     s.lastStepResult.value?._table_responses, s.lastStepResult.value?.call_decision,
     SEATS.map((seat) => [player(seat)?.hand_tiles, player(seat)?.melds, player(seat)?.discards]),

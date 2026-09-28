@@ -1,4 +1,5 @@
 <script setup>
+import MahjongTile from './MahjongTile.vue'
 import { computed } from 'vue'
 import {
   MAX_PER_TILE,
@@ -122,7 +123,7 @@ function clearAll() {
             :aria-label="`${tileLabel(code)}，暗手 ${handCountOf(code)}，副露占用 ${occupiedOf(code)}`"
             @click="pick(code)"
           >
-            <span>{{ tileLabel(code) }}</span>
+            <span><MahjongTile :code="code" style="--tw:26px; --th:calc(var(--tw)*4/3); margin-bottom:0" /></span>
             <span
               class="mt-0.5 text-[10px] tabular-nums"
               :class="isFull(code) ? 'text-slate-500' : 'text-teal-300/70'"

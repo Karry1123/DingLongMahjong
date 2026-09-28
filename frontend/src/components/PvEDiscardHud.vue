@@ -1,4 +1,5 @@
 <script setup>
+import TileArtwork from './TileArtwork.vue'
 import { computed, ref } from 'vue'
 import { tileLabel, tileSuitClass } from '../constants/tiles.js'
 
@@ -50,7 +51,7 @@ function choose(tile) {
         @click="choose(row.tile)"
       >
         <span class="hud-rank">{{ index === 0 ? '荐' : '次' }}</span>
-        <span class="hud-face" :class="tileSuitClass(row.tile)">{{ tileLabel(row.tile) }}</span>
+        <span class="hud-face" :class="tileSuitClass(row.tile)"><TileArtwork v-if="/^[1-9][ps]$/.test(row.tile)" :code="row.tile" /><span v-else class="hud-face-text"><template v-if="/^[1-9]m$/.test(row.tile)"><b>{{ tileLabel(row.tile)[0] }}</b><b>万</b></template><template v-else>{{ tileLabel(row.tile) }}</template></span></span>
         <span class="hud-metrics"><b>进张 {{ row.effective_count ?? '—' }}</b><small>铳率 {{ (maxRisk(row) * 100).toFixed(1) }}%</small></span>
       </button>
       <span v-if="loading && !leading.length" class="hud-wait">计算中…</span>
@@ -66,7 +67,7 @@ function choose(tile) {
     </div>
     <div v-if="expanded && remaining.length" class="hud-drawer" role="list" aria-label="更多切牌候选">
       <button v-for="row in remaining" :key="row.tile" type="button" role="listitem" :disabled="!interactive" @click="choose(row.tile)">
-        <span :class="tileSuitClass(row.tile)">{{ tileLabel(row.tile) }}</span>
+        <span class="hud-candidate-face" :class="tileSuitClass(row.tile)"><TileArtwork v-if="/^[1-9][ps]$/.test(row.tile)" :code="row.tile" /><span v-else class="hud-face-text"><template v-if="/^[1-9]m$/.test(row.tile)"><b>{{ tileLabel(row.tile)[0] }}</b><b>万</b></template><template v-else>{{ tileLabel(row.tile) }}</template></span></span>
         <b>进张 {{ row.effective_count ?? '—' }}</b>
         <small>铳率 {{ (maxRisk(row) * 100).toFixed(1) }}%</small>
       </button>
@@ -81,7 +82,9 @@ function choose(tile) {
 .hud-tile:disabled { opacity:.7; cursor:default; }
 .hud-best { border-color:#fbbf24; background:#785510bb; }
 .hud-rank { align-self:flex-start; font-size:10px; font-weight:800; color:#fde68a; }
-.hud-face { flex:0 0 auto; display:flex; align-items:center; justify-content:center; width:26px; height:35px; border:1px solid #e5e7eb; border-radius:4px; font-size:13px; font-weight:800; }
+.hud-face { box-sizing:border-box; flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; width:26px; height:35px; overflow:hidden; text-align:center; border:1px solid #e5e7eb; border-radius:4px; font-size:13px; font-weight:800; }
+.hud-face-text { display:flex; flex-direction:column; justify-content:center; align-items:center; width:100%; height:100%; text-align:center; line-height:1.1; }
+.hud-face-text b { display:block; width:100%; text-align:center; font-size:inherit; line-height:1.1; color:inherit; }
 .hud-metrics { min-width:0; display:flex; flex-direction:column; gap:2px; white-space:nowrap; font-size:10px; }
 .hud-metrics b { color:#86efac; }
 .hud-metrics small { color:#fda4af; font-size:10px; }
@@ -90,11 +93,13 @@ function choose(tile) {
 .hud-drawer { position:absolute; z-index:51; right:0; top:calc(100% + 6px); display:grid; gap:3px; width:min(100%,300px); padding:5px; border:1px solid rgba(255,215,0,.35); border-radius:10px; background:#042c28fa; box-shadow:0 12px 28px rgba(0,0,0,.45),0 4px 10px rgba(0,0,0,.3); animation:hud-drop .18s ease-out both; }
 @keyframes hud-drop { from { opacity:0; transform:translateY(-7px); } to { opacity:1; transform:translateY(0); } }
 .hud-drawer button { display:flex; align-items:center; gap:8px; min-height:35px; padding:3px 6px; border-radius:5px; background:#0b433d; text-align:left; }
-.hud-drawer button > span { min-width:28px; text-align:center; border-radius:3px; font-size:12px; font-weight:700; }
+.hud-candidate-face { box-sizing:border-box; display:flex; align-items:center; justify-content:center; flex:0 0 28px; width:28px; min-width:28px; max-width:28px; height:38px; min-height:38px; max-height:38px; overflow:hidden; text-align:center; border-radius:3px; font-size:12px; font-weight:700; }
+.hud-face :deep(.tile-artwork), .hud-candidate-face :deep(.tile-artwork) { flex:none; width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; transform:none; }
 .hud-drawer b { color:#86efac; font-size:11px; }
+.hud-drawer .hud-face-text b { color:inherit; font-size:inherit; }
 .hud-drawer small { margin-left:auto; color:#fda4af; font-size:10px; }
 @media (orientation:landscape) and (min-width:640px) {
-  .hud-drawer { right:0; top:calc(100% + 6px); bottom:auto; width:100%; max-height:min(210px,calc(100dvh - 180px)); overflow:auto; padding:4px; gap:2px; }
+  .hud-drawer { right:0; top:calc(100% + 6px); bottom:auto; width:100%; padding:4px; gap:2px; }
   .hud-drawer button { min-height:30px; padding:2px 4px; }
 }
 @media (prefers-reduced-motion:reduce) { .hud-drawer { animation:none; } }

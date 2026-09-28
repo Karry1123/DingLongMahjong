@@ -1,9 +1,11 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.2.1-beta",
+  "version": "0.2.2-beta",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/prepare-voice-data.mjs",
+    "prebuild": "node scripts/prepare-voice-data.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

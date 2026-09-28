@@ -1,8 +1,16 @@
 import { ALL_TILES, relativeOpponents, tileLabel } from '../constants/tiles.js'
+import { unpackVoiceData } from './voiceData.js'
 
-const CLIP_CODES = [...ALL_TILES, 'CHI', 'PONG', 'GANG', 'WIN']
+export const HONOR_VOICES = Object.freeze({
+  E: { text: '东风', file: 'dongfeng' }, S: { text: '南风', file: 'nanfeng' },
+  W: { text: '西风', file: 'xifeng' }, N: { text: '北风', file: 'beifeng' },
+  C: { text: '红中', file: 'hongzhong' }, F: { text: '发财', file: 'facai' },
+  P: { text: '白板', file: 'baiban' },
+})
+
+const CLIP_CODES = [...ALL_TILES, 'CHI', 'PONG', 'GANG', 'WIN', 'OPENING']
 const CLIP_SET = new Set(CLIP_CODES)
-const CLIP_BASE = `${(import.meta.env?.BASE_URL || '/').replace(/\/?$/, '/')}audio/tiles/`
+const CLIP_BASE = `${(import.meta.env?.BASE_URL || '/').replace(/\/?$/, '/')}audio/data/`
 
 const PROFILES = Object.freeze({
   self: { pitch: 1.55, rate: 1.12, voice: /xiaoxiao|xiaoyi|huihui|female|女/i },
@@ -17,7 +25,7 @@ export function voiceProfileForSeat(selfSeat, seat) {
 }
 
 export function spokenAction(action, tile) {
-  if (action === 'DISCARD') return tile ? tileLabel(tile) : ''
+  if (action === 'DISCARD') return tile ? (HONOR_VOICES[tile]?.text || tileLabel(tile)) : ''
   return { CHI: '吃！', PONG: '碰！', GANG: '杠！', WIN: '胡了！' }[action] || ''
 }
 
@@ -39,7 +47,7 @@ export function createSoundEngine(browser = globalThis) {
   const clipBuffers = new Map()
   const clipLoads = new Map()
   const activeSources = new Set()
-  let preloadPromise = null
+  let disposed = false
   let clipSequence = 0
   let nextClipTime = 0
   const synth = browser.speechSynthesis
@@ -65,10 +73,10 @@ export function createSoundEngine(browser = globalThis) {
     activeSources.clear()
   }
 
-  function decodeClip(bytes) {
+  function decodeClip(bytes, audioContext) {
     return new Promise((resolve, reject) => {
       try {
-        const result = context.decodeAudioData(bytes, resolve, reject)
+        const result = audioContext.decodeAudioData(bytes, resolve, reject)
         result?.then?.(resolve, reject)
       } catch (error) { reject(error) }
     })
@@ -77,31 +85,27 @@ export function createSoundEngine(browser = globalThis) {
   function loadClip(code) {
     if (clipBuffers.has(code)) return Promise.resolve(true)
     if (clipLoads.has(code)) return clipLoads.get(code)
+    const audioContext = context
     const load = (async () => {
       try {
-        // Keep WAVs on the fetch/ArrayBuffer path. Audio elements (including
-        // muted preload pools and blob URLs) can trigger download extensions.
-        const response = await browser.fetch(`${CLIP_BASE}${code}.wav`)
+        // A data asset, never a media URL/element or a blob URL. Only requested
+        // from playAction, after the corresponding action actually occurs.
+        const response = await browser.fetch(`${CLIP_BASE}${HONOR_VOICES[code]?.file || code}.dat`, {
+          headers: { Accept: 'application/octet-stream' },
+        })
         if (!response.ok) return false
-        clipBuffers.set(code, await decodeClip(await response.arrayBuffer()))
+        const bytes = await response.arrayBuffer()
+        if (!bytes.byteLength || disposed) return false
+        const buffer = await decodeClip(unpackVoiceData(bytes), audioContext)
+        if (disposed) return false
+        clipBuffers.set(code, buffer)
         return true
       } catch { return false }
     })()
     clipLoads.set(code, load)
+    // Share concurrent requests, but allow a later real action to retry failures.
+    void load.then(() => { if (clipLoads.get(code) === load) clipLoads.delete(code) })
     return load
-  }
-
-  function preloadClips() {
-    if (preloadPromise) return preloadPromise
-    if (!context?.decodeAudioData || !browser.fetch) return Promise.resolve()
-    let next = 0
-    preloadPromise = Promise.all(Array.from({ length: 4 }, async () => {
-      while (next < CLIP_CODES.length) {
-        const code = CLIP_CODES[next++]
-        await loadClip(code)
-      }
-    }))
-    return preloadPromise
   }
 
   function playClip(code, profile) {
@@ -151,13 +155,13 @@ export function createSoundEngine(browser = globalThis) {
     return muted
   }
   function unlockAudio() {
+    if (disposed) return
     const AudioContext = browser.AudioContext || browser.webkitAudioContext
     if (!context && AudioContext) context = new AudioContext()
     if (context?.state === 'suspended') void Promise.resolve(context.resume()).catch(() => {})
   }
   function unlock() {
     unlockAudio()
-    const clipsReady = preferClips ? preloadClips() : undefined
     // iOS / WebView requires speak() itself to run in the first user gesture.
     if (!preferClips && !speechUnlocked && synth?.speak && browser.SpeechSynthesisUtterance && !muted && volume > 0) {
       try {
@@ -171,12 +175,10 @@ export function createSoundEngine(browser = globalThis) {
         speechUnlocked = true
       } catch { primingUtterance = null }
     }
-    return clipsReady
   }
   function onBridgeReady() {
     if (!preferClips) return
     unlockAudio()
-    void preloadClips()
   }
   browser.document?.addEventListener?.('WeixinJSBridgeReady', onBridgeReady)
   function fallbackCue() {
@@ -277,7 +279,7 @@ export function createSoundEngine(browser = globalThis) {
     try { synth.speak(utterance); synth.resume?.() } catch { fallbackCue(); done() }
   }
   function playAction({ action, tile, seat, selfSeat }) {
-    if (muted || volume === 0) return
+    if (disposed || muted || volume === 0) return
     const text = spokenAction(action, tile)
     if (!text) return
     tap(action === 'WIN')
@@ -286,7 +288,7 @@ export function createSoundEngine(browser = globalThis) {
     if ((preferClips || !synth?.speak) && CLIP_SET.has(code) && context?.decodeAudioData && browser.fetch) {
       const sequence = ++clipSequence
       if (playClip(code, profile)) return
-      void loadClip(code).then(() => {
+      return loadClip(code).then(() => {
         if (sequence !== clipSequence || muted || volume === 0) return
         if (!playClip(code, profile)) {
           pending = { text, profile }
@@ -318,8 +320,18 @@ export function createSoundEngine(browser = globalThis) {
       clickBuffer = null
       clipBuffers.clear()
       clipLoads.clear()
-      preloadPromise = null
+      disposed = true
     }
   }
-  return { playAction, setVolume, setMuted, unlock, stop }
+  async function playOpening() {
+    if (disposed || muted || volume === 0) return false
+    unlockAudio()
+    if (!context) return false
+    const sequence = clipSequence
+    const loaded = await loadClip('OPENING')
+    if (disposed || muted || volume === 0 || sequence !== clipSequence) return false
+    if (!loaded) { fallbackCue(); return false }
+    return playClip('OPENING', { rate:1, pitch:1 })
+  }
+  return { playAction, playOpening, setVolume, setMuted, unlock, stop }
 }

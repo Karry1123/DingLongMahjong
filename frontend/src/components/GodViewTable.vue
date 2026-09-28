@@ -1,4 +1,6 @@
 <script setup>
+import MeldTiles from './MeldTiles.vue'
+import MahjongTile from './MahjongTile.vue'
 /**
  * 全景上帝视角沙盘：四方俯视，四家暗手明牌。
  * 「得」可拖拽 / ◀▶ 微调插嵌；摸切后恢复默认理牌。
@@ -318,7 +320,7 @@ function meldLabel(m) {
             v-for="(t, i) in toimen?.discards || []"
             :key="'t-d-' + i"
             class="rounded border border-teal-800/30 px-1 py-0.5 text-[9px] text-teal-200/80"
-            >{{ tileLabel(t) }}</span
+            ><MahjongTile :code="t" style="--tw:18px; --th:calc(var(--tw)*4/3); margin-bottom:0" /></span
           >
         </div>
         <div
@@ -331,7 +333,7 @@ function meldLabel(m) {
             class="rounded bg-teal-900/60 px-1.5 py-0.5 text-[9px] text-teal-100"
           >
             {{ meldLabel(m) }}
-            {{ (m.tiles || []).map((t) => substituteTileLabel(t, dealerTile)).join(' / ') }}
+            <MeldTiles :meld="m" :dealer-tile="dealerTile" :title="(m.tiles || []).map(t => substituteTileLabel(t, dealerTile)).join(' / ')" style="--tw:18px" class="manual-meld" />
           </span>
         </div>
       </div>
@@ -373,7 +375,7 @@ function meldLabel(m) {
         />
         <div class="mt-1 flex flex-wrap gap-1">
           <span v-for="(m, mi) in kamicha?.melds || []" :key="mi" class="text-[10px] text-teal-100">
-            {{ meldLabel(m) }} {{ (m.tiles || []).map((t) => substituteTileLabel(t, dealerTile)).join(' / ') }}
+            {{ meldLabel(m) }} <MeldTiles :meld="m" :dealer-tile="dealerTile" :title="(m.tiles || []).map(t => substituteTileLabel(t, dealerTile)).join(' / ')" style="--tw:18px" class="manual-meld" />
           </span>
         </div>
         <div class="flex flex-wrap gap-0.5 opacity-80">
@@ -381,7 +383,7 @@ function meldLabel(m) {
             v-for="(t, i) in kamicha?.discards || []"
             :key="'k-d-' + i"
             class="rounded border border-teal-800/30 px-1 py-0.5 text-[9px] text-teal-200/80"
-            >{{ tileLabel(t) }}</span
+            ><MahjongTile :code="t" style="--tw:18px; --th:calc(var(--tw)*4/3); margin-bottom:0" /></span
           >
         </div>
       </div>
@@ -450,7 +452,7 @@ function meldLabel(m) {
         />
         <div class="mt-1 flex flex-wrap gap-1">
           <span v-for="(m, mi) in shimocha?.melds || []" :key="mi" class="text-[10px] text-teal-100">
-            {{ meldLabel(m) }} {{ (m.tiles || []).map((t) => substituteTileLabel(t, dealerTile)).join(' / ') }}
+            {{ meldLabel(m) }} <MeldTiles :meld="m" :dealer-tile="dealerTile" :title="(m.tiles || []).map(t => substituteTileLabel(t, dealerTile)).join(' / ')" style="--tw:18px" class="manual-meld" />
           </span>
         </div>
         <div class="flex flex-wrap gap-0.5 opacity-80">
@@ -458,7 +460,7 @@ function meldLabel(m) {
             v-for="(t, i) in shimocha?.discards || []"
             :key="'s-d-' + i"
             class="rounded border border-teal-800/30 px-1 py-0.5 text-[9px] text-teal-200/80"
-            >{{ tileLabel(t) }}</span
+            ><MahjongTile :code="t" style="--tw:18px; --th:calc(var(--tw)*4/3); margin-bottom:0" /></span
           >
         </div>
       </div>
@@ -499,7 +501,7 @@ function meldLabel(m) {
             class="rounded bg-teal-900/60 px-1.5 py-0.5 text-[10px] text-teal-100"
           >
             {{ meldLabel(m) }}
-            {{ (m.tiles || []).map((t) => substituteTileLabel(t, dealerTile)).join(' / ') }}
+            <MeldTiles :meld="m" :dealer-tile="dealerTile" :title="(m.tiles || []).map(t => substituteTileLabel(t, dealerTile)).join(' / ')" style="--tw:18px" class="manual-meld" />
           </span>
         </div>
         <GodViewHandStrip
@@ -518,7 +520,7 @@ function meldLabel(m) {
             v-for="(t, i) in selfDiscards"
             :key="'self-d-' + i"
             class="rounded border border-teal-800/30 px-1 py-0.5 text-[9px] text-teal-200/80"
-            >{{ tileLabel(t) }}</span
+            ><MahjongTile :code="t" style="--tw:18px; --th:calc(var(--tw)*4/3); margin-bottom:0" /></span
           >
         </div>
       </div>
@@ -554,4 +556,5 @@ function meldLabel(m) {
 .god-view-return:focus-visible { outline: 2px solid #fbbf24; outline-offset: 3px; }
 .god-view-return span:first-child { font-size: 20px; line-height: 1; }
 @media (prefers-reduced-motion: reduce) { .god-view-return { transition: none; } }
+.manual-meld :deep(.mahjong-tile) { --tw:18px; --th:24px; }
 </style>

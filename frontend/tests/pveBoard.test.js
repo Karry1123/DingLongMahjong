@@ -4,6 +4,28 @@ import { createServer } from 'vite'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 
+function assertGraphicalSuits(html) {
+  const tiles = [...html.matchAll(/data-tile="([1-9][ps])"/g)].map(match => match[1]).sort()
+  const graphics = [...html.matchAll(/data-artwork="([1-9][ps])"/g)].map(match => match[1]).sort()
+  assert.ok(tiles.length > 0)
+  assert.deepEqual(graphics, tiles)
+}
+
+test('all 18 bamboo and circle tiles use SVG, including sideways tiles', async () => {
+  const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const Tile = (await vite.ssrLoadModule('/src/components/MahjongTile.vue')).default
+    for (const suit of ['s', 'p']) for (let n = 1; n <= 9; n++) {
+      const html = await renderToString(createSSRApp(Tile, { code: `${n}${suit}`, sideways: n % 2 === 0 }))
+      assertGraphicalSuits(html)
+      assert.doesNotMatch(html, /class="characters/)
+    }
+    const wan = await renderToString(createSSRApp(Tile, { code: '9m' }))
+    assert.match(wan, /suit-m/)
+    assert.doesNotMatch(wan, /data-artwork/)
+  } finally { await vite.close() }
+})
+
 test('upgraded pong renders four visible tiles and a ming-kong label', async () => {
   const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
   try {
@@ -14,6 +36,7 @@ test('upgraded pong renders four visible tiles and a ming-kong label', async () 
     assert.match(html, /data-meld-type="ming_gang"/)
     assert.equal((html.match(/data-tile="1p"/g) || []).length, 4)
     assert.match(html, /明杠/)
+    assertGraphicalSuits(html)
   } finally { await vite.close() }
 })
 
@@ -32,6 +55,7 @@ test('PvE board hides AI hand faces and labels whiteboard substitution in melds'
       assert.doesNotMatch(hidden[0], /data-tile=/)
     }
     assert.match(html, /四筒/)
+    assertGraphicalSuits(html)
     assert.match(html, /data-tile="P" data-sideways="true"/)
     assert.doesNotMatch(html, /data-seat="E"/)
     assert.match(html, /data-seat="N" data-position="left"/)
@@ -61,5 +85,6 @@ test('settlement rotates the actual claimed and winning tiles, never an unrelate
     assert.match(html, /data-tile="5s" data-sideways="true"/)
     assert.match(html, /data-tile="5m" data-sideways="true" aria-label="五万 · 胡"/)
     assert.equal((html.match(/data-sideways="true"/g) || []).length, 2)
+    assertGraphicalSuits(html)
   } finally { await vite.close() }
 })

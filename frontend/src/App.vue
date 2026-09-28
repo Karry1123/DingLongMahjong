@@ -20,12 +20,14 @@ import SelfWinBanner from './components/SelfWinBanner.vue'
 import GameOverModal from './components/GameOverModal.vue'
 import GodViewTable from './components/GodViewTable.vue'
 import PvEBoard from './components/PvEBoard.vue'
+import GodOpeningCeremony from './components/GodOpeningCeremony.vue'
 import DiscardRiver from './components/DiscardRiver.vue'
 import PlayerWorkbench from './components/PlayerWorkbench.vue'
 import { usePvEAutomation } from './composables/usePvEAutomation.js'
 import PvECircleSummary from './components/PvECircleSummary.vue'
 import PveStartDialog from './components/PveStartDialog.vue'
 import { useGameSession } from './composables/useGameSession.js'
+import { useHuPreview } from './composables/useHuPreview.js'
 import { useOrientation } from './composables/useOrientation.js'
 import { useFullscreen } from './composables/useFullscreen.js'
 import { cloudWakeMessage, getRecommendDecision, getOpponentThreats, isAbortError } from './services/api.js'
@@ -61,7 +63,27 @@ watch([soundMuted, soundVolume], () => {
   soundEngine.setMuted(soundMuted.value)
 }, { immediate: true })
 onUnmounted(() => soundEngine.stop(true))
-const session = useGameSession({ onAction: soundEngine.playAction })
+const openingRound = ref(null)
+let openingSequence = 0, resolveOpening = null
+function completeGodOpening(completed = true) {
+  openingRound.value = null
+  const resolve = resolveOpening
+  resolveOpening = null
+  resolve?.(completed)
+}
+function showGodOpening({ dealerTile }) {
+  completeGodOpening(false)
+  soundEngine.stop()
+  activeUiMode.value = 'PVE'
+  pveConfigOpen.value = false
+  return new Promise(resolve => {
+    resolveOpening = resolve
+    openingRound.value = { tile:dealerTile, id:++openingSequence }
+    void nextTick().then(() => soundEngine.playOpening())
+  })
+}
+onUnmounted(() => completeGodOpening(false))
+const session = useGameSession({ onAction: soundEngine.playAction, onPveOpening: showGodOpening })
 const {
   roundState,
   currentPhase,
@@ -104,6 +126,7 @@ const {
   continuePveCircle,
   exitPveGame,
   gameMode,
+  pveOpening,
   dealerPlayerId,
   dealerSeat,
   roundCount,
@@ -147,6 +170,7 @@ const {
 const activeUiMode = ref('')
 const sandboxLeaving = ref(false)
 const stageActive = computed(() => gameMode.value === 'PVE' && activeUiMode.value === 'PVE')
+watch(gameMode, mode => { if (mode !== 'PVE') completeGodOpening(false) })
 onMounted(() => {
   document.documentElement.classList.add('game-stage-scroll-lock')
   document.body.classList.add('game-stage-scroll-lock')
@@ -181,7 +205,8 @@ async function choosePveMode() {
   analyzeError.value = ''
   try {
     if (!soundMuted.value) soundEngine.unlock()
-    await startPveGame()
+    const started = await startPveGame()
+    if (started === false) return
     activeUiMode.value = 'PVE'
     pveConfigOpen.value = false
   } catch (e) {
@@ -361,21 +386,25 @@ const livePlay = computed(() => isPlaying.value)
 const callDecision = computed(() => lastStepResult.value?.call_decision ?? null)
 
 const pveResponseDecision = computed(() => {
-  if (gameMode.value !== 'PVE' || currentHuSeat.value || !isResponseWindow.value) return null
+  if (gameMode.value !== 'PVE' || !isResponseWindow.value) return null
+  if (currentHuSeat.value && currentHuSeat.value !== seatWind.value) return null
   const option = (lastStepResult.value?._table_responses || []).find((row) => row.seat === seatWind.value)
-  if (!option) return null
+  if (!option && currentHuSeat.value !== seatWind.value) return null
   const provider = lastDiscardSeat.value || ''
   const providerState = provider === seatWind.value
     ? { discards: roundState.discards }
     : roundState.opponents.find((o) => o.seat_wind === provider)
   const tile = lastStepResult.value?._response_tile || providerState?.discards?.at(-1) || ''
   const actions = []
-  if (option.types?.includes('chi')) for (const combo of option.chiCombos || []) actions.push({ action_type: 'chi', tiles: combo, provider_seat: provider })
-  if (option.types?.includes('pong')) actions.push({ action_type: 'pong', tiles: [tile, tile, tile], provider_seat: provider })
-  if (option.types?.includes('ming_gang')) actions.push({ action_type: 'ming_gang', tiles: [tile, tile, tile, tile], provider_seat: provider })
+  if (currentHuSeat.value === seatWind.value) actions.push({ action_type: 'hu', tiles:[tile], provider_seat:provider })
+  else {
+    if (option.types?.includes('chi')) for (const combo of option.chiCombos || []) actions.push({ action_type: 'chi', tiles: combo, provider_seat: provider })
+    if (option.types?.includes('pong')) actions.push({ action_type: 'pong', tiles: [tile, tile, tile], provider_seat: provider })
+    if (option.types?.includes('ming_gang')) actions.push({ action_type: 'ming_gang', tiles: [tile, tile, tile, tile], provider_seat: provider })
+  }
   if (!actions.length) return null
   actions.push({ action_type: 'pass', tiles: [tile], provider_seat: provider })
-  return { recommended_action: actions[0], available_actions: actions, candidates: [], reason: '本地合法副露选项' }
+  return { recommended_action: null, available_actions: actions, candidates: [], reason: '本地合法副露选项' }
 })
 const activeCallDecision = computed(() => callDecision.value || pveResponseDecision.value)
 
@@ -518,6 +547,26 @@ const canSelfWin = computed(() => {
   if (!(handReadyToDiscard.value || isMyDiscardTurn.value)) return false
   return !!selfWinInfo.value?.is_win
 })
+const huPreviewPayload = computed(() => {
+  if (!isPlaying.value || pveOpening.value) return null
+  const actions = activeCallDecision.value?.available_actions || activeCallDecision.value?.candidates?.map(row => row.action) || []
+  const ron = showActionPrompt.value && actions.some(action => ['hu', 'catch_win'].includes(action?.action_type))
+  const zimo = !ron && canSelfWin.value
+  if (!ron && !zimo) return null
+  const winTile = zimo ? latestDrawnTile.value : lastDiscardedTileForClaim.value
+  if (!winTile) return null
+  const hand = [...roundState.handTiles]
+  if (zimo) {
+    const index = hand.lastIndexOf(winTile)
+    if (index < 0) return null
+    hand.splice(index, 1)
+  }
+  return { hand_tiles:hand, melds:roundState.melds, win_tile:winTile,
+    is_zimo:zimo, seat_wind:roundState.seatWind, round_wind:roundState.roundWind,
+    dealer_tile:roundState.dealerTile, is_dealer:roundState.isDealer, restored_jokers:0 }
+})
+const huPreview = useHuPreview(huPreviewPayload)
+const selfWinButtonInfo = computed(() => huPreviewPayload.value?.is_zimo ? (huPreview.value || {}) : {})
 
 watch(
   () =>
@@ -1375,9 +1424,10 @@ async function onReset(clearHistory = false) {
     :style="{ transform: stageTransform }"
     :class="[stageActive ? 'pve-stage-shell' : '', { 'is-stage-active': stageActive, 'is-home-stage': !activeUiMode }]"
   >
+    <GodOpeningCeremony v-if="openingRound" :key="openingRound.id" :dealer-tile="openingRound.tile" @complete="completeGodOpening()" />
     <section v-if="!activeUiMode" class="home-screen mx-auto flex min-h-[75vh] max-w-5xl flex-col items-center justify-center text-center">
-      <p class="text-sm font-semibold tracking-[0.25em] text-amber-300">台州麻将 · 实战练习</p>
-      <h1 class="mt-3 text-4xl font-bold text-amber-50 sm:text-5xl">选择对局模式</h1>
+      <p class="text-sm font-semibold tracking-[0.25em] text-amber-300">实战练习 · 智能决策</p>
+      <h1 class="mt-3 text-4xl font-bold text-amber-50 sm:text-5xl">顶龙麻将</h1>
       <p class="mt-3 max-w-xl text-sm leading-6 text-teal-100/70">使用实时净 EV 辅助练习，或进入全景沙盘自由推演。</p>
       <div class="mt-9 grid w-full max-w-3xl gap-4 sm:grid-cols-2">
         <button class="rounded-3xl border border-amber-300/60 bg-amber-400/15 p-7 text-left transition hover:-translate-y-1 hover:bg-amber-400/25 disabled:cursor-wait disabled:opacity-65" :disabled="pveStartLoading || exitingGame" @click="openPveConfig">
@@ -1397,7 +1447,7 @@ async function onReset(clearHistory = false) {
       <h1
         class="text-3xl font-semibold tracking-wide text-amber-50 sm:text-4xl"
       >
-        台州麻将切牌决策助手
+        顶龙麻将
       </h1>
       <p class="mt-2 text-sm text-teal-200/75">
         {{ gameMode === 'PVE' ? '牌墙自动发牌 · 三家 AI 自主决策 · 实时 EV 辅助切牌' : '先录入起手（庄 14 / 闲 13）→ 开始对局 → 按串行时序推演' }}
@@ -1405,7 +1455,7 @@ async function onReset(clearHistory = false) {
       <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
     </header>
 
-    <main class="mx-auto flex flex-col gap-6" :class="gameMode === 'PVE' ? ['pve-game-main', 'max-w-7xl pb-24'] : 'max-w-6xl pb-16'">
+    <main class="mx-auto flex flex-col gap-6" :inert="pveOpening || undefined" :class="gameMode === 'PVE' ? ['pve-game-main', 'max-w-7xl pb-24'] : 'max-w-6xl pb-16'">
       <!-- ========== 顶部全局轮次状态条 ========== -->
       <section
         class="rounded-2xl border p-4 shadow-lg transition-colors duration-300 sm:p-5"
@@ -1557,6 +1607,7 @@ async function onReset(clearHistory = false) {
       <ActionPrompt
         v-if="showActionPrompt && gameMode !== 'PVE'"
         :call-decision="activeCallDecision"
+        :hu-info="huPreview"
         :seat-wind="seatWind"
         :provider-seat="callProviderSeat"
         :dealer-tile="dealerTile"
@@ -1656,7 +1707,7 @@ async function onReset(clearHistory = false) {
         {{ opponentWarning.text }}
       </div>
 
-      <PlayerWorkbench :pve="gameMode === 'PVE'" :show-recommendation="gameMode !== 'PVE' || (!(canSelfWin && selfWinInfo && !loading) && (enableEV || decisionDockPhase === 'call'))">
+      <PlayerWorkbench :pve="gameMode === 'PVE'" :show-recommendation="gameMode !== 'PVE' || canSelfWin || enableEV || decisionDockPhase === 'call'">
       <template #heading><header v-if="gameMode === 'PVE'" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/30 bg-teal-950 px-4 py-3 text-amber-50 lg:col-span-2" aria-label="自家信息">
         <b>自家 · {{ windLabel(seatWind) }}风 <span v-if="seatWind === dealerSeat" class="text-amber-300">庄家</span></b>
         <span>累计 {{ cumulativeScores[seatWind] || 0 }} 分</span>
@@ -1721,7 +1772,7 @@ async function onReset(clearHistory = false) {
       <SelfWinBanner
         v-if="gameMode !== 'PVE' && canSelfWin && selfWinInfo && !loading"
         class="mb-3"
-        :info="selfWinInfo"
+        :info="selfWinButtonInfo"
         :disabled="loading"
         @declare="onDeclareSelfWin"
         @dismiss="onDismissSelfWin"
@@ -1760,12 +1811,21 @@ async function onReset(clearHistory = false) {
       </div>
 
       <template #recommendation>
+      <SelfWinBanner
+        v-if="gameMode === 'PVE' && canSelfWin && !loading"
+        class="pve-self-win-prompt"
+        :info="selfWinButtonInfo"
+        :disabled="loading"
+        @declare="onDeclareSelfWin"
+        @dismiss="onDismissSelfWin"
+      />
       <ActionPrompt
-        v-if="gameMode === 'PVE' && decisionDockPhase === 'call'"
+        v-else-if="gameMode === 'PVE' && decisionDockPhase === 'call'"
         inline
         dock
         keyboard-shortcuts
         :call-decision="activeCallDecision"
+        :hu-info="huPreview"
         :seat-wind="seatWind"
         :provider-seat="callProviderSeat"
         :dealer-tile="dealerTile"
@@ -1803,17 +1863,6 @@ async function onReset(clearHistory = false) {
       />
       </template>
       </PlayerWorkbench>
-
-      <div v-if="gameMode === 'PVE' && canSelfWin && selfWinInfo && !loading" class="pve-self-win-overlay">
-        <SelfWinBanner
-          class="pve-self-win-prompt"
-          modal
-          :info="selfWinInfo"
-          :disabled="loading"
-          @declare="onDeclareSelfWin"
-          @dismiss="onDismissSelfWin"
-        />
-      </div>
 
       <DiscardPool
         v-if="gameMode !== 'PVE'"
@@ -1909,6 +1958,7 @@ async function onReset(clearHistory = false) {
 </template>
 
 <style>
+.viewport-wrapper:has(.god-opening) [data-god-slot] .mahjong-tile { opacity:0; }
 .viewport-wrapper { position:fixed; top:0; left:0; z-index:20; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:#06221d; }
 .viewport-wrapper > .game-stage { box-sizing:border-box; position:absolute; top:50%; left:50%; width:1280px !important; height:720px !important; min-height:0 !important; overflow:auto; padding:24px 32px !important; transform-origin:center center; }
 .viewport-wrapper > .game-stage.is-home-stage { overflow:hidden; padding:36px 64px !important; }
@@ -1959,11 +2009,7 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel > header { display:block; }
 .viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel > div:last-child { height:auto; overflow:visible; }
 .viewport-wrapper.is-stage-active .pve-ev-slot .action-prompt-panel .action-label { display:inline; }
-.viewport-wrapper.is-stage-active .pve-self-win-overlay { position:absolute; z-index:1000; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(3,24,21,.68); }
-.viewport-wrapper.is-stage-active .pve-self-win-prompt { box-sizing:border-box; width:480px; max-width:100%; max-height:100%; overflow:auto; border:1px solid rgba(251,191,36,.75); background:linear-gradient(145deg,#123c31,#082820); color:#fffbeb; box-shadow:0 24px 70px rgba(0,0,0,.55); }
-.viewport-wrapper.is-stage-active .pve-self-win-prompt h2 { color:#fde68a; }
-.viewport-wrapper.is-stage-active .pve-self-win-prompt > div:nth-of-type(3) { flex-direction:column; align-items:stretch; }
-.viewport-wrapper.is-stage-active .pve-self-win-prompt > div:nth-of-type(3) > div:last-child { justify-content:center; }
+.viewport-wrapper.is-stage-active .pve-self-win-prompt { width:100%; }
 .viewport-wrapper.is-stage-active .pve-discard-hud { width:260px; min-height:58px; padding:2px; border-radius:8px; }
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-leading { min-height:52px; gap:2px; }
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-tile { position:relative; gap:2px; padding:9px 2px 2px; border-radius:5px; }

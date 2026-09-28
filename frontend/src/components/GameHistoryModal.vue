@@ -108,7 +108,7 @@ onUnmounted(() => { controller.abort(); window.removeEventListener('keydown', on
       <section class="history-modal" :style="{ transform: stageTransform }" role="dialog" aria-modal="true" aria-label="复盘历史">
         <header class="history-header">
           <div>
-            <h2>{{ activeRecord ? `牌谱复盘 · ${activeRecord.game_id}` : '复盘历史' }}</h2>
+            <h2>{{ activeRecord ? `顶龙麻将 · 牌谱复盘 · ${activeRecord.game_id}` : '顶龙麻将 · 复盘历史' }}</h2>
             <p>{{ activeRecord ? '按时间顺序查看每步动作与四方牌面' : `本地最近 ${orderedRecords.length} 局 · 按结算时间排序` }}</p>
           </div>
           <div class="history-header-actions">

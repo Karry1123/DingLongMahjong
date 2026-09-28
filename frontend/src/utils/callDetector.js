@@ -134,6 +134,7 @@ export function shouldEnterResponseWindow(detection, { godView }) {
  * @returns {string[][]}
  */
 export function chiCombosFor(hand, disc, dealer) {
+  if (disc === dealer) return [] // 死财神不能被吃，直接调用也须遵守。
   const face = (tile) => tile === 'P' && dealer !== 'P' ? dealer : tile
   const target = face(disc)
   if (!target || !/^[1-9][mps]$/.test(target)) return []
@@ -156,6 +157,19 @@ export function chiCombosFor(hand, disc, dealer) {
     if (combo.length === 3) combos.push(combo)
   }
   return combos
+}
+
+/** 校验选中的完整物理副露；白板仅使用固定替身身份，得不能参与鸣牌。 */
+export function isLegalClaimMeld({ meldType, tiles, claimedTile, dealerTile }) {
+  const expected = { chi: 3, pong: 3, ming_gang: 4 }[meldType]
+  if (!expected || tiles.length !== expected || !claimedTile || claimedTile === dealerTile) return false
+  if (meldType !== 'chi') return tiles.every(tile => tile === claimedTile)
+  const hand = [...tiles]
+  const claimedIndex = hand.indexOf(claimedTile)
+  if (claimedIndex < 0) return false
+  hand.splice(claimedIndex, 1)
+  const key = [...tiles].sort().join(',')
+  return chiCombosFor(hand, claimedTile, dealerTile).some(combo => [...combo].sort().join(',') === key)
 }
 
 /** 展示替身身份；存储和扣牌仍使用物理编码。 */

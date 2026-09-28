@@ -22,6 +22,7 @@ logs/
 backend/data/game_logs/
 backend/data/*.sqlite3*
 frontend/tests/artifacts/
+frontend/public/audio/data/
 
 # Editors and OS
 .DS_Store

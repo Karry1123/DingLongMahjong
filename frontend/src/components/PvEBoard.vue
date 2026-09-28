@@ -33,19 +33,19 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
         </header>
         <div class="seat-tiles">
           <div class="concealed-hand" :aria-label="`${player.role}暗手，已隐藏`"><span v-for="n in player.handCount" :key="n" class="tile-back" /></div>
-          <div v-if="player.melds.length" class="meld-area flex flex-wrap gap-2" aria-label="副露"><MeldTiles v-for="(meld,i) in player.melds" :key="i" :meld="meld" :dealer-tile="dealerTile" /></div>
+          <div v-if="player.melds.length" class="meld-area pve-opponent-melds flex flex-wrap gap-2" aria-label="副露"><MeldTiles v-for="(meld,i) in player.melds" :key="i" :meld="meld" :dealer-tile="dealerTile" /></div>
         </div>
-        <DiscardRiver :tiles="player.discards" :layout="player.position" />
+        <DiscardRiver class="pve-river-tiles" :tiles="player.discards" :layout="player.position" />
       </article>
       <div class="table-center" aria-label="本局财神">
         <div class="center-compass-hud">
           <span class="compass-title">得 · 财神</span>
-          <MahjongTile v-if="dealerTile" :code="dealerTile" />
+          <span data-god-slot><MahjongTile v-if="dealerTile" :code="dealerTile" /></span>
           <span class="compass-count">余牌 <strong>{{ wallCount }}</strong><small>{{ windLabel(currentTurnSeat) }}风行牌</small></span>
         </div>
         <p class="sr-only" role="status">{{ dealerTile ? tileLabel(dealerTile) : '等待发牌' }}；{{ aiAnnouncement || aiStatus || '等待你的决策' }}</p>
       </div>
-      <div class="self-river" aria-label="自家牌河"><DiscardRiver :tiles="selfDiscards" layout="self" /></div>
+      <div class="self-river" aria-label="自家牌河"><DiscardRiver class="pve-river-tiles" :tiles="selfDiscards" layout="self" /></div>
     </div>
   </section>
 </template>
@@ -72,22 +72,22 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
 .right .seat-tiles { right:6px; flex-direction:row-reverse; }
 .left .concealed-hand, .right .concealed-hand { flex-direction:column; gap:1px; }
 .left .meld-area, .right .meld-area { display:flex; flex-direction:column; flex-wrap:nowrap; gap:0; }
-.opponent-seat :deep(.mahjong-tile) { --tw:26px; --th:35px; }
+.pve-table .pve-opponent-melds :deep(.mahjong-tile) { --tw:34.385px; --th:46.2875px; }
 .opponent-seat :deep([aria-label="副露牌组"]) { gap:2px; padding-top:0; padding-bottom:2px; }
 .opponent-seat > :deep(.discard-river) { position:absolute; display:grid; gap:3px 3px; min-height:0; }
-.opponent-seat > :deep(.discard-river) .mahjong-tile { --tw:24px; --th:32px; margin-bottom:0; }
-.top > :deep(.discard-river) { top:64px; left:50%; grid-template-columns:repeat(10,24px); transform:translateX(-50%); }
-.left > :deep(.discard-river) { top:50%; right:0; grid-template-columns:repeat(4,24px); transform:translateY(-50%); }
-.right > :deep(.discard-river) { top:50%; left:0; grid-template-columns:repeat(4,24px); transform:translateY(-50%); }
-.table-center { position:absolute; z-index:2; top:50%; left:50%; transform:translate(-50%,-50%); }
+.pve-table :deep(.pve-river-tiles .mahjong-tile) { --tw:31.74px; --th:42.32px; margin-bottom:0; }
+.top > :deep(.discard-river) { top:80px; left:50%; grid-template-columns:repeat(10,31.74px); transform:translateX(-50%); }
+.left > :deep(.discard-river) { top:0; right:32px; grid-template-columns:repeat(4,31.74px); }
+.right > :deep(.discard-river) { top:0; left:32px; grid-template-columns:repeat(4,31.74px); }
+.table-center { position:absolute; z-index:2; top:55%; left:50%; transform:translate(-50%,-50%); }
 .center-compass-hud { display:flex; align-items:center; justify-content:center; gap:6px; padding:7px 10px; border:1px solid #d4af5888; border-radius:13px; background:#043a32ee; color:#fef3c7; white-space:nowrap; box-shadow:0 10px 24px #001b1755; }
 .compass-title { font-size:11px; font-weight:800; color:#fbbf24; }
 .compass-count { display:flex; flex-direction:column; align-items:center; font-size:10px; line-height:1.1; }
 .compass-count strong { font-size:16px; }
 .compass-count small { font-size:8px; color:#b7d8cc; }
 .center-compass-hud :deep(.mahjong-tile) { --tw:25px; --th:calc(var(--tw)*4/3); margin:0; }
-.self-river { position:absolute; top:calc(50% + 58px); left:50%; transform:translateX(-50%); }
-.self-river :deep(.discard-river) { display:grid; grid-template-columns:repeat(8,24px); gap:3px; min-height:0; }
-.self-river :deep(.mahjong-tile) { --tw:24px; --th:32px; margin-bottom:0; }
+.self-river { position:absolute; top:calc(50% + 72px); left:50%; transform:translateX(-50%); }
+.self-river :deep(.discard-river) { display:grid; grid-template-columns:repeat(9,31.74px); gap:3px; min-height:0; }
+
 .tile-back { width:14px; height:18px; border:1px solid #7ab5a6; border-radius:3px; background:linear-gradient(130deg,#368a75,#115643); box-shadow:0 2px 0 #aec7b7; }
 </style>

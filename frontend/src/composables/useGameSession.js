@@ -18,6 +18,7 @@ import {
 import { sortHandTiles, isJokerPhysical, moveTileInList, ensureTileAtEnd } from '../utils/tileSorter.js'
 import {
   detectTableResponses,
+  isLegalClaimMeld,
   buildPendingHuQueue,
   shouldEnterResponseWindow,
 } from '../utils/callDetector.js'
@@ -40,6 +41,7 @@ const PHASE_LABEL = {
  *   dealerTile?: string,
  *   roundWind?: string,
  *   onAction?: (event: {action: string, tile: string|null, seat: string, selfSeat: string}) => void,
+ *   onPveOpening?: (event: {dealerTile: string}) => Promise<boolean>|boolean,
  * }=} initial
  */
 export function useGameSession(initial = {}) {
@@ -53,6 +55,7 @@ export function useGameSession(initial = {}) {
   const calculateHuPoints = (payload) => gameApi.calculateHuPoints(payload, { signal: sessionRequests.signal })
 
   function invalidateSessionRequests() {
+    pveOpening.value = false
     sessionEpoch += 1
     sessionRequests.abort()
     sessionRequests = new AbortController()
@@ -67,6 +70,7 @@ export function useGameSession(initial = {}) {
 
   const roundState = reactive(createInitialRoundState(initial))
   const gameMode = ref('SANDBOX')
+  const pveOpening = ref(false)
   function emitPveAction(action, seat, tile = null) {
     if (gameMode.value !== 'PVE') return
     try { initial.onAction?.({ action, seat, tile, selfSeat: roundState.seatWind }) }
@@ -1742,17 +1746,14 @@ export function useGameSession(initial = {}) {
           if (tiles.length !== 3 || !tiles.includes(claimed)) {
             throw new Error('吃牌须提供含打出张的 3 张顺子')
           }
-          // 得不可作百搭进顺；打出张本身为得时除外（实牌进顺）
-          for (const t of tiles) {
-            if (t === dealer && claimed !== dealer) {
-              throw new Error('台州规则：吃牌顺子不得用百搭（得）')
-            }
-          }
         }
         if (meldType === 'ming_gang') {
           if (claimed === dealer || tiles.some((t) => t === dealer)) {
             throw new Error('台州规则：百搭（得）不可用于开杠')
           }
+        }
+        if (!isLegalClaimMeld({ meldType, tiles, claimedTile: claimed, dealerTile: dealer })) {
+          throw new Error('副露组合不符合本局财神/白板规则')
         }
       } else {
         // 暗杠：须在该对手行动权（摸打窗口）
@@ -2289,6 +2290,9 @@ export function useGameSession(initial = {}) {
       }
       if (meldType === 'ming_gang' && tiles.length !== 4) {
         throw new Error('明杠须提供 4 张面子')
+      }
+      if (!isLegalClaimMeld({ meldType, tiles, claimedTile: claimed, dealerTile: roundState.dealerTile })) {
+        throw new Error('副露组合不符合本局财神/白板规则')
       }
 
       const isKong = meldType === 'ming_gang'
@@ -3349,7 +3353,9 @@ export function useGameSession(initial = {}) {
     try {
       await applyAutoDeal()
       if (epoch !== sessionEpoch) return false
-      if (!startPlaying()) throw new Error(errorMsg.value)
+      const started = gameMode.value === 'PVE' ? await openDealtPveRound() : startPlaying()
+      if (epoch !== sessionEpoch) return false
+      if (!started) throw new Error(errorMsg.value || '开局已取消')
       return true
     } catch (error) {
       if (epoch !== sessionEpoch) return false
@@ -3778,6 +3784,19 @@ export function useGameSession(initial = {}) {
     return true
   }
 
+  async function openDealtPveRound() {
+    if (gameMode.value !== 'PVE') return false
+    const epoch = sessionEpoch
+    pveOpening.value = true
+    try {
+      const completed = await initial.onPveOpening?.({ dealerTile: roundState.dealerTile })
+      if (completed === false || epoch !== sessionEpoch || gameMode.value !== 'PVE') return false
+      return startPlaying()
+    } finally {
+      if (epoch === sessionEpoch) pveOpening.value = false
+    }
+  }
+
   async function startPveGame() {
     gameMode.value = 'PVE'
     dealerPlayerId.value = 0
@@ -3796,7 +3815,7 @@ export function useGameSession(initial = {}) {
     roundState.opponents = pveOpponentsForDealer(dealerPlayerId.value)
     applyEastDealerFlags()
     await applyAutoDeal()
-    return startPlaying()
+    return openDealtPveRound()
   }
 
   async function startNextPveRound(lastWinnerSeat, isDealerWin, opts = {}) {
@@ -3831,7 +3850,7 @@ export function useGameSession(initial = {}) {
     roundState.opponents = pveOpponentsForDealer(dealerPlayerId.value)
     applyEastDealerFlags()
     await applyAutoDeal()
-    return startPlaying()
+    return openDealtPveRound()
   }
 
   /** 补杠先亮出第四张并逐家问胡；无人抢胡才升级碰并摸岭上张。 */
@@ -4544,6 +4563,7 @@ export function useGameSession(initial = {}) {
     declareDraw,
     startNextRound,
     startPveGame,
+    pveOpening,
     startNextPveRound,
     continuePveCircle,
     exitPveGame,

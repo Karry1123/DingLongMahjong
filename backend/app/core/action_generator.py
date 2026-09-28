@@ -205,6 +205,8 @@ def _chi_combos(
     hand_tiles: list[str], discarded_tile: str, dealer_tile: str
 ) -> list[list[str]]:
     """返回所有合法吃牌组合（各含打出张，共 3 张物理编码）。"""
+    if discarded_tile == dealer_tile:
+        return []
     disc_face = _face_for_sequence(discarded_tile, dealer_tile)
     if not _is_suited(disc_face):
         return []

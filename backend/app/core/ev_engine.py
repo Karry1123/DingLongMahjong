@@ -83,6 +83,7 @@ _GUEST_WIND_PAIR_PENALTY = 1.5  # 客风对子略扣（不如役牌对）
 _GUEST_SUBSTITUTE_HOLD_SCALE = 0.2  # 白板替身客风：有雀头潜力，占位惩罚压到 20%
 _SUBSTITUTE_HONOR_KEEP_BONUS = 8.0  # 保留健康白板替身字牌的雀头潜力加分
 _ORPHAN_TERMINAL_UKEIRE_SCALE = 0.22  # 纯 1/9 两步靠搭进张泡沫折现
+_GUEST_SINGLE_PAIR_UKEIRE_SCALE = 0.35  # 无役客风孤张配对：只有刻/雀头路线，无顺子扩展
 _ORPHAN_TERMINAL_KEEP_PENALTY = 9.0  # 切后仍持无邻张 1/9 的加重占位惩罚
 
 # —— 雀头保护 / 孤张切除 / 好形一向听推进 ——
@@ -273,7 +274,9 @@ def calculate_best_discards(
         )
         if use_deep_approx:
             quality_ukeire = _deep_quality_ukeire_count(
-                remain_raw, ukeire, dealer_tile
+                remain_raw, ukeire, dealer_tile,
+                seat_wind=seat_wind, round_wind=round_wind,
+                shanten=shanten,
             )
             sub_keep = _substitute_honor_keep_bonus(
                 remain_raw, dealer_tile, table_rem
@@ -1085,14 +1088,29 @@ def _deep_quality_ukeire_count(
     remain_raw: list[str],
     ukeire: Sequence[Mapping[str, Any]],
     dealer_tile: str,
+    *,
+    seat_wind: str = "E",
+    round_wind: str = "E",
+    shanten: int = 2,
 ) -> float:
-    """多向听进张质量：压低纯 1/9 两步靠搭泡沫。"""
+    """深向听进张质量：配客风孤张不等同于数牌靠搭。
+
+    原始进张仍由向听穷举决定，折现只用于远期进攻估值。真正财神
+    的万能进张不折现；白板按固定替身身份计数，不会给其他字牌凑刻。
+    已有字牌对子/刻子、自风、圈风均不受客风孤张折现影响。
+    """
     total = 0.0
+    counts = _hand_identity_counts(remain_raw, dealer_tile)
     for u in ukeire:
         rem = float(u["rem"])
         tile = str(u["tile"])
         if _is_orphan_terminal_foam_wait(tile, remain_raw, dealer_tile):
             rem *= _ORPHAN_TERMINAL_UKEIRE_SCALE
+        identity = _logical_tile(tile, dealer_tile)
+        if (shanten > 1 and tile != dealer_tile and tile != "P"
+                and identity in WINDS and identity not in {seat_wind, round_wind}
+                and counts.get(identity, 0) == 1):
+            rem *= _GUEST_SINGLE_PAIR_UKEIRE_SCALE
         total += rem
     return total
 
@@ -2553,19 +2571,25 @@ def _ukeire_scan_tiles(
     *,
     base_shanten: int,
 ) -> list[str]:
-    """生成值得检测的进张候选：邻接序数 + 手中相关牌 + 字牌，禁止无脑扫 34。"""
+    """按逻辑身份扫描进张；持百搭时任意牌都可能配成面子或雀头。"""
+    if dealer_tile in remain_raw:
+        return [t for t in ALL_TILES if int(rem_map.get(t, 0)) > 0]
+
     cands: set[str] = set()
     for t in remain_raw:
         if t == dealer_tile:
             continue
         if int(rem_map.get(t, 0)) > 0:
             cands.add(t)  # 对/刻进张
-        if len(t) == 2 and t[1] in ("m", "p", "s"):
-            digit = int(t[0])
-            suit = t[1]
+        identity = _logical_tile(t, dealer_tile)
+        if len(identity) == 2 and identity[1] in ("m", "p", "s"):
+            digit = int(identity[0])
+            suit = identity[1]
             for d in (digit - 2, digit - 1, digit + 1, digit + 2):
                 if 1 <= d <= 9:
                     code = f"{d}{suit}"
+                    if code == dealer_tile:
+                        code = "P"  # 得牌面由物理白板提供，得本身为百搭。
                     if int(rem_map.get(code, 0)) > 0:
                         cands.add(code)
 

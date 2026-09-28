@@ -1,4 +1,5 @@
 <script setup>
+import MahjongTile from './MahjongTile.vue'
 import { computed, ref } from 'vue'
 import MeldTiles from './MeldTiles.vue'
 import {
@@ -264,7 +265,7 @@ function tilesForMode(group) {
               :aria-label="`以 ${tileLabel(code)} 添加${MELD_TYPE_LABEL[addMode]}`"
               @click="onPickTile(code)"
             >
-              {{ tileLabel(code) }}
+              <MahjongTile :code="code" style="--tw:24px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
             </button>
           </div>
         </template>

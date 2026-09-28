@@ -1,4 +1,6 @@
 <script setup>
+import MahjongTile from './MahjongTile.vue'
+import { huResultLabel } from '../utils/huLabel.js'
 /**
  * 副露 / 和牌 / 过牌决策面板；PvE 中嵌在手牌右侧的实时决策看板。
  * 数据源：后端 call_decision（candidates + recommended_action + reason）。
@@ -63,6 +65,7 @@ const props = defineProps({
     default: null,
   },
   /** 是否禁用按钮（步进请求中） */
+  huInfo: { type:Object, default:null },
   disabled: {
     type: Boolean,
     default: false,
@@ -171,19 +174,24 @@ const resolvedProvider = computed(() => {
 const resolvedDiscard = computed(() => {
   if (props.discardedTile) return props.discardedTile
   // HU / 碰 / 杠：tiles 含打出张；吃：需 props 或取与手牌组合中出现在河的那张
-  const rec = recommended.value
+  const rec = props.callDecision?.recommended_action
   if (rec?.tiles?.length) {
     if (rec.action_type === 'hu') return rec.tiles[0]
     if (rec.action_type === 'pong' || rec.action_type === 'ming_gang') {
       return rec.tiles[0]
     }
   }
-  for (const row of actionRows.value) {
-    const t = row.action.tiles || []
-    if (row.action.action_type === 'hu' && t[0]) return t[0]
+  const actions = [
+    ...(props.callDecision?.available_actions || []),
+    ...(props.callDecision?.candidates || []).map(row => row.action),
+  ]
+  for (const action of actions) {
+    if (!action) continue
+    const t = action.tiles || []
+    if (action.action_type === 'hu' && t[0]) return t[0]
     if (
-      (row.action.action_type === 'pong' ||
-        row.action.action_type === 'ming_gang') &&
+      (action.action_type === 'pong' ||
+        action.action_type === 'ming_gang') &&
       t[0]
     ) {
       return t[0]
@@ -210,6 +218,8 @@ const huPoints = computed(() => {
 const huActionEv = computed(() =>
   actionRows.value.find((r) => r.action.action_type === 'hu')?.net_ev ?? null,
 )
+const huLabel = computed(() => huResultLabel(props.huInfo || { final_hu: huPoints.value }))
+const isHuAction = (type) => ['hu', 'catch_win', 'self_draw_win'].includes(type)
 const passActionEv = computed(() =>
   actionRows.value.find((r) => r.action.action_type === 'pass')?.net_ev ?? null,
 )
@@ -249,16 +259,26 @@ const passReason = computed(() => {
 })
 
 function normalizeAction(raw) {
+  const type = raw.action_type || raw.type || ''
+  const tiles = Array.isArray(raw.tiles) ? [...raw.tiles] : []
+  const expected = { chi: 3, pong: 3, ming_gang: 4 }[type]
+  // Older responses contain only consumed hand tiles. Normalize once for
+  // recommendation matching, preview and click payload, preserving physical P.
+  if (expected && tiles.length === expected - 1 && resolvedDiscard.value) {
+    tiles.push(resolvedDiscard.value)
+  }
   return {
-    action_type: raw.action_type || raw.type || '',
-    tiles: Array.isArray(raw.tiles) ? [...raw.tiles] : [],
-    provider_seat: raw.provider_seat || '',
+    action_type: type,
+    tiles,
+    provider_seat: raw.provider_seat || props.providerSeat || '',
   }
 }
 
 function actionKey(a) {
   if (!a) return ''
-  return `${a.action_type}|${(a.tiles || []).join(',')}|${a.provider_seat || ''}`
+  const action = normalizeAction(a)
+  const tiles = action.action_type === 'pass' ? [] : [...action.tiles].sort()
+  return `${action.action_type}|${tiles.join(',')}|${action.provider_seat}`
 }
 
 function isSameAction(a, b) {
@@ -315,15 +335,7 @@ function selectAction(row) {
   if (props.disabled) return
   const action = row.action || {}
   const type = action.action_type
-  // 明杠：确保 emit 含 4 张（含打出张）
-  let tiles = [...(action.tiles || [])]
-  if (['chi', 'pong', 'ming_gang'].includes(type) && tiles.length < (type === 'ming_gang' ? 4 : 3)) {
-    const disc =
-      props.discardedTile ||
-      resolvedDiscard.value ||
-      tiles[0]
-    if (disc) while (tiles.length < (type === 'ming_gang' ? 4 : 3)) tiles.push(disc)
-  }
+  const tiles = [...(action.tiles || [])]
   emit('action-selected', {
     action_type: type,
     tiles,
@@ -381,10 +393,10 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
             </span>
             <span
               v-if="resolvedDiscard"
-              class="inline-flex h-9 w-7 items-center justify-center rounded-md border text-sm font-bold shadow-md"
+              class="action-target-tile inline-flex items-center justify-center rounded-md border text-sm font-bold shadow-md"
               :class="tileSuitClass(resolvedDiscard)"
             >
-              {{ tileLabel(resolvedDiscard) }}
+              <MahjongTile :code="resolvedDiscard" />
             </span>
             <span v-else class="text-teal-300/70">（未知张）</span>
           </div>
@@ -402,6 +414,8 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
               :key="actionKey(row.action)"
               type="button"
               :data-action="row.action.action_type"
+              :data-action-key="actionKey(row.action)"
+              :aria-label="[actionLabel(row.action.action_type), ...previewMeld(row.action).map(tile => `${tile.claimed ? '供牌 ' : '手牌 '}${displayTile(tile.code)}`)].join('，')"
               :aria-keyshortcuts="keyboardShortcuts && index < 9 ? String(index + 1) : undefined"
               :disabled="disabled"
               :class="buttonClass(row)"
@@ -410,24 +424,26 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
               <span v-if="keyboardShortcuts && index < 9" class="action-shortcut absolute left-1.5 top-1 text-[10px] font-bold text-amber-100/70">{{ index + 1 }}</span>
               <span
                 v-if="row.isRecommended"
-                class="absolute -top-2 right-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-950"
+                class="action-recommend-badge absolute -top-2 right-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-950"
               >
                 荐
               </span>
               <span class="action-label text-base font-bold tracking-wide sm:text-lg">
-                {{ actionLabel(row.action.action_type) }}
+                {{ isHuAction(row.action.action_type) ? '胡' : actionLabel(row.action.action_type) }}<span v-if="isHuAction(row.action.action_type) && huLabel"> ({{ huLabel }})</span>
               </span>
               <span v-if="previewMeld(row.action).length" class="action-meld-preview flex flex-nowrap justify-center gap-0.5">
                 <span
                   v-for="(tile, i) in previewMeld(row.action)"
                   :key="`${tile.code}-${i}`"
-                  class="inline-flex h-6 w-5 items-center justify-center rounded border text-[10px] font-semibold opacity-95"
+                  class="action-preview-tile inline-flex items-center justify-center rounded border text-[10px] font-semibold opacity-95"
+                  :data-tile="tile.code"
                   :class="[tileSuitClass(tile.code), tile.claimed ? 'action-claimed-tile ring-2 ring-amber-300' : '']"
                   :title="tile.claimed ? `供牌 ${displayTile(tile.code)}` : displayTile(tile.code)"
                 >
-                  {{ tileLabel(tile.code) }}
+                  <MahjongTile :code="tile.code" />
                 </span>
               </span>
+              <span v-if="previewMeld(row.action).some(tile => tile.code === 'P') && dealerTile && dealerTile !== 'P'" class="action-substitute-note">白替{{ tileLabel(dealerTile) }}</span>
             </button>
           </div>
         </div>
@@ -437,20 +453,24 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
 </template>
 
 <style scoped>
+.action-preview-tile { box-sizing:border-box; flex:0 0 24px; width:24px; min-width:24px; max-width:24px; height:32px; min-height:32px; max-height:32px; overflow:hidden; }
+.action-target-tile { box-sizing:border-box; flex:none; width:28px; height:36px; overflow:hidden; }
+.action-target-tile :deep(.mahjong-tile), .action-preview-tile :deep(.mahjong-tile) { --tw:24px; --th:32px; width:100%; height:100%; margin:0; box-shadow:none; }
+.action-target-tile :deep(.characters), .action-preview-tile :deep(.characters) { font-size:10px; line-height:1; gap:1px; }
+.action-target-tile :deep(.honor), .action-preview-tile :deep(.honor) { font-size:14px; line-height:1; }
+.action-substitute-note { color:#bae6fd; font-size:10px; line-height:1.2; }
 .action-prompt-docked { height:auto; overflow:visible; }
 .action-prompt-docked .action-prompt-panel { max-width:none; height:auto; overflow:visible; display:flex; flex-direction:column; border-radius:16px; border-color:rgba(251,191,36,.45); background:rgba(3,46,43,.9); box-shadow:0 12px 32px rgba(0,20,20,.55); animation:none; }
 .action-prompt-docked .action-prompt-panel > header { display:block; padding:7px 14px; background:transparent; }
 .action-prompt-docked .action-prompt-panel > header > p:first-of-type { display:none; }
 .action-prompt-docked .action-prompt-panel > header > div:last-child { margin:0; justify-content:center; font-size:.85rem; line-height:1.2; }
-.action-prompt-docked .action-prompt-panel > header > div:last-child > span:nth-child(2) { height:26px; width:22px; font-size:.75rem; }
+.action-prompt-docked .action-prompt-panel > header > div:last-child > span:nth-child(2) { height:32px; width:24px; font-size:.75rem; }
 .action-prompt-docked .action-prompt-panel > div:last-child { height:auto; min-height:0; overflow:visible; padding:8px 12px 10px; }
 .action-prompt-docked .hu-banner, .action-prompt-docked .pass-banner,
 .action-prompt-docked .action-prompt-panel > div:last-child > p:last-child { display:none; }
-.action-prompt-docked [aria-label="可选响应动作"] { display:flex; flex-wrap:nowrap; justify-content:center; gap:8px; height:auto; }
-.action-prompt-docked [aria-label="可选响应动作"] button { min-width:80px; height:40px; min-height:40px; flex:1 1 0; flex-direction:row; justify-content:center; padding:4px 12px; gap:2px; border-radius:999px; white-space:nowrap; }
-.action-prompt-docked [aria-label="可选响应动作"] button > span:first-child,
-.action-prompt-docked [aria-label="可选响应动作"] button .action-meld-preview { display:none; }
-.action-prompt-docked [aria-label="可选响应动作"] button > span:not(.action-shortcut):not(.action-meld-preview) { font-size:15px; line-height:1; }
+.action-prompt-docked [aria-label="可选响应动作"] { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; height:auto; }
+.action-prompt-docked [aria-label="可选响应动作"] button { min-width:112px; min-height:78px; flex:1 1 112px; flex-direction:column; justify-content:center; padding:8px 6px; gap:5px; border-radius:12px; white-space:nowrap; }
+.action-prompt-docked .action-label { font-size:15px; line-height:1; }
 .action-prompt-docked [aria-label="可选响应动作"] button[data-action="pass"] { order:99; }
 .action-prompt-docked header p:last-child { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .action-prompt-panel {

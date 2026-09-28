@@ -3,8 +3,35 @@ import { test } from 'node:test'
 import { createServer } from 'vite'
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { chiCombosFor, detectTableResponses } from '../src/utils/callDetector.js'
+import { chiCombosFor, detectTableResponses, isLegalClaimMeld } from '../src/utils/callDetector.js'
 import { useGameSession } from '../src/composables/useGameSession.js'
+
+test('multiple pin chi choices include the fixed whiteboard substitute, never a wildcard', () => {
+  assert.deepEqual(chiCombosFor(['P','7p','9p'], '8p', '6p'), [['P','7p','8p'],['7p','8p','9p']])
+  assert.deepEqual(chiCombosFor(['P','9p'], '8p', '7p'), [['P','8p','9p']])
+  assert.deepEqual(chiCombosFor(['P','6p'], '8p', '7p'), [['6p','P','8p']])
+  for (const dealer of ['5p','P','E']) assert.deepEqual(chiCombosFor(['P','9p'], '8p', dealer), [])
+  assert.deepEqual(chiCombosFor(['7p','9p'], '8p', '8p'), [])
+})
+
+test('whiteboard pong and kong require real matching tiles; jokers cannot fill them', () => {
+  const options = (hand, disc, dealer) => detectTableResponses({
+    providerSeat:'N', discardedTile:disc, dealerTile:dealer, selfSeat:'E',
+    getSeat:seat=>({hand:seat==='E'?hand:['1m'],melds:[]}),
+  }).options.find(row=>row.seat==='E')?.types || []
+  assert.deepEqual(options(['P','P','P'], 'P', '6p'), ['pong','ming_gang'])
+  assert.deepEqual(options(['P','P'], 'P', '6p'), ['pong'])
+  assert.deepEqual(options(['9p','P'], '9p', '6p'), [])
+  assert.deepEqual(options(['9p','9p','P'], '9p', '6p'), ['pong'])
+  assert.deepEqual(options(['P','P','P'], 'P', 'P'), [])
+  assert.equal(isLegalClaimMeld({meldType:'chi',tiles:['P','7p','8p'],claimedTile:'8p',dealerTile:'6p'}), true)
+  for (const [meldType,tiles,claimedTile,dealerTile] of [
+    ['chi',['P','6p','8p'],'8p','5p'],
+    ['chi',['7p','8p','9p'],'8p','8p'],
+    ['pong',['9p','P','9p'],'9p','6p'],
+    ['ming_gang',['9p','9p','P','9p'],'9p','6p'],
+  ]) assert.equal(isLegalClaimMeld({meldType,tiles,claimedTile,dealerTile}), false)
+})
 
 test('white discard and white in hand both preserve physical codes', () => {
   assert.deepEqual(chiCombosFor(['7s','9s'], 'P', '8s'), [['7s','P','9s']])

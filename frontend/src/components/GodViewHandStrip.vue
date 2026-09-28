@@ -1,4 +1,5 @@
 <script setup>
+import MahjongTile from './MahjongTile.vue'
 /**
  * 上帝视角单座暗手条：支持「得」拖拽 / ◀▶ 微调插嵌。
  */
@@ -188,7 +189,7 @@ const wrapClass = computed(() =>
             class="absolute -top-1.5 left-1/2 -translate-x-1/2 rounded bg-fuchsia-500 px-0.5 text-[8px] font-bold text-white"
             >得</span
           >
-          {{ tileLabel(item.code) }}
+          <MahjongTile :code="item.code" style="--tw:26px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
         </button>
       </div>
     </template>
