@@ -7,7 +7,7 @@
 以现代 Web 技术复刻顶龙牌桌，让人机磨砺、真人对战与规则推演各得其所。
 
 [![Build](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml/badge.svg)](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/badge/release-v0.3.1--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.3.1-beta)
+[![Release](https://img.shields.io/badge/release-v0.3.2--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.3.2-beta)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-184C43?style=flat-square)
@@ -18,7 +18,9 @@
 
 ---
 
-> 当前版本 **v0.3.1-beta**，前端配置、界面版本与后端 API 版本统一。构建徽章对应真实部署工作流，测试结果另见本地诊断报告。
+> 当前版本 **v0.3.2-beta**，前端配置、界面版本与后端 API 版本统一。构建徽章对应真实部署工作流，测试结果另见本地诊断报告。
+
+本次更新修复 PvP 换庄后的门风动态轮转，保证庄家当局为东风；同时修复胡牌结算中吃进牌的横置展示，与 PvE 共用显示规则。详见 [v0.3.2-beta 更新日志](CHANGELOG.md#v032-beta--2026-09-28)。
 
 ## 三种入口，一套正统牌桌
 
@@ -38,7 +40,7 @@
 
 ### 实时联机，各看各的主视角
 
-六位房间号、四方固定选座、房主标记、全员准备与 3-2-1 同步开局。无论坐东南西北，自己永远在屏幕下方，真实昵称与 AI 名称按物理座位映射。
+六位房间号、四方固定选座、房主标记、全员准备与 3-2-1 同步开局。自己永远在屏幕下方，玩家身份与累计分数绑定物理座位；每局门风按当前庄家重新映射，庄家为东风，下家、对家、上家依次为南风、西风、北风，显示与算番同步更新。
 
 后端权威推进发牌、合法动作与抢断仲裁。出牌 **10 秒**、副露响应 **6 秒**，每家每局另有 **30 秒 Time Bank**；高优先级胡／碰／杠未决时，下家吃牌时钟挂起。局后全员确认才进入下一局。
 
@@ -179,7 +181,8 @@ npm.cmd run build
 | **0.2.2-beta · 已迭代** | 顶龙品牌、牌面设计、财神仪式、推荐逻辑与微缩排版 |
 | **0.2.3-beta · 历史版本** | 无圈风翻番、局势提示、自摸区分、手牌财神锚定、碰听推荐纠偏 |
 | **0.2.4-beta · 开发阶段** | 分阶段接入房间、权威牌局与联机交互 |
-| **v0.3.1-beta · 当前版本** | 三模式入口、PvP 联机、视角映射、双倒计时与 30 秒时间池、共用结算、500 局私有牌谱、常亮与鸣牌隐私；统一规则文档 |
+| **v0.3.1-beta · 历史版本** | 三模式入口、PvP 联机、视角映射、双倒计时与 30 秒时间池、共用结算、500 局私有牌谱、常亮与鸣牌隐私；统一规则文档 |
+| **v0.3.2-beta · 当前版本** | 修复 PvP 换庄后门风动态轮转与自风算番；修复胡牌结算中吃进牌横置显示，对齐 PvE 视觉规范 |
 
 当前版本与历史变更见 [CHANGELOG.md](CHANGELOG.md)。完整功能说明与实现边界见本文亮点及 [rule.md](rule.md)。
 

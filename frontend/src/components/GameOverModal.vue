@@ -190,6 +190,10 @@ function tileNote(dt) {
   return undefined
 }
 
+function tileSideways(group, tile) {
+  return !!tile.is_win_tile || (group.kind === 'chi' && group.source === 'open' && tile.code === group.claimed_tile)
+}
+
 /** 相对自家顺序：自家 → 下家 → 对家 → 上家 */
 function winnerGroups(details) {
   const deco = bestDecomposition.value
@@ -489,7 +493,7 @@ function settlementReason(card) {
             <p>成牌面子与雀头 <span v-if="info.win_tile || winningCard.winTile">胡张 {{ tileLabel(info.win_tile || winningCard.winTile) }}</span></p>
             <div class="landscape-winner-groups">
               <div v-for="(group, index) in winningCard.winningGroups" :key="index" class="landscape-winner-group" :title="groupCaption(group)">
-                <MahjongTile v-for="(tile, tileIndex) in group.display_tiles" :key="tileIndex" class="settlement-mini-tile" :class="{ 'is-winning-tile': tile.is_win_tile }" :code="tile.code" :face-down="group.kind === 'an_gang' && tileIndex !== 1" :title="tileNote(tile) || tileLabel(tile.code)" />
+                <MahjongTile v-for="(tile, tileIndex) in group.display_tiles" :key="tileIndex" class="settlement-mini-tile" :class="{ 'is-winning-tile': tile.is_win_tile }" :code="tile.code" :face-down="group.kind === 'an_gang' && tileIndex !== 1" :sideways="tileSideways(group, tile)" :title="tileNote(tile) || tileLabel(tile.code)" />
               </div>
             </div>
             <div class="landscape-winner-breakdown">
@@ -651,7 +655,7 @@ function settlementReason(card) {
                     <div class="inline-flex flex-nowrap items-end gap-1 pb-3 pt-1">
                       <MahjongTile v-for="(dt, di) in grp.display_tiles" :key="di" :code="dt.code"
                         :face-down="grp.kind === 'an_gang' && di !== 1"
-                        :sideways="dt.is_win_tile || (grp.kind === 'chi' && grp.source === 'open' && dt.code === grp.claimed_tile)"
+                        :sideways="tileSideways(grp, dt)"
                         :badge="dt.is_win_tile ? winBadge : undefined"
                         :note="tileNote(dt)" />
                     </div>
@@ -951,9 +955,10 @@ function settlementReason(card) {
   .landscape-winner-hand > p { display:flex; justify-content:space-between; gap:5px; font-size:10px; font-weight:700; }
   .landscape-winner-groups, .landscape-seat-tiles { display:flex; flex-wrap:wrap; align-items:center; gap:2px; min-width:0; }
   .landscape-winner-groups { margin-top:5px; }
-  .landscape-winner-group, .landscape-seat-meld { display:inline-flex; align-items:center; gap:1px; flex:none; border:1px solid #fbbf2455; border-radius:4px; padding:1px; }
+  .landscape-winner-group, .landscape-seat-meld { display:inline-flex; align-items:flex-end; gap:1px; flex:none; border:1px solid #fbbf2455; border-radius:4px; padding:1px; }
   .settlement-mini-tile { display:inline-flex; flex:none; align-items:center; justify-content:center; --tw:18px; --th:24px; width:var(--tw); height:var(--th); margin-bottom:0; overflow:hidden; border:1px solid #d4cbb8; border-radius:3px; background:#fffdf0; box-shadow:1px 2px 0 #b2cbb5; font-size:10px; font-weight:800; line-height:1; }
   .landscape-winner-group .settlement-mini-tile { --tw:28px; --th:38px; width:var(--tw); height:var(--th); font-size:15px; }
+  .landscape-winner-group .settlement-mini-tile.sideways { width:var(--th); height:var(--tw); }
   .settlement-mini-tile.is-winning-tile { position:relative; overflow:visible; outline:2px solid #fbbf24; outline-offset:1px; }
   .settlement-mini-tile.is-winning-tile::after { content:'胡'; position:absolute; top:-9px; right:-7px; z-index:2; border:1px solid #fcd34d; border-radius:4px; padding:1px 2px; background:linear-gradient(135deg,#be123c,#7f1d1d); color:#fff7d6; font-size:8px; line-height:1; }
   .landscape-winner-breakdown, .landscape-seat-breakdown { display:flex; flex-wrap:wrap; gap:2px 6px; min-width:0; color:#d1fae5; font-size:9px; line-height:1.15; }

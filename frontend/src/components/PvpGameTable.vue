@@ -72,7 +72,7 @@ function moveHand({ fromIndex, toIndex }) {
           <button type="button" @click="emit('leave')">返回主页</button>
         </div>
       </section>
-      <PvEBoard :seat-wind="game.seat_wind" :current-turn-seat="game.current_turn" :dealer-seat="game.dealer_seat" :dealer-tile="game.dealer_tile" :opponents="opponents" :self-discards="self.discards || []" :cumulative-scores="game.scores" :round-count="game.circle_number" :wall-count="game.wall_count" :table-waiting="game.phase === 'response'" :clocks="visibleClocks" :time-banks="timeBanks" :server-offset="serverOffset" />
+      <PvEBoard show-roles :seat-wind="game.seat_wind" :current-turn-seat="game.current_turn" :dealer-seat="game.dealer_seat" :dealer-tile="game.dealer_tile" :opponents="opponents" :self-discards="self.discards || []" :cumulative-scores="game.scores" :round-count="game.circle_number" :wall-count="game.wall_count" :table-waiting="game.phase === 'response'" :clocks="visibleClocks" :time-banks="timeBanks" :server-offset="serverOffset" />
       <PvpResponseWait v-if="game.phase === 'response' && !actions.length" :wait="game.response_wait" :server-offset="serverOffset" />
       <div class="game-status-hint pve-situation-hud pvp-progress-hint" role="status"><Transition name="situation-hint" mode="out-in"><span :key="progressHint">{{ progressHint }}</span></Transition></div>
       <PlayerWorkbench pve :show-recommendation="false">
@@ -80,7 +80,7 @@ function moveHand({ fromIndex, toIndex }) {
         <MeldBar v-if="self.melds?.length" :model-value="self.melds" :dealer-tile="game.dealer_tile" :data-meld-wind="game.seat_wind" data-position="bottom" compact read-only />
       </PlayerWorkbench>
       <SeatClock class="pve-self-clock" :wind="game.seat_wind" :clock="game.clocks?.[game.seat_wind]" :bank-ms="timeBanks[game.seat_wind]" :server-offset="serverOffset" />
-      <div class="self-player-caption player-caption" data-position="bottom" :data-wind="game.seat_wind"><b>{{ self.nickname }} · {{ myWind }}风</b><small v-if="self.is_host">房主</small><b v-if="game.seat_wind === game.dealer_seat">庄</b></div>
+      <div class="self-player-caption player-caption" data-position="bottom" :data-wind="game.seat_wind"><b>{{ self.nickname }} · 自家 · {{ myWind }}风</b><small v-if="self.is_host">房主</small><b v-if="game.seat_wind === game.dealer_seat">庄</b></div>
       <div v-if="buttons.length && !opening" class="pvp-action-controls" aria-label="合法行牌操作"><p v-if="ownPaused" class="claim-paused">等待其他玩家碰杠或胡牌，吃牌倒计时已挂起。</p><button v-for="action in buttons" :key="action.action_id" type="button" :data-action="action.action_type" :disabled="pending || ownPaused && action.action_type !== 'pass'" @click="act(action)"><strong>{{ actionLabel(action) }}</strong><span v-if="['chi','pong','ming_gang','an_gang','bu_gang'].includes(action.action_type)" class="action-tiles"><MahjongTile v-for="(tile,index) in action.tiles" :key="index" :code="tile" /></span></button></div>
     </main>
     <GameOverModal v-if="game.result" pvp :info="game.result" :seat-wind="game.seat_wind" :dealer-seat="game.dealer_seat" :players="game.players" :opponents="opponents" :cumulative-scores="game.scores" :is-round-over="game.circle_complete" :next-confirmed="nextConfirmed" :next-count="nextCount" :human-count="humans.length" @next-round="emit('next')" @leave="emit('leave')" />

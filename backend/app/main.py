@@ -24,7 +24,7 @@ def _parse_allowed_origins(raw: str) -> list[str]:
 
 allowed_origins = _parse_allowed_origins(os.getenv("ALLOWED_ORIGINS", ""))
 
-app = FastAPI(title="顶龙麻将", version="0.3.1-beta")
+app = FastAPI(title="顶龙麻将", version="0.3.2-beta")
 
 app.add_middleware(
     LanCORSMiddleware,

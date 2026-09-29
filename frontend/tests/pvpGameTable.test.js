@@ -15,7 +15,7 @@ test('PvP pauses chi controls, shows server clock, and gates the next hand by hu
     assert.match(html, /class="pve-game-main"/)
     assert.match(html, /class="[^"]*\bpve-table\b/)
     assert.match(html, /pve-self-hand pvp-own-hand/)
-    assert.match(html, /牌友0 · 东风/)
+    assert.match(html.replace(/<!--.*?-->/g, ''), /牌友0 · 上家 · 东风/)
     assert.doesNotMatch(html, /pve-ev-slot/)
     assert.match(html,/等待抢断 · <b[^>]*>6<\/b>秒/)
     assert.equal((html.match(/data-bank-wind=/g)||[]).length,4)

@@ -29,6 +29,18 @@ def fixture_match(players, **kwargs):
     name = next(p["nickname"] for p in players if p["is_host"])
     if name.startswith("暗杠"):
         kwargs["deal"] = deal_for({"E": "1m 1m 1m 1m 3m 4m 5m 2p 3p 4p 6s 7s C F".split()}, "9s")
+    elif name.startswith('吃牌'):
+        kwargs['deal'] = deal_for({
+            'E': '1m 2m 6m 8m 1p 3p 5p 7p 1s 4s 6s 8s E 5m'.split(),
+            'S': '3m 4m 2p 3p 4p 6s 7s 8s C C 7p 8p F'.split(),
+            'W': '1m 1m 2m 2m 6m 6m 9m 9m 1p 1p 4s 4s N'.split(),
+            'N': '2m 4m 6m 8m 2p 4p 6p 8p 2s 4s 6s 8s W'.split(),
+        }, '9s')
+        # Real chi -> discard -> two turns -> ron; preserve the full deck.
+        wall = kwargs['deal']['wall_tiles']
+        for tile in ['2s', '3s', '9p']:
+            wall.remove(tile)
+        kwargs['deal']['wall_tiles'] = ['2s', '3s', '9p'] + wall
     elif name.startswith('隐私'):
         kwargs['deal'] = deepcopy(competing().deal)
         hands = kwargs['deal']['hands']
@@ -39,7 +51,7 @@ def fixture_match(players, **kwargs):
         kwargs['deal'] = deal_for({'E': '1m 1m 1m 2m 3m 4m 3p 4p 5p 6s 7s 8s C C'.split(),
                                  'S': '9m 9m 9m 8p 8p 8p 8p C C S S 1s 2s 3s'.split()}, '9s')
     elif name.startswith(("自摸", "加时和牌")):
-        dealer = kwargs.get("dealer_seat", "E")
+        dealer = "E"
         kwargs["deal"] = deal_for({dealer: "1m 1m 1m 2m 3m 4m 3p 4p 5p 6s 7s 8s C C".split()}, "9s")
     elif name.startswith("捉铳"):
         kwargs["deal"] = deal_for({"E": "4m 5m 6m 2p 3p 4p 7p 8p 9p 2s 3s E F 1m".split(),
@@ -47,7 +59,7 @@ def fixture_match(players, **kwargs):
     elif name.startswith("尾圈") and kwargs.get("hand_number", 1) == 1:
         kwargs["dealer_seat"] = "N"
         kwargs["hand_number"] = 4
-        kwargs["deal"] = deal_for({"N": "1m 2m 6m 8m 1p 3p 5p 9p 2s 4s 6s 8s N 9s".split()}, "9s")
+        kwargs["deal"] = deal_for({"E": "1m 2m 6m 8m 1p 3p 5p 9p 2s 4s 6s 8s N 9s".split()}, "9s")
         kwargs["deal"]["wall_tiles"] = []  # Deterministic last-turn draw / circle boundary.
     match = PvpMatch(players, **kwargs)
     if name.startswith('结算'):

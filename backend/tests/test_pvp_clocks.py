@@ -142,10 +142,11 @@ def test_next_dealer_circle_boundary_and_only_real_players_confirm(dealer):
     lineup = players(ai=True)
     lineup[0]["is_ai"] = lineup[1]["is_ai"] = False
     match = PvpMatch(lineup, dealer_seat=dealer)
-    assert len(match.hands[dealer]) == 14 and match.current == dealer
+    assert len(match.hands["E"]) == 14 and match.current == "E"
+    assert match.players["E"]["room_seat"] == dealer
     match.phase = "finished"
     match.result = {"kind": "draw"}
     assert match.next_dealer == WINDS[(WINDS.index(dealer) + 1) % 4]
     assert match.circle_complete == (dealer == "N")
-    assert not match.confirm_next("E", match.game_id)
-    assert match.confirm_next("S", match.game_id)
+    assert not match.confirm_next(match.wind_for_room_seat("E"), match.game_id)
+    assert match.confirm_next(match.wind_for_room_seat("S"), match.game_id)

@@ -14,6 +14,7 @@ const props = defineProps({
   wallCount: { type: Number, default: 0 },
   aiStatus: String, aiAnnouncement: String, thinkingSeat: String,
   tableWaiting: Boolean,
+  showRoles: Boolean,
   clocks: { type: Object, default: () => ({}) },
   timeBanks: { type: Object, default: () => ({}) }, serverOffset: { type:Number, default:0 },
 })
@@ -31,7 +32,7 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
     <div class="table-compass">
       <article v-for="player in seats" :key="player.seat" :data-seat="player.seat" :data-position="player.position" :data-wind="player.seat" class="opponent-seat round-player" :class="[player.position, { active: !tableWaiting && player.seat === currentTurnSeat }]">
         <header class="seat-header flex justify-between gap-2 text-sm text-teal-50">
-          <b class="player-caption">{{ player.nickname }} · {{ windLabel(player.seat) }}风 <small v-if="player.isHost" class="host-badge">房主</small> <span v-if="player.seat === dealerSeat" class="text-amber-300">庄</span></b>
+          <b class="player-caption">{{ player.nickname }} · <template v-if="showRoles">{{ player.role }} · </template>{{ windLabel(player.seat) }}风 <small v-if="player.isHost" class="host-badge">房主</small> <span v-if="player.seat === dealerSeat" class="text-amber-300">庄</span></b>
           <SeatClock v-if="Object.hasOwn(timeBanks,player.seat) || clocks[player.seat]" :wind="player.seat" :clock="clocks[player.seat]" :bank-ms="timeBanks[player.seat] ?? 0" :private-bank="timeBanks[player.seat] == null" :server-offset="serverOffset" />
           <span v-if="!tableWaiting && player.seat === thinkingSeat" class="thinking-indicator" role="status">思考中…</span>
           <span>{{ cumulativeScores[player.seat] || 0 }} 分</span>

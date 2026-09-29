@@ -19,22 +19,29 @@ WINDS = "ESWN"
 class PvpMatch:
     def __init__(self, players, opening_seconds=3.6, deal=None, *, dealer_seat="E", hand_number=1, circle_number=1, scores=None, now_ms=None):
         self.now_ms = now_ms or (lambda: time.time() * 1000)
-        self.dealer_seat = dealer_seat
+        # Room seats identify players across hands; winds belong to this hand.
+        self.dealer_room_seat = dealer_seat
+        self.dealer_seat = "E"
         self.hand_number = hand_number
         self.circle_number = circle_number
-        self.scores = dict(scores or {seat: 0 for seat in WINDS})
+        room_scores = scores or dict.fromkeys(WINDS, 0)
+        self.scores = {self.wind_for_room_seat(seat): room_scores[seat] for seat in WINDS}
         self.next_ready = set()
         self.clocks = {}
         self.time_banks = {wind: 30000 for wind in WINDS}
-        self.players = {p["seat_wind"]: dict(p) for p in players}
-        self.deal = deal or setup_new_game(dealer_seat)
+        self.players = {}
+        for p in players:
+            room_seat = WINDS[p["seat"]] if "seat" in p else p["seat_wind"]
+            wind = self.wind_for_room_seat(room_seat)
+            self.players[wind] = {**p, "seat_wind": wind, "room_seat": room_seat}
+        self.deal = deal or setup_new_game(self.dealer_seat)
         self.hands = {wind: list(self.deal["hands"][wind]) for wind in WINDS}
         self.wall = list(self.deal["wall_tiles"])
         self.melds = {wind: [] for wind in WINDS}
         self.rivers = {wind: [] for wind in WINDS}
         self.game_id = f"GM-{uuid4().hex[:12].upper()}"
         self.god = self.deal["dealer_tile"]
-        self.current = dealer_seat
+        self.current = self.dealer_seat
         self.phase = "opening"
         self.opening_at = self.now_ms()
         self.opening_ends_at = self.opening_at + opening_seconds * 1000
@@ -42,7 +49,7 @@ class PvpMatch:
         self.revision = 0
         self.turns = 0
         self.drawn = {wind: None for wind in WINDS}
-        self.drawn[dealer_seat] = self.hands[dealer_seat][-1]
+        self.drawn[self.dealer_seat] = self.hands[self.dealer_seat][-1]
         self.options = {wind: [] for wind in WINDS}
         self.pending = {}
         self.choices = {}
@@ -54,6 +61,13 @@ class PvpMatch:
         self.history = []
         self.full_settlement = None
         self.archived = False
+
+    def wind_for_room_seat(self, seat):
+        return WINDS[(WINDS.index(seat) - WINDS.index(self.dealer_room_seat)) % 4]
+
+    @property
+    def room_scores(self):
+        return {seat: self.scores[self.wind_for_room_seat(seat)] for seat in WINDS}
 
     def _event(self, action, seat, tile=None, is_zimo=False, concealed=False):
         self.event = {"id": self.revision + 1, "action": action, "seat": seat, "tile": tile, "isZimo": is_zimo, "concealed": concealed}
@@ -216,12 +230,12 @@ class PvpMatch:
     @property
     def next_dealer(self):
         if self.result and self.result.get("winner_seat") == self.dealer_seat:
-            return self.dealer_seat
-        return WINDS[(WINDS.index(self.dealer_seat) + 1) % 4]
+            return self.dealer_room_seat
+        return WINDS[(WINDS.index(self.dealer_room_seat) + 1) % 4]
 
     @property
     def circle_complete(self):
-        return self.phase == "finished" and self.dealer_seat == "N" and self.next_dealer == "E"
+        return self.phase == "finished" and self.dealer_room_seat == "N" and self.next_dealer == "E"
 
     def _discard(self, seat, tile):
         self.hands[seat].remove(tile)

@@ -60,7 +60,7 @@ class RoomsManager:
                 if room["status"] == "playing":
                     game = self.games.get(room_id)
                     if game:
-                        message["game"] = game.view("ESWN"[room["my_seat"]])
+                        message["game"] = game.view(game.wind_for_room_seat("ESWN"[room["my_seat"]]))
                 messages.append((socket, message))
         results = await asyncio.gather(*(self._send(socket, message) for socket, message in messages))
         if not all(results):
@@ -90,24 +90,24 @@ class RoomsManager:
                 if not game:
                     raise HTTPException(409, "牌局尚未开始")
                 if kind == "opening_complete":
-                    game.acknowledge_opening("ESWN"[room["my_seat"]], message.get("game_id"))
+                    game.acknowledge_opening(game.wind_for_room_seat("ESWN"[room["my_seat"]]), message.get("game_id"))
                     return
                 if kind == "next_hand":
                     if game.phase == 'finished' and message.get('game_id') == game.game_id and not game.archived:
                         await self._broadcast(room_id)
                         if not game.archived:
                             raise HTTPException(503, '牌谱保存失败，请稍后重试')
-                    if game.confirm_next("ESWN"[room["my_seat"]], message.get("game_id")):
+                    if game.confirm_next(game.wind_for_room_seat("ESWN"[room["my_seat"]]), message.get("game_id")):
                         previous_task = self.game_tasks.pop(room_id, None)
                         if previous_task:
                             previous_task.cancel()
-                        self.games[room_id] = PvpMatch(room["players"], opening_seconds=self.opening_seconds, dealer_seat=game.next_dealer, hand_number=game.hand_number + 1, circle_number=game.circle_number + int(game.circle_complete), scores=game.scores)
+                        self.games[room_id] = PvpMatch(room["players"], opening_seconds=self.opening_seconds, dealer_seat=game.next_dealer, hand_number=game.hand_number + 1, circle_number=game.circle_number + int(game.circle_complete), scores=game.room_scores)
                         self.game_tasks[room_id] = asyncio.create_task(self._run_game(room_id, opening=True))
                     await self._broadcast(room_id)
                     return
                 if game.tick():
                     await self._broadcast(room_id)
-                game.act("ESWN"[room["my_seat"]], message)
+                game.act(game.wind_for_room_seat("ESWN"[room["my_seat"]]), message)
                 await self._broadcast(room_id)
                 self._schedule_bots(room_id)
                 return
