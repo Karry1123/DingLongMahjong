@@ -1,6 +1,6 @@
 """HTTP 路由：切牌推荐、算胡明细、牌局步进等 API。"""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.api.game_step import process_game_step
@@ -240,11 +240,12 @@ def save_game_record_api(request: GameRecordRequest) -> GameRecordResponse:
 
 
 @router.api_route("/game/records", methods=["GET", "HEAD"])
-def fetch_game_record_summaries() -> dict:
+def fetch_game_record_summaries(limit: int = Query(default=200, ge=1, le=200),
+                                offset: int = Query(default=0, ge=0)) -> dict:
     """List the latest completed games with seat-relative settlement summaries."""
     from app.core.record_manager import list_game_record_summaries
 
-    return {"records": list_game_record_summaries()}
+    return {"records": list_game_record_summaries(limit=limit, offset=offset)}
 
 
 @router.api_route("/game/records/{game_id}", methods=["GET", "HEAD"])

@@ -1,4 +1,4 @@
-"""Completed PvE game archives. A transaction keeps the latest 200 games."""
+"""Completed PvE archives retained permanently, with paginated summary reads."""
 
 from __future__ import annotations
 
@@ -88,20 +88,23 @@ def _summary(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def list_game_record_summaries(*, db_path: Path | None = None) -> list[dict[str, Any]]:
-    """Return the retained games newest first without sending walls or private hands."""
+def list_game_record_summaries(*, db_path: Path | None = None,
+                               limit: int = MAX_RECORDS, offset: int = 0) -> list[dict[str, Any]]:
+    """Return a page newest first without sending walls or private hands."""
+    if not 1 <= limit <= MAX_RECORDS or offset < 0:
+        raise ValueError("Invalid record page")
     pg_url = _postgres_url(db_path)
     if pg_url:
         with _pg_connect(pg_url) as db:
-            rows = db.execute("SELECT payload FROM game_records ORDER BY timestamp DESC, id DESC LIMIT %s",
-                              (MAX_RECORDS,)).fetchall()
+            rows = db.execute("SELECT payload FROM game_records ORDER BY timestamp DESC, id DESC LIMIT %s OFFSET %s",
+                              (limit, offset)).fetchall()
     else:
         path = _db_path(db_path)
         if not path.exists():
             return []
         with closing(_connect(path)) as db:
-            rows = db.execute("SELECT payload FROM game_records ORDER BY timestamp DESC, id DESC LIMIT ?",
-                              (MAX_RECORDS,)).fetchall()
+            rows = db.execute("SELECT payload FROM game_records ORDER BY timestamp DESC, id DESC LIMIT ? OFFSET ?",
+                              (limit, offset)).fetchall()
     return [_summary(json.loads(zlib.decompress(row[0]))) for row in rows]
 
 
@@ -183,9 +186,6 @@ def archive_completed_game(record: dict[str, Any], *, db_path: Path | None = Non
         encoded = zlib.compress(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), 6)
         db.execute("INSERT INTO game_records(game_id,round_id,timestamp,payload) VALUES(?,?,?,?)",
                    (game_id, round_id, timestamp, encoded))
-        db.execute("""DELETE FROM game_records WHERE id IN (
-            SELECT id FROM game_records ORDER BY timestamp DESC, id DESC LIMIT -1 OFFSET ?
-        )""", (MAX_RECORDS,))
     return {"game_id": game_id, "round_id": round_id, "timestamp": timestamp,
             "steps_count": len(record.get("steps") or []), "bytes_written": len(encoded),
             "path": str(path), "summary": _summary(payload)}
@@ -230,9 +230,6 @@ def _archive_postgres(record: dict[str, Any], round_id: str, url: str) -> dict[s
         encoded = zlib.compress(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), 6)
         db.execute("INSERT INTO game_records(game_id,round_id,timestamp,payload) VALUES(%s,%s,%s,%s)",
                    (game_id, round_id, timestamp, encoded))
-        db.execute("""DELETE FROM game_records WHERE id IN (
-            SELECT id FROM game_records ORDER BY timestamp DESC, id DESC OFFSET %s
-        )""", (MAX_RECORDS,))
     return {"game_id": game_id, "round_id": round_id, "timestamp": timestamp,
             "steps_count": len(record.get("steps") or []), "bytes_written": len(encoded),
             "path": "postgresql", "summary": _summary(payload)}

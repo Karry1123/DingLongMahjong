@@ -9,15 +9,15 @@ from app.core.scoring import calculate_unwon_player_points
 from tests.test_pvp_match import custom, act
 
 
-def test_archive_fifo_is_500_exact_and_duplicate_does_not_change_order(tmp_path):
+def test_archive_keeps_more_than_500_and_duplicate_does_not_change_order(tmp_path):
     path = tmp_path / 'pvp.sqlite3'
     for i in range(503):
         archive_pvp_game({'phase': 'finished', 'result': {'kind': 'draw'}, 'game_id': f'GM-{i:06}', 'steps': [{'seat': 'E'}]}, db_path=path)
     archive_pvp_game({'phase': 'finished', 'result': {'kind': 'draw'}, 'game_id': 'GM-000003'}, db_path=path)
     with sqlite3.connect(path) as db:
         rows = db.execute('SELECT game_id,payload FROM pvp_game_records ORDER BY id').fetchall()
-    assert len(rows) == 500
-    assert rows[0][0] == 'GM-000003' and rows[-1][0] == 'GM-000502'
+    assert len(rows) == 503
+    assert rows[0][0] == 'GM-000000' and rows[-1][0] == 'GM-000502'
     assert json.loads(zlib.decompress(rows[0][1]))['steps'] == [{'seat': 'E'}]
     with pytest.raises(ValueError):
         archive_pvp_game({'phase': 'discard', 'game_id': 'GM-INCOMPLETE'}, db_path=path)

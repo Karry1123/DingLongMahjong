@@ -62,7 +62,7 @@
 - PvP 不调用 EV／威胁辅助接口，不公开对手暗手。
 - 鸣牌决策期间，其他玩家只看到中立的公共等待提示，看不到个人倒计时和时间池，避免暴露搭子倾向。
 - 暗杠统一“三盖一明”，全场公开杠牌种类。
-- PvP 完整牌谱存入独立私有库，保留 **500 局 FIFO** 供后台排查；玩家界面不开放 PvP 复盘。PvE 牌谱（云端 200 局 + 本机 10 局缓存）单独管理。
+- PvP 完整牌谱存入独立私有库，长期保留供后台排查；玩家界面不开放 PvP 复盘。PvE 牌谱（云端长期保留、列表分页 + 本机 10 局缓存）单独管理。
 
 ### 移动端体验
 
@@ -93,8 +93,8 @@ flowchart TD
     API --> EV[EV / 副露决策 / 威胁模型<br/>仅 PvE 与沙盘辅助]
     EV --> ENGINE
     MATCH --> ENGINE
-    MATCH --> ARCHIVE[PvP 私有牌谱 · 500 局 FIFO]
-    API --> RECORD[PvE 牌谱 · 200 局 FIFO]
+    MATCH --> ARCHIVE[PvP 私有牌谱 · 长期保留]
+    API --> RECORD[PvE 牌谱 · 长期保留]
     ARCHIVE --> DB[(SQLite 默认<br/>PostgreSQL 可选)]
     RECORD --> DB
     RM --> ROOMDB[(房间配置 SQLite)]
@@ -190,8 +190,8 @@ npm.cmd run build
 | `VITE_API_BASE_URL` | 生产前端访问的后端根地址；开发时可留空或设为 `/` |
 | `ALLOWED_ORIGINS` | 额外允许的完整来源，逗号分隔；HTTP 与 WebSocket 共用 |
 | `ROOM_DB_PATH` | 房间配置 SQLite 路径 |
-| `PVP_RECORD_DB_PATH` | PvP 500 局私有牌谱 SQLite 路径；显式配置时优先于 PostgreSQL |
-| `GAME_RECORD_DB_PATH` | PvE 200 局牌谱 SQLite 路径；显式配置时优先于 PostgreSQL |
+| `PVP_RECORD_DB_PATH` | PvP 私有牌谱 SQLite 路径；显式配置时优先于 PostgreSQL |
+| `GAME_RECORD_DB_PATH` | PvE 牌谱 SQLite 路径；显式配置时优先于 PostgreSQL |
 | `DATABASE_URL` | PostgreSQL 连接地址；未配置对应 SQLite 路径时启用 |
 
 默认数据库位于 `backend/data/`，不纳入版本库。云服务的临时文件系统不保证 SQLite 在重启后保留，长期保存牌谱请配置持久存储。部署入口参考 [DEPLOY.md](DEPLOY.md) 与 [render.yaml](render.yaml)；联机相关约束以本 README 与 PvP 文档为准。
@@ -223,7 +223,7 @@ npm.cmd run build
 - [ ] 整理测试基础设施：隔离 Vite HMR 端口与缓存，减少并行测试噪声。
 - [ ] CI 加入前后端全量回归与可复现的多窗口冒烟。
 - [ ] 真机矩阵：iOS Safari、Android Chrome、微信 WebView 的全屏与常亮验收。
-- [ ] PostgreSQL 云端存储与 FIFO 在部署环境中的验收。
+- [ ] PostgreSQL 云端存储与跨部署保留在部署环境中的验收。
 - [ ] 在保证仲裁一致性和隐私边界的前提下，设计房间共享状态与多实例调度。
 
 ## 参与开发

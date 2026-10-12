@@ -1,13 +1,10 @@
-"""Private completed PvP archives: PostgreSQL in cloud, SQLite locally, 500-hand FIFO."""
+"""Private completed PvP archives: PostgreSQL in cloud, SQLite locally; no eviction."""
 import json
 import os
 import sqlite3
 import zlib
 from contextlib import closing
 from pathlib import Path
-
-MAX_RECORDS = 500
-
 
 def archive_pvp_game(record, *, db_path=None):
     if record.get('phase') != 'finished' or not record.get('result'):
@@ -20,7 +17,6 @@ def archive_pvp_game(record, *, db_path=None):
             db.execute('SELECT pg_advisory_xact_lock(7422500)')
             db.execute('CREATE TABLE IF NOT EXISTS pvp_game_records (id BIGSERIAL PRIMARY KEY, game_id TEXT NOT NULL UNIQUE, payload BYTEA NOT NULL)')
             db.execute('INSERT INTO pvp_game_records(game_id,payload) VALUES (%s,%s) ON CONFLICT (game_id) DO NOTHING', (record['game_id'], payload))
-            db.execute('DELETE FROM pvp_game_records WHERE id NOT IN (SELECT id FROM pvp_game_records ORDER BY id DESC LIMIT %s)', (MAX_RECORDS,))
     else:
         path = Path(db_path or os.getenv('PVP_RECORD_DB_PATH') or Path(__file__).resolve().parents[2] / 'data' / 'pvp_records.sqlite3')
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -30,7 +26,6 @@ def archive_pvp_game(record, *, db_path=None):
             with db:
                 db.execute('BEGIN IMMEDIATE')
                 db.execute('INSERT OR IGNORE INTO pvp_game_records(game_id,payload) VALUES (?,?)', (record['game_id'], payload))
-                db.execute('DELETE FROM pvp_game_records WHERE id NOT IN (SELECT id FROM pvp_game_records ORDER BY id DESC LIMIT ?)', (MAX_RECORDS,))
 
 
 def scoring_groups(detail, hand, god):

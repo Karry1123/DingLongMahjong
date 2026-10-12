@@ -78,30 +78,23 @@ class TestGameRecords(unittest.TestCase):
             self.assertEqual(record["config"]["initial_wall_tiles"], ["9s", "8s"])
             self.assertEqual(record["steps"][0]["self_recommendation"]["candidates"][0]["tile"], "9s")
 
-    def test_fifo_evicts_oldest_after_200_and_uses_timestamp(self):
+    def test_keeps_old_records_and_paginates_after_200(self):
         with tempfile.TemporaryDirectory() as temp:
             db = Path(temp) / "records.sqlite3"
-            first = archive_completed_game(completed("round-0"), db_path=db)["game_id"]
-            for i in range(1, 200):
-                latest = archive_completed_game(completed(f"round-{i}"), db_path=db)["game_id"]
+            ids = [archive_completed_game(completed(f"round-{i}"), db_path=db)["game_id"]
+                   for i in range(202)]
             self.assertEqual(MAX_RECORDS, 200)
-            self.assertEqual(len(list_game_record_summaries(db_path=db)), 200)
-            self.assertIsNotNone(get_game_record(first, db_path=db))
-            # The oldest timestamp wins over insertion order if an imported row is older.
-            import sqlite3
-            with closing(sqlite3.connect(db)) as connection:
-                connection.execute("UPDATE game_records SET timestamp=? WHERE game_id=?",
-                                   ("2000-01-01T00:00:00+00:00", latest))
-                connection.commit()
-            next_record = archive_completed_game(completed("round-200"), db_path=db)["game_id"]
-            self.assertIsNotNone(get_game_record(first, db_path=db))
-            self.assertIsNone(get_game_record(latest, db_path=db))
-            self.assertIsNotNone(get_game_record(next_record, db_path=db))
-            last_record = archive_completed_game(completed("round-201"), db_path=db)["game_id"]
-            self.assertIsNone(get_game_record(first, db_path=db))
-            self.assertIsNotNone(get_game_record(last_record, db_path=db))
-            with closing(sqlite3.connect(db)) as connection:
-                self.assertEqual(connection.execute("SELECT COUNT(*) FROM game_records").fetchone()[0], 200)
+            first_page = list_game_record_summaries(db_path=db)
+            second_page = list_game_record_summaries(db_path=db, offset=200)
+            self.assertEqual(len(first_page), 200)
+            self.assertEqual([row["game_id"] for row in second_page], list(reversed(ids[:2])))
+            self.assertIsNotNone(get_game_record(ids[0], db_path=db))
+            self.assertEqual(list_game_record_summaries(db_path=db, offset=202), [])
+            archive_completed_game(completed("round-0"), db_path=db)
+            self.assertEqual(len(list_game_record_summaries(db_path=db, offset=200)), 2)
+            for kwargs in ({"limit": 0}, {"limit": 201}, {"offset": -1}):
+                with self.assertRaises(ValueError):
+                    list_game_record_summaries(db_path=db, **kwargs)
 
 
 class TestOpponentThreats(unittest.TestCase):
@@ -151,6 +144,11 @@ class TestGameRecordApi(unittest.TestCase):
             for i in range(10):
                 archive_completed_game(completed(f"later-{i}"))
             self.assertEqual(len(client.get("/api/game/records").json()["records"]), 11)
+            page = client.get("/api/game/records?limit=1&offset=10")
+            self.assertEqual(page.status_code, 200)
+            self.assertEqual(page.json()["records"][0]["game_id"], first)
+            for query in ("limit=0", "limit=201", "offset=-1"):
+                self.assertEqual(client.get(f"/api/game/records?{query}").status_code, 422)
             response = client.get(f"/api/game/records/{first}")
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["config"]["initial_wall_tiles"], ["9s", "8s"])
