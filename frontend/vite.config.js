@@ -1,5 +1,6 @@
 import vue from '@vitejs/plugin-vue'
 import { defineConfig, loadEnv } from 'vite'
+import { assertMobileApiBase } from './src/services/apiBase.js'
 
 function voiceDataHeaders(server) {
   server.middlewares.use((req, res, next) => {
@@ -16,9 +17,12 @@ export default defineConfig(({ command, mode }) => {
   if (command === 'build' && mode === 'production' && !env.VITE_API_BASE_URL?.trim()) {
     throw new Error('生产构建需要 VITE_API_BASE_URL，例如 https://你的服务.onrender.com')
   }
+  const mobile = mode === 'mobile'
+  if (command === 'build' && mobile) assertMobileApiBase(env.VITE_API_BASE_URL)
   return {
-    plugins: [vue(), { name: 'voice-data-headers', configureServer: voiceDataHeaders, configurePreviewServer: voiceDataHeaders }],
-    base: process.env.NODE_ENV === 'production' ? '/DingLongMahjong/' : '/',
+    build: { outDir: mobile ? 'dist-mobile' : 'dist' },
+    plugins: [vue(), { name: 'mobile-entry', transformIndexHtml: { order: 'pre', handler: html => mobile ? html.replace('/src/main.js', '/src/mobile.js') : html } }, { name: 'voice-data-headers', configureServer: voiceDataHeaders, configurePreviewServer: voiceDataHeaders }],
+    base: mobile ? './' : process.env.NODE_ENV === 'production' ? '/DingLongMahjong/' : '/',
     server: {
       host: '0.0.0.0',
       port: 5173,

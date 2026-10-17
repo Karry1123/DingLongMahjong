@@ -42,3 +42,12 @@ git push -u origin main
 在 [Vercel](https://vercel.com/new) 导入同一 GitHub 仓库。Root Directory 选 `frontend`，Framework Preset 选 Vite，Build Command 为 `npm run build`，Output Directory 为 `dist`。在 Production 和 Preview 环境添加 `VITE_API_BASE_URL=https://你的服务.onrender.com`（只填根地址，不加 `/api`），然后 Deploy。`frontend/vercel.json` 处理 SPA 页面刷新；浏览器请求会直接发送到 Render。访问 Vercel 域名，检查自动发牌和切牌推荐是否成功。
 
 本地开发：后端在 `backend` 中运行 `uvicorn app.main:app --reload --port 8000`；前端在 `frontend` 中运行 `npm run dev`。Vite 自动将 `/api` 代理到本地后端。
+
+
+## App 构建（Capacitor）
+
+在 frontend 安装依赖后，将 `.env.mobile.example` 复制为 `.env.mobile`，配置真实的 HTTPS 绝对 `VITE_API_BASE_URL`（不带 /api，不允许 loopback），执行 `npm.cmd run build:mobile` 输出 dist-mobile。网页仍用 `npm.cmd run build` 输出 dist。
+
+首次执行 `npx cap add android`、`npx cap add ios` 生成原生工程；随后 `npx cap sync android` 并用 `npm run cap:android` 打开 Android Studio。两端工程均存在时，`npm run cap:sync` 会先构建再同步两端。Android 不要求在本环境执行 Gradle 构建；iOS 仅生成工程，签名和构建必须在 macOS/Xcode 完成。App 发布通过各平台签名包完成，不会随网页部署自动更新。
+
+本次受限网络下 npm install 返回 EACCES，需要手动 npm install；原生工程生成与同步尚未完成。依赖安装后先更新锁文件，再重新构建和生成工程。后端还需允许 WebView 来源的 CORS 和 WSS，详细环境要求、真机验收、注册码生成及导入运维见 [docs/mobile-app.md](docs/mobile-app.md)。

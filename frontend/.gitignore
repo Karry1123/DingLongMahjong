@@ -27,3 +27,7 @@ tests/artifacts/
 *.njsproj
 *.sln
 *.sw?
+
+# Capacitor build outputs and local configuration
+dist-mobile/
+.env.mobile
