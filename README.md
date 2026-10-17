@@ -7,7 +7,7 @@
 以现代 Web 技术复刻顶龙牌桌：人机磨砺、真人对战、残局推演，共用一套规则与算胡引擎。
 
 [![Build](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml/badge.svg)](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/badge/release-v0.3.3--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.3.3-beta)
+[![Release](https://img.shields.io/badge/release-v0.4.0--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.4.0-beta)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-184C43?style=flat-square)
@@ -18,7 +18,7 @@
 
 ---
 
-> **当前版本 v0.3.3-beta**（2026-10-11）：文档版本，重整 README 结构、校准本地测试基线并补充已知问题，未改动规则与运行代码。上一功能版本 v0.3.2-beta 修复了 PvP 换庄后的门风轮转与吃进牌横置展示。详见 [更新日志](CHANGELOG.md#v033-beta--2026-10-11)。
+> **当前版本 v0.4.0-beta**（2026-10-16）：账号体系与好友对战取代六位房间号匹配，注册需站长本地生成的注册码；新增 Capacitor 手机 App 工程；AI 权重 V1 固化接入与离线调优工具链；EV 权重 V3 调优设计。详见 [更新日志](CHANGELOG.md#v040-beta--2026-10-16)。
 
 ## 目录
 
@@ -52,7 +52,7 @@
 
 ### 联机：后端权威，各看各的主视角
 
-- 六位数字房间号、四方固定选座、房主标记、全员准备与 3-2-1 同步开局。
+- 账号登录后按账号添加好友，邀请 1～3 位好友直接开桌；无房间号、无公开匹配。四方固定选座、房主标记、全员准备与 3-2-1 同步开局。
 - 自己永远在屏幕下方；玩家身份与累计分数绑定物理座位，门风每局按庄家重排：庄家东、下家南、对家西、上家北，显示与算番同步。
 - 发牌、合法动作与抢断仲裁均由后端判定。出牌 **10 秒**、副露响应 **6 秒**，每家每局另有 **30 秒 Time Bank**；胡／碰／杠未决时，下家的吃牌时钟挂起。
 - 一局结束后，全员确认才进入下一局。
@@ -66,9 +66,14 @@
 
 ### 移动端体验
 
+
 - 进入对局时尝试原生全屏；不支持时以固定视口铺满，并保留手动全屏按钮。
 - 浏览器支持 Screen Wake Lock 时申请屏幕常亮，切回页面后重新申请。
 - 音效通过 Web Audio 按需拉取解码；摸牌与轮到自己操作时有短促提醒。
+
+#### App
+
+Capacitor App 与网页共用账号、好友、邀请对战页面，提供原生会话持久化、牌桌横屏、常亮及前后台重连。Android 优先，iOS 仅准备工程，构建需 macOS。详见 [App 构建与真机调试](docs/mobile-app.md)。
 
 ### 规则：胡数与账目分开核算
 
@@ -85,7 +90,7 @@ flowchart TD
     V --> PVE[PvE / 沙盘<br/>本地会话状态机]
     V --> PVP[PvP 房间客户端<br/>自身视角映射与私有手牌]
     PVE -->|HTTP /api| API[FastAPI · 规则 API]
-    PVP -->|HTTP 创建 / 加入| ROOM[房间入口与成员校验]
+    PVP -->|HTTP 邀请 / 接受| ROOM[账号、好友与邀请校验]
     PVP <-->|WebSocket 私有视图 / 动作| RM[RoomsManager<br/>选座 · 准备 · 广播 · 解散]
     ROOM --> RM
     RM --> MATCH[PvpMatch<br/>权威牌局 · 时钟 · 优先级仲裁]
@@ -97,7 +102,7 @@ flowchart TD
     API --> RECORD[PvE 牌谱 · 长期保留]
     ARCHIVE --> DB[(SQLite 默认<br/>PostgreSQL 可选)]
     RECORD --> DB
-    RM --> ROOMDB[(房间配置 SQLite)]
+    RM --> ROOMDB[(账号 / 好友 / 对局 SQLite 或 PostgreSQL)]
 ```
 
 | 路径 | 职责 |
@@ -147,7 +152,7 @@ npm.cmd run dev -- --host 0.0.0.0 --port 5173
 1. 手机与电脑连入同一网络，或让电脑连接手机热点。
 2. 在电脑上运行 `ipconfig`，记下当前网卡的 IPv4 地址。
 3. 手机访问 `http://<电脑IPv4>:5173/`；必要时在 Windows 防火墙中放行该端口。
-4. 各端选择“玩家对战”，输入最多六个字的昵称；一端创建房间，其他端输入六位房间号加入。
+4. 各端注册登录（注册码由 `backend/scripts/registration_codes.py` 生成并导入），互加好友后，一端在“邀请好友对战”中选择好友，其他端接受邀请。
 5. 入座、换座、准备，全员就绪后同步开局。
 
 > 走 Vite 代理时手机只需能访问 5173；直连后端还要放行 8000。热点重连可能导致 IP 变化。完整排查步骤见 [局域网预览说明](docs/lan-preview.md)，多浏览器联调脚本见 [PvP 联调文档](docs/pvp-phase1.md)。
@@ -164,12 +169,12 @@ npm.cmd run build
 .\.venv\Scripts\python.exe -m pytest -v --tb=long
 ```
 
-**本地基线（2026-10-11，v0.3.3-beta）**
+**本地基线（2026-10-16，v0.4.0-beta）**
 
 | 项目 | 结果 |
 | --- | --- |
-| 后端 pytest | 439 项通过，17 个子测试通过 |
-| 前端 node:test | 105 项中 104 项通过，1 项失败（见[已知问题](#已知问题与运行边界)） |
+| 后端 pytest | 505 项通过，17 个子测试通过（不含两组耗时离线 AI 工具测试） |
+| 前端 node:test | 125 项中 124 项通过，1 项失败（见[已知问题](#已知问题与运行边界)） |
 | 生产构建 | 通过 |
 
 以上为本地结果，不能替代物理手机、微信 WebView 或公网数据库验收。GitHub Pages 工作流只构建并部署前端，目前没有运行全量测试的 CI 阶段。逐用例清单与非失败警告见 [诊断报告](docs/audit-2026-09-28.md)。
@@ -189,7 +194,7 @@ npm.cmd run build
 | --- | --- |
 | `VITE_API_BASE_URL` | 生产前端访问的后端根地址；开发时可留空或设为 `/` |
 | `ALLOWED_ORIGINS` | 额外允许的完整来源，逗号分隔；HTTP 与 WebSocket 共用 |
-| `ROOM_DB_PATH` | 房间配置 SQLite 路径 |
+| `AUTH_DB_PATH` | 账号、好友、对局 SQLite 路径；配置 `DATABASE_URL` 时改用 PostgreSQL |
 | `PVP_RECORD_DB_PATH` | PvP 私有牌谱 SQLite 路径；显式配置时优先于 PostgreSQL |
 | `GAME_RECORD_DB_PATH` | PvE 牌谱 SQLite 路径；显式配置时优先于 PostgreSQL |
 | `DATABASE_URL` | PostgreSQL 连接地址；未配置对应 SQLite 路径时启用 |
@@ -199,7 +204,7 @@ npm.cmd run build
 ## 已知问题与运行边界
 
 - **单实例运行：** 房间连接与权威牌局保存在进程内，必须以 **单 Uvicorn worker、单服务实例** 运行。数据库持久化不代表房间可跨实例恢复；多实例部署需要共享状态与广播设计。
-- **断线处理：** 真人玩家断线时，按现行规则解散整个房间。页面无法保证被系统强制切到后台后连接不断。
+- **断线处理：** 真人玩家断线后有 60 秒重连宽限，等待阶段取消倒计时，对局中服务端时钟照常运行；超过宽限则整桌结束。服务重启会中止所有未结束对局。
 - **屏幕常亮：** Screen Wake Lock 需要浏览器支持且处于安全上下文，普通局域网 HTTP 通常无法申请；需要时请使用可信 HTTPS。横屏适配本身不依赖全屏许可。
 - **前端回归失败 1 项：** `tests/pveBoard.test.js` 中“结算仅横置吃进牌与胡牌”用例期望 2 张横置牌，实际渲染 4 张。该失败自 v0.3.2-beta 起存在，待排查是渲染逻辑还是断言需要随 v0.3.2 的横置规则更新。
 
@@ -213,7 +218,8 @@ npm.cmd run build
 | 0.2.4-beta | 未单独发布 | 开发阶段：分步接入房间、权威牌局与联机交互 |
 | v0.3.1-beta | 2026-09-28 | 三模式入口、PvP 联机、视角映射、双倒计时与 Time Bank、共用结算、500 局私有牌谱、常亮与鸣牌隐私、统一规则文档 |
 | v0.3.2-beta | 2026-09-28 | 修复 PvP 换庄后门风轮转与自风算番；修复结算中吃进牌横置显示 |
-| **v0.3.3-beta** | **2026-10-11** | **当前版本**：README 重整、测试基线校准、已知问题公开 |
+| v0.3.3-beta | 2026-10-11 | README 重整、测试基线校准、已知问题公开 |
+| **v0.4.0-beta** | **2026-10-16** | **当前版本**：账号 + 注册码 + 好友邀请对战取代房间号；Capacitor App 工程；AI 权重 V1 接入与调优工具链；V3 调优设计 |
 
 各版本完整记录见 [CHANGELOG.md](CHANGELOG.md)，发布摘要见 [docs/releases/](docs/releases/)。
 

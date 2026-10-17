@@ -1,5 +1,47 @@
 # 修改日志
 
+## v0.4.0-beta — 2026-10-16
+
+### 账号与好友对战
+
+- 新增账号注册与登录：账号 + 密码 + 注册码；注册码由站长在本地用 `backend/scripts/registration_codes.py` 生成，导入服务端后一次性消费，同一码并发注册只允许一人成功。
+- 密码使用标准库 scrypt 哈希；会话为 256 位不透明 Bearer token（30 天，可撤销），登出、改密即时失效；登录与注册按 IP 限流。
+- 新增好友关系：按完整账号搜索、申请、同意、拒绝、删除；交叉申请自动成为好友。
+- 对战改为邀请制：发起人选择 1～3 名好友，接受即入席并准备，房主"按当前人数开始"锁定名单并由 AI 补齐空位；邀请 120 秒有效；一个账号同一时间只能在一桌。
+- 取消六位房间号与公开匹配；旧 `/api/rooms` 接口统一返回 410。
+- 存储沿用双模式：`DATABASE_URL` 存在时使用 PostgreSQL，否则使用 `AUTH_DB_PATH` 指定的 SQLite。
+
+### 联机稳定性
+
+- 玩家断线不再立即解散：60 秒重连宽限，等待 / 倒计时阶段断线取消倒计时，对局中服务端时钟照常运行，超时整桌结束并记录原因。
+- WebSocket 改为连接后首条消息携带 token 鉴权；同账号同一对局只允许一条控制连接；重连后以服务端完整快照为准。
+- 服务启动时把所有未结束对局标记为中止并取消待处理邀请。
+
+### 网页前端
+
+- 引入 vue-router（hash 模式）与组合式 store：auth、friends、invitations、activeMatch。
+- 新增竖屏应用壳与底部 Tab（首页 / 好友 / 牌谱 / 设置），新增登录、注册、首页、好友、好友申请、邀请、等待、牌谱、设置页面；牌桌继续复用横屏舞台。
+- 401 自动清空登录态并跳转登录；旧 `#/pvp/room/xxxxxx` 链接提示已升级为好友邀请。
+
+### 手机 App
+
+- 新增 Capacitor 8 工程：`frontend/capacitor.config.ts`、`android/`、`ios/`，`build:mobile` 与 `cap:sync` 脚本，`.env.mobile.example` 配置 HTTPS API 地址。
+- 平台适配层 `src/platform/`：原生安全存储会话、牌桌横屏锁定与 CSS 回退、常亮、状态栏、震动、Android 返回键、前后台恢复后重校验登录与重连。
+- 新增 [docs/mobile-app.md](docs/mobile-app.md) 说明环境、构建、真机调试与注册码运维。
+
+### AI 与调优
+
+- AI 权重 V1 固化：lifespan 启动时加载并校验 `app/config/ai_weights_optimized.json`，缺失回退 V0；新增离线仿真、调参、专项验证脚本与 V2 副露参数实验记录。
+- 新增 [docs/ai_weights_v3_tuning_plan.md](docs/ai_weights_v3_tuning_plan.md)：241 项 EV 参数全景、三批解冻优先级与搜索区间、逐轮调优流程、防策略坍塌门槛、基准池配额与统计显著性要求、V3～V5 路线图。
+
+### 同步与验证
+
+- 前端包及锁文件、界面版本、后端 API、README 和规则文档同步至 0.4.0-beta。
+- 本地基线：后端 505 项及 17 个子测试通过（不含两组耗时离线 AI 工具测试）；前端 125 项中 124 项通过；网页与 App 构建通过。
+- 已验证：注册码生成 → 导入 → 注册 → 再次使用被拒；两账号互加好友、邀请、接受、开局倒计时；登出后 token 失效。
+- 未验证：Android Gradle 构建与真机（开发机无 Android SDK）、iOS 构建（需 macOS）、PostgreSQL 实库。
+- 已知失败：`frontend/tests/pveBoard.test.js` 横置牌用例自 v0.3.2-beta 起存在，本版本未处理。
+
 ## v0.3.3-beta — 2026-10-11
 
 ### 文档
