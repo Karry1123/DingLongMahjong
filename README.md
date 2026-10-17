@@ -73,7 +73,7 @@
 
 #### App
 
-Capacitor App 与网页共用账号、好友、邀请对战页面，提供原生会话持久化、牌桌横屏、常亮及前后台重连。Android 优先，iOS 仅准备工程，构建需 macOS。详见 [App 构建与真机调试](docs/mobile-app.md)。
+Capacitor App 与网页共用账号、好友、邀请对战页面，提供原生会话持久化、牌桌横屏、常亮及前后台重连。Android 优先，iOS 仅准备工程，构建需 macOS。推送到 `main` 后 GitHub Actions 自动构建签名 APK 并挂到对应版本的 Release，App 内会提示下载新版本。详见 [App 构建与真机调试](docs/mobile-app.md)。
 
 ### 规则：胡数与账目分开核算
 

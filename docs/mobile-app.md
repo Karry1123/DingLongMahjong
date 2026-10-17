@@ -58,6 +58,13 @@ python backend/scripts/registration_codes.py revoke --batch 2026-10
 
 导入在能访问服务端数据库的运维环境执行，提前核对 `DATABASE_URL` / `AUTH_DB_PATH`。明文 txt 私下分发，摘要 manifest 用于导入，均不放入 App 资源或公开仓库。重复导入不会重置已用或已撤销码；此处只记录操作说明，本次没有操作服务端数据库。
 
+## 自动构建 APK 与应用内更新
+
+- 工作流 `.github/workflows/android-release.yml`：推送到 `main`（忽略纯文档改动）、推送 `v*` 标签或手动触发时，在 GitHub Actions 中执行 `build:mobile`、`cap sync android`、`gradlew assembleRelease`，用仓库 Secrets 中的发布密钥签名，并把 `DingLongMahjong-v<版本>.apk` 上传到以 `package.json` 版本号命名的 Release（已存在则替换附件，不存在则创建）。
+- 需要的 Secrets：`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`；可选 Variable `VITE_API_BASE_URL`（默认 Render 地址）。密钥库原件必须由站长离线保管，丢失后无法覆盖安装旧用户的 App。
+- `versionCode` 取工作流运行号（单调递增），`versionName` 取 `package.json` 版本；因此 **要让手机收到更新提示，必须先提升 `frontend/package.json` 的版本号再推送**。只推代码不改版本号时，Release 附件会被替换，但已安装的 App 不会提示。
+- App 启动和回到前台时请求 GitHub Releases `latest` 接口，比较标签与内置版本，更新时在顶部显示横幅，"下载更新"在系统浏览器打开 APK；安装需用户允许"安装未知应用"。预发布版本也会被提示。
+
 ## 检查命令
 
 ```powershell
