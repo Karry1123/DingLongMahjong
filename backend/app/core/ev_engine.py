@@ -1174,7 +1174,10 @@ def _overlap_pair_ryanmen_shape(
                 neighbors.append(f"{n}{suit}")
         if neighbors:
             return {"head": next(t for t in pairs if t != overlap),
-                    "choices": {overlap, *neighbors}}
+                    # These choices are removed from the physical hand later.
+                    # Whiteboard substitutes carry the god's logical identity.
+                    "choices": {"P" if t == dealer_tile and dealer_tile != "P" else t
+                                for t in {overlap, *neighbors}}}
     return None
 
 

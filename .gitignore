@@ -38,3 +38,8 @@ backend/visual-tests.log
 *.wav
 !frontend/public/audio/tiles/*.wav
 *.psd
+
+# Offline AI experiments (large generated reports, no credentials)
+backend/data/headless/
+backend/data/ai_tuning/
+backend/data/checkpoints/

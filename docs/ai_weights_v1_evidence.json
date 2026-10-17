@@ -1,0 +1,20 @@
+{
+  "accepted": true,
+  "combined": {
+    "mean_gain_per_hand": 1.13225,
+    "standard_error": 0.3017297852397111,
+    "clusters": 1000,
+    "lower_99_percent": 0.3549940732225041
+  },
+  "combined_lower_95": 0.6359486683891726,
+  "fresh": {
+    "mean_gain_per_hand": 0.994,
+    "standard_error": 0.41858135254379697,
+    "clusters": 500,
+    "lower_99_percent": -0.08426556415282094
+  },
+  "fresh_lower_95": 0.30549494409408295,
+  "criterion": "single one-sided 95% normal-approximation cluster CI; combined lower > 0",
+  "selection_bias": "Original 2000 selected from 9 candidates; pooled interval is not a selection-adjusted confirmatory CI.",
+  "candidate_fingerprint": "560c1b97f2a3da4402e1051df4c3e0384fc4ba601b43a36204bfbee538e6d05f"
+}

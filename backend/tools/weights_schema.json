@@ -1,0 +1,1482 @@
+{
+  "schema_version": 1,
+  "source_hashes": {
+    "danger_model": "85f8ac116cc12cf2af581e2397e4cb3aacc515addc41b2821074a23c6a92de2a",
+    "tenpai_model": "11aa3e821e86a5fcac6f661e1632b826e4c04053c06a896656bfe9d4cc632bbe",
+    "ev_engine": "06445742d4e4db00d76f03f737fe7e7c2a1257e6bf1fa197d43d8d17a825fe60",
+    "call_decision": "f8fef884915b69e594c85c80d1517972d7d3676c5bb2067a514de194b157b591"
+  },
+  "parameters": {
+    "danger_model.BASE_HONOR_LIVE": {
+      "default": 0.16,
+      "min": 0.08,
+      "max": 0.32,
+      "integer": false,
+      "source": "danger_model.py:28",
+      "description": "BASE_HONOR_LIVE = 0.16  # 字牌生张"
+    },
+    "danger_model.BASE_HONOR_DEAD": {
+      "default": 0.02,
+      "min": 0.01,
+      "max": 0.04,
+      "integer": false,
+      "source": "danger_model.py:29",
+      "description": "BASE_HONOR_DEAD = 0.02  # 字牌已见 ≥2（熟张上限）"
+    },
+    "danger_model.BASE_MID_456": {
+      "default": 0.18,
+      "min": 0.09,
+      "max": 0.36,
+      "integer": false,
+      "source": "danger_model.py:30",
+      "description": "BASE_MID_456 = 0.18  # 序数 4/5/6"
+    },
+    "danger_model.BASE_TERMINAL": {
+      "default": 0.08,
+      "min": 0.04,
+      "max": 0.16,
+      "integer": false,
+      "source": "danger_model.py:31",
+      "description": "BASE_TERMINAL = 0.08  # 序数 1/9"
+    },
+    "danger_model.BASE_NEAR_MID": {
+      "default": 0.12,
+      "min": 0.06,
+      "max": 0.24,
+      "integer": false,
+      "source": "danger_model.py:32",
+      "description": "BASE_NEAR_MID = 0.12  # 序数 2/3/7/8（介于幺九与深中张之间）"
+    },
+    "danger_model.WALL_BOTH_SIDES_FACTOR": {
+      "default": 0.45,
+      "min": 0.225,
+      "max": 0.9,
+      "integer": false,
+      "source": "danger_model.py:35",
+      "description": "WALL_BOTH_SIDES_FACTOR = 0.45"
+    },
+    "danger_model.WALL_ONE_SIDE_EDGE_FACTOR": {
+      "default": 0.7,
+      "min": 0.35,
+      "max": 1.0,
+      "integer": false,
+      "source": "danger_model.py:36",
+      "description": "WALL_ONE_SIDE_EDGE_FACTOR = 0.70  # 边张仅一侧可连且已断"
+    },
+    "danger_model.DYE_OWN_SUIT_MID_FACTOR": {
+      "default": 2.2,
+      "min": 1.1,
+      "max": 4.4,
+      "integer": false,
+      "source": "danger_model.py:39",
+      "description": "DYE_OWN_SUIT_MID_FACTOR = 2.2  # 染手花色 3~7"
+    },
+    "danger_model.DYE_OTHER_SUIT_FACTOR": {
+      "default": 0.25,
+      "min": 0.125,
+      "max": 0.5,
+      "integer": false,
+      "source": "danger_model.py:40",
+      "description": "DYE_OTHER_SUIT_FACTOR = 0.25  # 其余两门序数"
+    },
+    "danger_model.estimate_tile_danger.L80C18": {
+      "default": 0.75,
+      "min": 0.375,
+      "max": 1.0,
+      "integer": false,
+      "source": "danger_model.py:80",
+      "description": "danger *= 0.75"
+    },
+    "danger_model._base_danger.L115C16": {
+      "default": 0.5,
+      "min": 0.25,
+      "max": 1.0,
+      "integer": false,
+      "source": "danger_model.py:115",
+      "description": "base *= 0.5"
+    },
+    "danger_model._base_danger.L117C16": {
+      "default": 0.75,
+      "min": 0.375,
+      "max": 1.0,
+      "integer": false,
+      "source": "danger_model.py:117",
+      "description": "base *= 0.75"
+    },
+    "danger_model._base_danger.L99C57": {
+      "default": 2.0,
+      "min": 1.0,
+      "max": 4.0,
+      "integer": false,
+      "source": "danger_model.py:99",
+      "description": "return (BASE_HONOR_LIVE + BASE_HONOR_DEAD) / 2.0"
+    },
+    "tenpai_model._P_FLOOR": {
+      "default": 0.028,
+      "min": 0.014,
+      "max": 0.056,
+      "integer": false,
+      "source": "tenpai_model.py:27",
+      "description": "_P_FLOOR = 0.028"
+    },
+    "tenpai_model._P_SPAN": {
+      "default": 0.52,
+      "min": 0.26,
+      "max": 1.0,
+      "integer": false,
+      "source": "tenpai_model.py:28",
+      "description": "_P_SPAN = 0.52"
+    },
+    "tenpai_model._SIGMOID_CENTER": {
+      "default": 11.0,
+      "min": 5.5,
+      "max": 22.0,
+      "integer": false,
+      "source": "tenpai_model.py:29",
+      "description": "_SIGMOID_CENTER = 11.0"
+    },
+    "tenpai_model._SIGMOID_STEEPNESS": {
+      "default": 0.42,
+      "min": 0.21,
+      "max": 0.84,
+      "integer": false,
+      "source": "tenpai_model.py:30",
+      "description": "_SIGMOID_STEEPNESS = 0.42"
+    },
+    "tenpai_model._MELD3_FLOOR": {
+      "default": 0.9,
+      "min": 0.45,
+      "max": 1.0,
+      "integer": false,
+      "source": "tenpai_model.py:35",
+      "description": "_MELD3_FLOOR = 0.90  # 三组副露仅余一搭与雀头，至少列为高听牌风险"
+    },
+    "tenpai_model._DEALER_BOOST": {
+      "default": 1.12,
+      "min": 0.56,
+      "max": 2.24,
+      "integer": false,
+      "source": "tenpai_model.py:38",
+      "description": "_DEALER_BOOST = 1.12"
+    },
+    "tenpai_model._CENTRAL_MULT": {
+      "default": 1.28,
+      "min": 0.64,
+      "max": 2.56,
+      "integer": false,
+      "source": "tenpai_model.py:43",
+      "description": "_CENTRAL_MULT = 1.28  # 每次主动中张"
+    },
+    "tenpai_model._CENTRAL_ADD": {
+      "default": 0.055,
+      "min": 0.0275,
+      "max": 0.11,
+      "integer": false,
+      "source": "tenpai_model.py:44",
+      "description": "_CENTRAL_ADD = 0.055"
+    },
+    "tenpai_model._PROGRESSION_MULT": {
+      "default": 1.18,
+      "min": 0.59,
+      "max": 2.36,
+      "integer": false,
+      "source": "tenpai_model.py:48",
+      "description": "_PROGRESSION_MULT = 1.18"
+    },
+    "tenpai_model._PROGRESSION_ADD": {
+      "default": 0.04,
+      "min": 0.02,
+      "max": 0.08,
+      "integer": false,
+      "source": "tenpai_model.py:49",
+      "description": "_PROGRESSION_ADD = 0.04"
+    },
+    "tenpai_model._SAFE_STREAK_MULT": {
+      "default": 1.15,
+      "min": 0.575,
+      "max": 2.3,
+      "integer": false,
+      "source": "tenpai_model.py:55",
+      "description": "_SAFE_STREAK_MULT = 1.15"
+    },
+    "tenpai_model._SAFE_STREAK_ADD": {
+      "default": 0.035,
+      "min": 0.0175,
+      "max": 0.07,
+      "integer": false,
+      "source": "tenpai_model.py:56",
+      "description": "_SAFE_STREAK_ADD = 0.035"
+    },
+    "tenpai_model._MELD_ADD.1": {
+      "default": 0.14,
+      "min": 0.07,
+      "max": 0.28,
+      "integer": false,
+      "source": "tenpai_model.py:33",
+      "description": "_MELD_ADD = {1: 0.14, 2: 0.30, 3: 0.48, 4: 0.55}"
+    },
+    "tenpai_model._MELD_ADD.2": {
+      "default": 0.3,
+      "min": 0.15,
+      "max": 0.6,
+      "integer": false,
+      "source": "tenpai_model.py:33",
+      "description": "_MELD_ADD = {1: 0.14, 2: 0.30, 3: 0.48, 4: 0.55}"
+    },
+    "tenpai_model._MELD_ADD.3": {
+      "default": 0.48,
+      "min": 0.24,
+      "max": 0.96,
+      "integer": false,
+      "source": "tenpai_model.py:33",
+      "description": "_MELD_ADD = {1: 0.14, 2: 0.30, 3: 0.48, 4: 0.55}"
+    },
+    "tenpai_model._MELD_ADD.4": {
+      "default": 0.55,
+      "min": 0.275,
+      "max": 1.0,
+      "integer": false,
+      "source": "tenpai_model.py:33",
+      "description": "_MELD_ADD = {1: 0.14, 2: 0.30, 3: 0.48, 4: 0.55}"
+    },
+    "tenpai_model._MELD_CAP.1": {
+      "default": 0.82,
+      "min": 0.41,
+      "max": 1.0,
+      "integer": false,
+      "source": "tenpai_model.py:34",
+      "description": "_MELD_CAP = {1: 0.82, 2: 0.90, 3: 0.93, 4: 0.95}"
+    },
+    "tenpai_model._MELD_CAP.2": {
+      "default": 0.9,
+      "min": 0.45,
+      "max": 1.0,
+      "integer": false,
+      "source": "tenpai_model.py:34",
+      "description": "_MELD_CAP = {1: 0.82, 2: 0.90, 3: 0.93, 4: 0.95}"
+    },
+    "tenpai_model._MELD_CAP.3": {
+      "default": 0.93,
+      "min": 0.465,
+      "max": 1.0,
+      "integer": false,
+      "source": "tenpai_model.py:34",
+      "description": "_MELD_CAP = {1: 0.82, 2: 0.90, 3: 0.93, 4: 0.95}"
+    },
+    "tenpai_model._MELD_CAP.4": {
+      "default": 0.95,
+      "min": 0.475,
+      "max": 1.0,
+      "integer": false,
+      "source": "tenpai_model.py:34",
+      "description": "_MELD_CAP = {1: 0.82, 2: 0.90, 3: 0.93, 4: 0.95}"
+    },
+    "tenpai_model._apply_progression_boost.L209C52": {
+      "default": 0.35,
+      "min": 0.175,
+      "max": 0.7,
+      "integer": false,
+      "source": "tenpai_model.py:209",
+      "description": "if early_ok and late_mid and early_mid_ratio <= 0.35:"
+    },
+    "ev_engine.SHANTEN_PENALTY": {
+      "default": 120,
+      "min": 60.0,
+      "max": 240,
+      "integer": true,
+      "source": "ev_engine.py:56",
+      "description": "SHANTEN_PENALTY = 120"
+    },
+    "ev_engine._ZIMO_THREAT_PRIOR": {
+      "default": 0.28,
+      "min": 0.14,
+      "max": 0.56,
+      "integer": false,
+      "source": "ev_engine.py:58",
+      "description": "_ZIMO_THREAT_PRIOR = 0.28"
+    },
+    "ev_engine._IISHANTEN_TURN_DISCOUNT": {
+      "default": 2,
+      "min": 1.0,
+      "max": 4,
+      "integer": true,
+      "source": "ev_engine.py:62",
+      "description": "_IISHANTEN_TURN_DISCOUNT = 2"
+    },
+    "ev_engine._UKEIRE_QUALITY_WEIGHT": {
+      "default": 1.25,
+      "min": 0.625,
+      "max": 2.5,
+      "integer": false,
+      "source": "ev_engine.py:65",
+      "description": "_UKEIRE_QUALITY_WEIGHT = 1.25  # 有效进张枚数质量权重"
+    },
+    "ev_engine._DEEP_SHANTEN_UNIT": {
+      "default": 25,
+      "min": 12.5,
+      "max": 50,
+      "integer": true,
+      "source": "ev_engine.py:67",
+      "description": "_DEEP_SHANTEN_UNIT = 25  # 多向听内向听档位代价（与 SHANTEN_PENALTY 分工）"
+    },
+    "ev_engine._YAKUHAI_SINGLE_POTENTIAL": {
+      "default": 10.0,
+      "min": 5.0,
+      "max": 20.0,
+      "integer": false,
+      "source": "ev_engine.py:68",
+      "description": "_YAKUHAI_SINGLE_POTENTIAL = 10.0  # 役牌孤张保留分（中发白 / 自风）"
+    },
+    "ev_engine._YAKUHAI_PAIR_POTENTIAL": {
+      "default": 16.0,
+      "min": 8.0,
+      "max": 32.0,
+      "integer": false,
+      "source": "ev_engine.py:69",
+      "description": "_YAKUHAI_PAIR_POTENTIAL = 16.0  # 役牌对子（接近刻）"
+    },
+    "ev_engine._YAKUHAI_PUNG_POTENTIAL": {
+      "default": 22.0,
+      "min": 11.0,
+      "max": 44.0,
+      "integer": false,
+      "source": "ev_engine.py:70",
+      "description": "_YAKUHAI_PUNG_POTENTIAL = 22.0  # 已成役牌刻"
+    },
+    "ev_engine._SHAPE_PAIR": {
+      "default": 8.0,
+      "min": 4.0,
+      "max": 16.0,
+      "integer": false,
+      "source": "ev_engine.py:71",
+      "description": "_SHAPE_PAIR = 8.0"
+    },
+    "ev_engine._SHAPE_PUNG": {
+      "default": 20.0,
+      "min": 10.0,
+      "max": 40.0,
+      "integer": false,
+      "source": "ev_engine.py:72",
+      "description": "_SHAPE_PUNG = 20.0"
+    },
+    "ev_engine._SHAPE_RYANMEN": {
+      "default": 10.0,
+      "min": 5.0,
+      "max": 20.0,
+      "integer": false,
+      "source": "ev_engine.py:73",
+      "description": "_SHAPE_RYANMEN = 10.0"
+    },
+    "ev_engine._SHAPE_KANCHAN": {
+      "default": 5.0,
+      "min": 2.5,
+      "max": 10.0,
+      "integer": false,
+      "source": "ev_engine.py:74",
+      "description": "_SHAPE_KANCHAN = 5.0"
+    },
+    "ev_engine._SHAPE_PENCHAN": {
+      "default": 3.0,
+      "min": 1.5,
+      "max": 6.0,
+      "integer": false,
+      "source": "ev_engine.py:75",
+      "description": "_SHAPE_PENCHAN = 3.0"
+    },
+    "ev_engine._COMPOSITE_KANCHAN_UPGRADE_BONUS": {
+      "default": 7.0,
+      "min": 3.5,
+      "max": 14.0,
+      "integer": false,
+      "source": "ev_engine.py:76",
+      "description": "_COMPOSITE_KANCHAN_UPGRADE_BONUS = 7.0  # 留 2-4 并摸 5 可形成 4-5 两面"
+    },
+    "ev_engine._ANTI_PONG_TERMINAL_BONUS": {
+      "default": 3.0,
+      "min": 1.5,
+      "max": 6.0,
+      "integer": false,
+      "source": "ev_engine.py:77",
+      "description": "_ANTI_PONG_TERMINAL_BONUS = 3.0  # 场见至少两张幺九，外部最多余一张，无法成碰"
+    },
+    "ev_engine._SHAPE_ISOLATED_MID": {
+      "default": 1.5,
+      "min": 0.75,
+      "max": 3.0,
+      "integer": false,
+      "source": "ev_engine.py:78",
+      "description": "_SHAPE_ISOLATED_MID = 1.5"
+    },
+    "ev_engine._SHAPE_ISOLATED_TERM": {
+      "default": 0.5,
+      "min": 0.25,
+      "max": 1.0,
+      "integer": false,
+      "source": "ev_engine.py:79",
+      "description": "_SHAPE_ISOLATED_TERM = 0.5"
+    },
+    "ev_engine._SHAPE_JOKER": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "ev_engine.py:80",
+      "description": "_SHAPE_JOKER = 12.0  # 手内「得」百搭"
+    },
+    "ev_engine._GUEST_WIND_SINGLE_PENALTY": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "ev_engine.py:81",
+      "description": "_GUEST_WIND_SINGLE_PENALTY = 12.0  # 无役客风孤张占位价值低，优先切出"
+    },
+    "ev_engine._GUEST_WIND_PAIR_PENALTY": {
+      "default": 1.5,
+      "min": 0.75,
+      "max": 3.0,
+      "integer": false,
+      "source": "ev_engine.py:82",
+      "description": "_GUEST_WIND_PAIR_PENALTY = 1.5  # 客风对子略扣（不如役牌对）"
+    },
+    "ev_engine._GUEST_SUBSTITUTE_HOLD_SCALE": {
+      "default": 0.2,
+      "min": 0.1,
+      "max": 0.4,
+      "integer": false,
+      "source": "ev_engine.py:83",
+      "description": "_GUEST_SUBSTITUTE_HOLD_SCALE = 0.2  # 白板替身客风：有雀头潜力，占位惩罚压到 20%"
+    },
+    "ev_engine._SUBSTITUTE_HONOR_KEEP_BONUS": {
+      "default": 8.0,
+      "min": 4.0,
+      "max": 16.0,
+      "integer": false,
+      "source": "ev_engine.py:84",
+      "description": "_SUBSTITUTE_HONOR_KEEP_BONUS = 8.0  # 保留健康白板替身字牌的雀头潜力加分"
+    },
+    "ev_engine._ORPHAN_TERMINAL_UKEIRE_SCALE": {
+      "default": 0.22,
+      "min": 0.11,
+      "max": 0.44,
+      "integer": false,
+      "source": "ev_engine.py:85",
+      "description": "_ORPHAN_TERMINAL_UKEIRE_SCALE = 0.22  # 纯 1/9 两步靠搭进张泡沫折现"
+    },
+    "ev_engine._GUEST_SINGLE_PAIR_UKEIRE_SCALE": {
+      "default": 0.35,
+      "min": 0.175,
+      "max": 0.7,
+      "integer": false,
+      "source": "ev_engine.py:86",
+      "description": "_GUEST_SINGLE_PAIR_UKEIRE_SCALE = 0.35  # 无役客风孤张配对：只有刻/雀头路线，无顺子扩展"
+    },
+    "ev_engine._ORPHAN_TERMINAL_KEEP_PENALTY": {
+      "default": 9.0,
+      "min": 4.5,
+      "max": 18.0,
+      "integer": false,
+      "source": "ev_engine.py:87",
+      "description": "_ORPHAN_TERMINAL_KEEP_PENALTY = 9.0  # 切后仍持无邻张 1/9 的加重占位惩罚"
+    },
+    "ev_engine._JANTOU_BREAK_PENALTY": {
+      "default": 20.0,
+      "min": 10.0,
+      "max": 40.0,
+      "integer": false,
+      "source": "ev_engine.py:90",
+      "description": "_JANTOU_BREAK_PENALTY = 20.0  # 拆唯一法定雀头"
+    },
+    "ev_engine._ISOLATED_CUT_BONUS": {
+      "default": 6.0,
+      "min": 3.0,
+      "max": 12.0,
+      "integer": false,
+      "source": "ev_engine.py:91",
+      "description": "_ISOLATED_CUT_BONUS = 6.0  # 切出纯孤张（与核心搭子无关）"
+    },
+    "ev_engine._TERMINAL_ISO_CUT_BONUS": {
+      "default": 7.5,
+      "min": 3.75,
+      "max": 15.0,
+      "integer": false,
+      "source": "ev_engine.py:92",
+      "description": "_TERMINAL_ISO_CUT_BONUS = 7.5  # 切幺九孤张（优先于中张，次于死字牌）"
+    },
+    "ev_engine._ORPHAN_TERMINAL_CUT_BONUS": {
+      "default": 16.0,
+      "min": 8.0,
+      "max": 32.0,
+      "integer": false,
+      "source": "ev_engine.py:93",
+      "description": "_ORPHAN_TERMINAL_CUT_BONUS = 16.0  # 无任何同花色邻/嵌的 1/9：最优先切除"
+    },
+    "ev_engine._DEAD_HONOR_CUT_BONUS": {
+      "default": 14.0,
+      "min": 7.0,
+      "max": 28.0,
+      "integer": false,
+      "source": "ev_engine.py:94",
+      "description": "_DEAD_HONOR_CUT_BONUS = 14.0  # 切绝张/残缺字牌（Rem≤1）"
+    },
+    "ev_engine._ISOLATED_KEEP_PENALTY": {
+      "default": 4.0,
+      "min": 2.0,
+      "max": 8.0,
+      "integer": false,
+      "source": "ev_engine.py:95",
+      "description": "_ISOLATED_KEEP_PENALTY = 4.0  # 切后仍持有序数/字牌孤张"
+    },
+    "ev_engine._DEAD_HONOR_KEEP_PENALTY": {
+      "default": 8.0,
+      "min": 4.0,
+      "max": 16.0,
+      "integer": false,
+      "source": "ev_engine.py:96",
+      "description": "_DEAD_HONOR_KEEP_PENALTY = 8.0  # 切后仍持绝张字牌（加重）"
+    },
+    "ev_engine._GOOD_SHAPE_PUSH_BONUS": {
+      "default": 10.0,
+      "min": 5.0,
+      "max": 20.0,
+      "integer": false,
+      "source": "ev_engine.py:97",
+      "description": "_GOOD_SHAPE_PUSH_BONUS = 10.0  # 好形（刻+两面×2+雀头）推进奖励"
+    },
+    "ev_engine._GOOD_SHAPE_DEFENSE_SCALE": {
+      "default": 0.45,
+      "min": 0.225,
+      "max": 0.9,
+      "integer": false,
+      "source": "ev_engine.py:98",
+      "description": "_GOOD_SHAPE_DEFENSE_SCALE = 0.45  # 好形时压缩防守过度反应"
+    },
+    "ev_engine._SEEN_GUEST_WIND_CUT_BONUS": {
+      "default": 5.5,
+      "min": 2.75,
+      "max": 11.0,
+      "integer": false,
+      "source": "ev_engine.py:100",
+      "description": "_SEEN_GUEST_WIND_CUT_BONUS = 5.5  # Rem≤2 场见客风：优先切除"
+    },
+    "ev_engine._SUBSTITUTE_YAKUHAI_CUT_PENALTY": {
+      "default": 9.0,
+      "min": 4.5,
+      "max": 18.0,
+      "integer": false,
+      "source": "ev_engine.py:101",
+      "description": "_SUBSTITUTE_YAKUHAI_CUT_PENALTY = 9.0  # 切健康白板替身役牌（得≠白）惩罚"
+    },
+    "ev_engine._SUBSTITUTE_HONOR_CUT_PENALTY": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "ev_engine.py:102",
+      "description": "_SUBSTITUTE_HONOR_CUT_PENALTY = 12.0  # 切健康白板替身字牌（含客风）惩罚"
+    },
+    "ev_engine._HEALTHY_YAKUHAI_CUT_FACTOR": {
+      "default": 0.25,
+      "min": 0.125,
+      "max": 0.5,
+      "integer": false,
+      "source": "ev_engine.py:103",
+      "description": "_HEALTHY_YAKUHAI_CUT_FACTOR = 0.25  # 供给充足的役牌孤张：切除奖励压到 25%"
+    },
+    "ev_engine._NEIGHBOR_OF_GOD_KEEP_BONUS": {
+      "default": 15.0,
+      "min": 7.5,
+      "max": 30.0,
+      "integer": false,
+      "source": "ev_engine.py:104",
+      "description": "_NEIGHBOR_OF_GOD_KEEP_BONUS = 15.0  # 财神同门 ±1/±2 的孤张顺子连接保留价值"
+    },
+    "ev_engine._CENTRALITY_CUT_REF": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "ev_engine.py:119",
+      "description": "_CENTRALITY_CUT_REF = 12.0  # 与 5 序数保留分对齐"
+    },
+    "ev_engine._CENTRALITY_CUT_SCALE_TENPAI": {
+      "default": 0.4,
+      "min": 0.2,
+      "max": 0.8,
+      "integer": false,
+      "source": "ev_engine.py:120",
+      "description": "_CENTRALITY_CUT_SCALE_TENPAI = 0.40  # 听牌：微差纠偏（切 8 ≈ +4.2）"
+    },
+    "ev_engine._CENTRALITY_CUT_SCALE_DEEP": {
+      "default": 0.55,
+      "min": 0.275,
+      "max": 1.0,
+      "integer": false,
+      "source": "ev_engine.py:121",
+      "description": "_CENTRALITY_CUT_SCALE_DEEP = 0.55  # 一向听+：加强偏张优先"
+    },
+    "ev_engine._JOKER_MID_CUT_PENALTY": {
+      "default": 4.5,
+      "min": 2.25,
+      "max": 9.0,
+      "integer": false,
+      "source": "ev_engine.py:122",
+      "description": "_JOKER_MID_CUT_PENALTY = 4.5  # 持百搭时切 4/5/6 且另有偏张/字牌孤张"
+    },
+    "ev_engine._EV_NEAR_TIE_EPS": {
+      "default": 3.0,
+      "min": 1.5,
+      "max": 6.0,
+      "integer": false,
+      "source": "ev_engine.py:124",
+      "description": "_EV_NEAR_TIE_EPS = 3.0  # |ΔNetEV|≤3 时按进张数 / 保留中张裁决"
+    },
+    "ev_engine._GUEST_WITH_HEAD_CUT_BONUS": {
+      "default": 24.0,
+      "min": 12.0,
+      "max": 48.0,
+      "integer": false,
+      "source": "ev_engine.py:125",
+      "description": "_GUEST_WITH_HEAD_CUT_BONUS = 24.0  # 已有雀头：无役客风先于幺九清理"
+    },
+    "ev_engine._GUEST_WITH_HEAD_HOLD_PENALTY": {
+      "default": 18.0,
+      "min": 9.0,
+      "max": 36.0,
+      "integer": false,
+      "source": "ev_engine.py:126",
+      "description": "_GUEST_WITH_HEAD_HOLD_PENALTY = 18.0"
+    },
+    "ev_engine._TERMINAL_EXTENSION_KEEP_BONUS": {
+      "default": 6.0,
+      "min": 3.0,
+      "max": 12.0,
+      "integer": false,
+      "source": "ev_engine.py:127",
+      "description": "_TERMINAL_EXTENSION_KEEP_BONUS = 6.0"
+    },
+    "ev_engine._CENTRAL_SYNERGY_KEEP_BONUS": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "ev_engine.py:128",
+      "description": "_CENTRAL_SYNERGY_KEEP_BONUS = 12.0"
+    },
+    "ev_engine._DEFENSE_RISK_REFERENCE": {
+      "default": 0.12,
+      "min": 0.06,
+      "max": 0.24,
+      "integer": false,
+      "source": "ev_engine.py:129",
+      "description": "_DEFENSE_RISK_REFERENCE = 0.12  # 高危切牌的风险厌恶尺度，非概率修正"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.1": {
+      "default": 0.0,
+      "min": 0.0,
+      "max": 20.0,
+      "integer": false,
+      "source": "ev_engine.py:109",
+      "description": "1: 0.0,"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.2": {
+      "default": 1.5,
+      "min": 0.75,
+      "max": 3.0,
+      "integer": false,
+      "source": "ev_engine.py:110",
+      "description": "2: 1.5,"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.3": {
+      "default": 5.0,
+      "min": 2.5,
+      "max": 10.0,
+      "integer": false,
+      "source": "ev_engine.py:111",
+      "description": "3: 5.0,"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.4": {
+      "default": 10.0,
+      "min": 5.0,
+      "max": 20.0,
+      "integer": false,
+      "source": "ev_engine.py:112",
+      "description": "4: 10.0,"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.5": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "ev_engine.py:113",
+      "description": "5: 12.0,"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.6": {
+      "default": 10.0,
+      "min": 5.0,
+      "max": 20.0,
+      "integer": false,
+      "source": "ev_engine.py:114",
+      "description": "6: 10.0,"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.7": {
+      "default": 5.0,
+      "min": 2.5,
+      "max": 10.0,
+      "integer": false,
+      "source": "ev_engine.py:115",
+      "description": "7: 5.0,"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.8": {
+      "default": 1.5,
+      "min": 0.75,
+      "max": 3.0,
+      "integer": false,
+      "source": "ev_engine.py:116",
+      "description": "8: 1.5,"
+    },
+    "ev_engine._CENTRALITY_KEEP_BY_DIGIT.9": {
+      "default": 0.0,
+      "min": 0.0,
+      "max": 20.0,
+      "integer": false,
+      "source": "ev_engine.py:117",
+      "description": "9: 0.0,"
+    },
+    "ev_engine._honor_rem_factor.L1345C15": {
+      "default": 0.4,
+      "min": 0.2,
+      "max": 0.8,
+      "integer": false,
+      "source": "ev_engine.py:1345",
+      "description": "return 0.4"
+    },
+    "ev_engine._evaluate_self_gang_candidates.L613C17": {
+      "default": 3.0,
+      "min": 1.5,
+      "max": 6.0,
+      "integer": false,
+      "source": "ev_engine.py:613",
+      "description": "settle = 3.0 if is_dealer else 2.0"
+    },
+    "ev_engine._evaluate_self_gang_candidates.L613C39": {
+      "default": 2.0,
+      "min": 1.0,
+      "max": 4.0,
+      "integer": false,
+      "source": "ev_engine.py:613",
+      "description": "settle = 3.0 if is_dealer else 2.0"
+    },
+    "ev_engine._evaluate_self_gang_candidates.L614C46": {
+      "default": 0.35,
+      "min": 0.175,
+      "max": 0.7,
+      "integer": false,
+      "source": "ev_engine.py:614",
+      "description": "bonus_ev = float(hu_bonus) * settle * 0.35"
+    },
+    "ev_engine._apply_close_ukeire_safety_dominance.L2144C18": {
+      "default": 0.1,
+      "min": 0.05,
+      "max": 0.2,
+      "integer": false,
+      "source": "ev_engine.py:2144",
+      "description": "if risk < 0.10:"
+    },
+    "ev_engine.calculate_best_discards.L314C59": {
+      "default": 2.0,
+      "min": 1.0,
+      "max": 4.0,
+      "integer": false,
+      "source": "ev_engine.py:314",
+      "description": "attack_ev += float(structure[\"delta\"]) * (settle / 2.0)"
+    },
+    "ev_engine._guest_wind_hold_penalty.L1403C20": {
+      "default": 1.5,
+      "min": 0.75,
+      "max": 3.0,
+      "integer": false,
+      "source": "ev_engine.py:1403",
+      "description": "scale = 1.5 if rem_n <= 1 else (1.2 if rem_n == 2 else 1.0)"
+    },
+    "ev_engine._guest_wind_hold_penalty.L1416C41": {
+      "default": 15.0,
+      "min": 7.5,
+      "max": 30.0,
+      "integer": false,
+      "source": "ev_engine.py:1416",
+      "description": "penalty += min(base * scale, 15.0)"
+    },
+    "ev_engine._apply_close_ukeire_safety_dominance.L2161C71": {
+      "default": 0.1,
+      "min": 0.05,
+      "max": 0.2,
+      "integer": false,
+      "source": "ev_engine.py:2161",
+      "description": "adjustment = max(0.0, risky[\"ev_score\"] - leader[\"ev_score\"] + 0.1)"
+    },
+    "ev_engine._discard_candidate_note.L2385C67": {
+      "default": 0.4,
+      "min": 0.2,
+      "max": 0.8,
+      "integer": false,
+      "source": "ev_engine.py:2385",
+      "description": "has_yakuhai = yakuhai_score >= _YAKUHAI_SINGLE_POTENTIAL * 0.4"
+    },
+    "ev_engine.calculate_best_discards.L332C48": {
+      "default": 0.5,
+      "min": 0.25,
+      "max": 1.0,
+      "integer": false,
+      "source": "ev_engine.py:332",
+      "description": "net_unit = max(threat[\"loss_ron\"] * 0.5, threat[\"loss_ron\"] - rebate)"
+    },
+    "ev_engine.calculate_best_discards.L333C72": {
+      "default": 2.0,
+      "min": 1.0,
+      "max": 4.0,
+      "integer": false,
+      "source": "ev_engine.py:333",
+      "description": "risk_weight = 1.0 + min(p_dealin / _DEFENSE_RISK_REFERENCE, 2.0)"
+    },
+    "ev_engine.calculate_best_discards.L482C44": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "ev_engine.py:482",
+      "description": "float(best_gang[\"ev_score\"]) + (12.0 if best_gang[\"action_type\"] == \"bu_gang\" else 0.0),"
+    },
+    "ev_engine._guest_wind_hold_penalty.L1403C44": {
+      "default": 1.2,
+      "min": 0.6,
+      "max": 2.4,
+      "integer": false,
+      "source": "ev_engine.py:1403",
+      "description": "scale = 1.5 if rem_n <= 1 else (1.2 if rem_n == 2 else 1.0)"
+    },
+    "ev_engine._central_synergy_keep_score.L1688C60": {
+      "default": 8.0,
+      "min": 4.0,
+      "max": 16.0,
+      "integer": false,
+      "source": "ev_engine.py:1688",
+      "description": "total += _CENTRAL_SYNERGY_KEEP_BONUS * min(supply / 8.0, 1.0)"
+    },
+    "ev_engine._discard_candidate_note.L2384C69": {
+      "default": 0.5,
+      "min": 0.25,
+      "max": 1.0,
+      "integer": false,
+      "source": "ev_engine.py:2384",
+      "description": "has_complex = shape_score >= (_SHAPE_PAIR + _SHAPE_RYANMEN * 0.5)"
+    },
+    "ev_engine._discard_candidate_note.L2270C58": {
+      "default": 8.0,
+      "min": 4.0,
+      "max": 16.0,
+      "integer": false,
+      "source": "ev_engine.py:2270",
+      "description": "_centrality_keep_score(t, dealer_tile) >= 8.0"
+    },
+    "ev_engine._apply_isolated_tile_shape_dominance.L2122C76": {
+      "default": 1.35,
+      "min": 0.675,
+      "max": 2.7,
+      "integer": false,
+      "source": "ev_engine.py:2122",
+      "description": "and c[\"effective_count\"] >= core[\"effective_count\"] * 1.35"
+    },
+    "ev_engine._apply_isolated_tile_shape_dominance.L2124C37": {
+      "default": 0.03,
+      "min": 0.015,
+      "max": 0.06,
+      "integer": false,
+      "source": "ev_engine.py:2124",
+      "description": "<= core_risk - 0.03]"
+    },
+    "ev_engine._apply_close_ukeire_safety_dominance.L2154C80": {
+      "default": 0.78,
+      "min": 0.39,
+      "max": 1.0,
+      "integer": false,
+      "source": "ev_engine.py:2154",
+      "description": "and candidate[\"effective_count\"] >= risky[\"effective_count\"] * 0.78"
+    },
+    "ev_engine._discard_candidate_note.L2282C62": {
+      "default": 8.0,
+      "min": 4.0,
+      "max": 16.0,
+      "integer": false,
+      "source": "ev_engine.py:2282",
+      "description": "and _centrality_keep_score(t, dealer_tile) >= 8.0"
+    },
+    "ev_engine.calculate_best_discards.L477C40": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "ev_engine.py:477",
+      "description": "float(g[\"ev_score\"]) + (12.0 if g[\"action_type\"] == \"bu_gang\" else 0.0),"
+    },
+    "ev_engine._structure_attack_adjustment.L1807C62": {
+      "default": 8.0,
+      "min": 4.0,
+      "max": 16.0,
+      "integer": false,
+      "source": "ev_engine.py:1807",
+      "description": "_centrality_keep_score(t, dealer_tile) >= 8.0"
+    },
+    "ev_engine._apply_close_ukeire_safety_dominance.L2156C31": {
+      "default": 0.04,
+      "min": 0.02,
+      "max": 0.08,
+      "integer": false,
+      "source": "ev_engine.py:2156",
+      "description": "<= min(risk - 0.04, risk * 0.70)"
+    },
+    "ev_engine._apply_close_ukeire_safety_dominance.L2156C44": {
+      "default": 0.7,
+      "min": 0.35,
+      "max": 1.0,
+      "integer": false,
+      "source": "ev_engine.py:2156",
+      "description": "<= min(risk - 0.04, risk * 0.70)"
+    },
+    "ev_engine._structure_attack_adjustment.L1896C25": {
+      "default": 0.7,
+      "min": 0.35,
+      "max": 1.0,
+      "integer": false,
+      "source": "ev_engine.py:1896",
+      "description": "factor = 0.7 if rem_n == 2 else 0.35"
+    },
+    "ev_engine._structure_attack_adjustment.L1896C48": {
+      "default": 0.35,
+      "min": 0.175,
+      "max": 0.7,
+      "integer": false,
+      "source": "ev_engine.py:1896",
+      "description": "factor = 0.7 if rem_n == 2 else 0.35"
+    },
+    "call_decision._CALL_TENPAI_TEMPO_BONUS": {
+      "default": 60.0,
+      "min": 30.0,
+      "max": 120.0,
+      "integer": false,
+      "source": "call_decision.py:53",
+      "description": "_CALL_TENPAI_TEMPO_BONUS = 60.0"
+    },
+    "call_decision._DEALER_TENPAI_CONTINUATION_BONUS": {
+      "default": 20.0,
+      "min": 10.0,
+      "max": 40.0,
+      "integer": false,
+      "source": "call_decision.py:54",
+      "description": "_DEALER_TENPAI_CONTINUATION_BONUS = 20.0"
+    },
+    "call_decision._WIN_PASS_OPTION_CREDIT": {
+      "default": 16.8,
+      "min": 8.4,
+      "max": 33.6,
+      "integer": false,
+      "source": "call_decision.py:56",
+      "description": "_WIN_PASS_OPTION_CREDIT = 16.8"
+    },
+    "call_decision._JUNK_CUT_SPEED_BONUS_MIN": {
+      "default": 15.0,
+      "min": 7.5,
+      "max": 30.0,
+      "integer": false,
+      "source": "call_decision.py:58",
+      "description": "_JUNK_CUT_SPEED_BONUS_MIN = 15.0"
+    },
+    "call_decision._JUNK_CUT_SPEED_BONUS_MAX": {
+      "default": 25.0,
+      "min": 12.5,
+      "max": 50.0,
+      "integer": false,
+      "source": "call_decision.py:59",
+      "description": "_JUNK_CUT_SPEED_BONUS_MAX = 25.0"
+    },
+    "call_decision._PONG_HU_EV_SCALE": {
+      "default": 2.5,
+      "min": 1.25,
+      "max": 5.0,
+      "integer": false,
+      "source": "call_decision.py:61",
+      "description": "_PONG_HU_EV_SCALE = 2.5"
+    },
+    "call_decision._REDUNDANT_SEQUENCE_CHI_PENALTY": {
+      "default": 55.0,
+      "min": 27.5,
+      "max": 110.0,
+      "integer": false,
+      "source": "call_decision.py:65",
+      "description": "_REDUNDANT_SEQUENCE_CHI_PENALTY = 55.0"
+    },
+    "call_decision._NO_SHANTEN_DROP_CALL_PENALTY": {
+      "default": 18.0,
+      "min": 9.0,
+      "max": 36.0,
+      "integer": false,
+      "source": "call_decision.py:67",
+      "description": "_NO_SHANTEN_DROP_CALL_PENALTY = 18.0"
+    },
+    "call_decision._PASS_DRAW_TURN_BASE": {
+      "default": 22.0,
+      "min": 11.0,
+      "max": 44.0,
+      "integer": false,
+      "source": "call_decision.py:69",
+      "description": "_PASS_DRAW_TURN_BASE = 22.0"
+    },
+    "call_decision._PASS_DRAW_UKEIRE_SCALE": {
+      "default": 0.35,
+      "min": 0.175,
+      "max": 0.7,
+      "integer": false,
+      "source": "call_decision.py:70",
+      "description": "_PASS_DRAW_UKEIRE_SCALE = 0.35  # 每张有效进张额外加成（封顶见下）"
+    },
+    "call_decision._YAKUHAI_FAN_MAKE_CHANCE.0": {
+      "default": 0.25,
+      "min": 0.125,
+      "max": 0.5,
+      "integer": false,
+      "source": "call_decision.py:63",
+      "description": "_YAKUHAI_FAN_MAKE_CHANCE = {0: 0.25, 1: 0.65}"
+    },
+    "call_decision._YAKUHAI_FAN_MAKE_CHANCE.1": {
+      "default": 0.65,
+      "min": 0.325,
+      "max": 1.0,
+      "integer": false,
+      "source": "call_decision.py:63",
+      "description": "_YAKUHAI_FAN_MAKE_CHANCE = {0: 0.25, 1: 0.65}"
+    },
+    "call_decision._hard_hu_discount.L346C11": {
+      "default": 0.15,
+      "min": 0.075,
+      "max": 0.3,
+      "integer": false,
+      "source": "call_decision.py:346",
+      "description": "return 0.15"
+    },
+    "call_decision._hard_hu_discount.L345C15": {
+      "default": 0.5,
+      "min": 0.25,
+      "max": 1.0,
+      "integer": false,
+      "source": "call_decision.py:345",
+      "description": "return 0.5"
+    },
+    "call_decision._early_flush_ambition_bonus.L399C23": {
+      "default": 200.0,
+      "min": 100.0,
+      "max": 400.0,
+      "integer": false,
+      "source": "call_decision.py:399",
+      "description": "projected_points = 200.0 if honors else 260.0"
+    },
+    "call_decision._early_flush_ambition_bonus.L399C44": {
+      "default": 260.0,
+      "min": 130.0,
+      "max": 520.0,
+      "integer": false,
+      "source": "call_decision.py:399",
+      "description": "projected_points = 200.0 if honors else 260.0"
+    },
+    "call_decision._early_flush_ambition_bonus.L400C27": {
+      "default": 0.48,
+      "min": 0.24,
+      "max": 0.96,
+      "integer": false,
+      "source": "call_decision.py:400",
+      "description": "make_probability = min(0.48, 0.18 + 0.025 * (suit_count - 8) + 0.035 * max(0, 3 - off_suit))"
+    },
+    "call_decision._early_flush_ambition_bonus.L401C24": {
+      "default": 0.92,
+      "min": 0.46,
+      "max": 1.0,
+      "integer": false,
+      "source": "call_decision.py:401",
+      "description": "make_probability *= 0.92 ** len(melds)"
+    },
+    "call_decision._pong_incentive.L461C48": {
+      "default": 0.85,
+      "min": 0.425,
+      "max": 1.0,
+      "integer": false,
+      "source": "call_decision.py:461",
+      "description": "hu_weight = 1.0 if shanten_before <= 1 else 0.85"
+    },
+    "call_decision._pong_incentive.L522C17": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "call_decision.py:522",
+      "description": "bonus += 12.0"
+    },
+    "call_decision._early_flush_ambition_bonus.L391C42": {
+      "default": 0.15,
+      "min": 0.075,
+      "max": 0.3,
+      "integer": false,
+      "source": "call_decision.py:391",
+      "description": "if tenpai and max(tenpai.values()) >= 0.15:"
+    },
+    "call_decision._early_flush_ambition_bonus.L402C29": {
+      "default": 12.0,
+      "min": 6.0,
+      "max": 24.0,
+      "integer": false,
+      "source": "call_decision.py:402",
+      "description": "safety_credit = max(0.0, 12.0 * (1.0 - (max(tenpai.values()) if tenpai else 0.03) / 0.15))"
+    },
+    "call_decision._pong_incentive.L460C33": {
+      "default": 1.15,
+      "min": 0.575,
+      "max": 2.3,
+      "integer": false,
+      "source": "call_decision.py:460",
+      "description": "scale = _PONG_HU_EV_SCALE * (1.15 if is_dealer else 1.0)"
+    },
+    "call_decision._pong_incentive.L481C66": {
+      "default": 0.45,
+      "min": 0.225,
+      "max": 0.9,
+      "integer": false,
+      "source": "call_decision.py:481",
+      "description": "make_chance = _YAKUHAI_FAN_MAKE_CHANCE.get(shanten_after, 0.45)"
+    },
+    "call_decision._evaluate_call_ev.L585C52": {
+      "default": 0.85,
+      "min": 0.425,
+      "max": 1.0,
+      "integer": false,
+      "source": "call_decision.py:585",
+      "description": "hu_weight = 1.0 if shanten_before <= 1 else 0.85"
+    },
+    "call_decision._evaluate_pass_ev.L738C26": {
+      "default": 1.15,
+      "min": 0.575,
+      "max": 2.3,
+      "integer": false,
+      "source": "call_decision.py:738",
+      "description": "draw_bonus *= 1.15"
+    },
+    "call_decision.evaluate_call_decision.L215C22": {
+      "default": 0.55,
+      "min": 0.275,
+      "max": 1.0,
+      "integer": false,
+      "source": "call_decision.py:215",
+      "description": "ev *= 0.55"
+    },
+    "call_decision.evaluate_call_decision.L301C53": {
+      "default": 0.85,
+      "min": 0.425,
+      "max": 1.0,
+      "integer": false,
+      "source": "call_decision.py:301",
+      "description": "hu_weight = 1.0 if shanten_now <= 1 else 0.85"
+    },
+    "call_decision._early_flush_ambition_bonus.L400C33": {
+      "default": 0.18,
+      "min": 0.09,
+      "max": 0.36,
+      "integer": false,
+      "source": "call_decision.py:400",
+      "description": "make_probability = min(0.48, 0.18 + 0.025 * (suit_count - 8) + 0.035 * max(0, 3 - off_suit))"
+    },
+    "call_decision._early_flush_ambition_bonus.L400C67": {
+      "default": 0.035,
+      "min": 0.0175,
+      "max": 0.07,
+      "integer": false,
+      "source": "call_decision.py:400",
+      "description": "make_probability = min(0.48, 0.18 + 0.025 * (suit_count - 8) + 0.035 * max(0, 3 - off_suit))"
+    },
+    "call_decision._evaluate_call_ev.L610C69": {
+      "default": 4.0,
+      "min": 2.0,
+      "max": 8.0,
+      "integer": false,
+      "source": "call_decision.py:610",
+      "description": "live_wait_weight = min(1.0, float(best['effective_count']) / 4.0)"
+    },
+    "call_decision.evaluate_call_decision.L304C50": {
+      "default": 0.35,
+      "min": 0.175,
+      "max": 0.7,
+      "integer": false,
+      "source": "call_decision.py:304",
+      "description": "+ _PASS_DRAW_TURN_BASE * 0.35)"
+    },
+    "call_decision._early_flush_ambition_bonus.L400C40": {
+      "default": 0.025,
+      "min": 0.0125,
+      "max": 0.05,
+      "integer": false,
+      "source": "call_decision.py:400",
+      "description": "make_probability = min(0.48, 0.18 + 0.025 * (suit_count - 8) + 0.035 * max(0, 3 - off_suit))"
+    },
+    "call_decision._early_flush_ambition_bonus.L402C88": {
+      "default": 0.15,
+      "min": 0.075,
+      "max": 0.3,
+      "integer": false,
+      "source": "call_decision.py:402",
+      "description": "safety_credit = max(0.0, 12.0 * (1.0 - (max(tenpai.values()) if tenpai else 0.03) / 0.15))"
+    },
+    "call_decision._pong_incentive.L515C16": {
+      "default": 2.0,
+      "min": 1.0,
+      "max": 4.0,
+      "integer": false,
+      "source": "call_decision.py:515",
+      "description": ") / 2.0"
+    },
+    "call_decision._evaluate_call_ev.L586C40": {
+      "default": 1.15,
+      "min": 0.575,
+      "max": 2.3,
+      "integer": false,
+      "source": "call_decision.py:586",
+      "description": "ev += hu * _PONG_HU_EV_SCALE * (1.15 if is_dealer else 1.0) * hu_weight"
+    },
+    "call_decision._early_flush_ambition_bonus.L402C80": {
+      "default": 0.03,
+      "min": 0.015,
+      "max": 0.06,
+      "integer": false,
+      "source": "call_decision.py:402",
+      "description": "safety_credit = max(0.0, 12.0 * (1.0 - (max(tenpai.values()) if tenpai else 0.03) / 0.15))"
+    },
+    "call_decision.evaluate_call_decision.L303C28": {
+      "default": 1.15,
+      "min": 0.575,
+      "max": 2.3,
+      "integer": false,
+      "source": "call_decision.py:303",
+      "description": "* (1.15 if is_dealer else 1.0) * hu_weight"
+    },
+    "screen.joker_keep": {
+      "default": 100,
+      "min": 40,
+      "max": 200,
+      "integer": false,
+      "description": "Fast screening only, not full EV"
+    },
+    "screen.duplicate_keep": {
+      "default": 12,
+      "min": 3,
+      "max": 30,
+      "integer": false,
+      "description": "Fast screening only, not full EV"
+    },
+    "screen.central_keep": {
+      "default": 1,
+      "min": 0,
+      "max": 3,
+      "integer": false,
+      "description": "Fast screening only, not full EV"
+    },
+    "screen.neighbor_keep": {
+      "default": 5,
+      "min": 1,
+      "max": 12,
+      "integer": false,
+      "description": "Fast screening only, not full EV"
+    },
+    "screen.gap_keep": {
+      "default": 2,
+      "min": 0,
+      "max": 6,
+      "integer": false,
+      "description": "Fast screening only, not full EV"
+    },
+    "screen.honor_keep": {
+      "default": 2,
+      "min": 0,
+      "max": 12,
+      "integer": false,
+      "description": "Fast screening only, not full EV"
+    },
+    "screen.danger_penalty": {
+      "default": 0,
+      "min": 0,
+      "max": 50,
+      "integer": false,
+      "description": "Fast screening only, not full EV"
+    },
+    "screen.call_bonus": {
+      "default": 1,
+      "min": 0,
+      "max": 5,
+      "integer": false,
+      "description": "Fast screening only, not full EV"
+    }
+  },
+  "locations": {
+    "danger_model:28:18": "danger_model.BASE_HONOR_LIVE",
+    "danger_model:29:18": "danger_model.BASE_HONOR_DEAD",
+    "danger_model:30:15": "danger_model.BASE_MID_456",
+    "danger_model:31:16": "danger_model.BASE_TERMINAL",
+    "danger_model:32:16": "danger_model.BASE_NEAR_MID",
+    "danger_model:35:25": "danger_model.WALL_BOTH_SIDES_FACTOR",
+    "danger_model:36:28": "danger_model.WALL_ONE_SIDE_EDGE_FACTOR",
+    "danger_model:39:26": "danger_model.DYE_OWN_SUIT_MID_FACTOR",
+    "danger_model:40:24": "danger_model.DYE_OTHER_SUIT_FACTOR",
+    "danger_model:80:18": "danger_model.estimate_tile_danger.L80C18",
+    "danger_model:115:16": "danger_model._base_danger.L115C16",
+    "danger_model:117:16": "danger_model._base_danger.L117C16",
+    "danger_model:99:57": "danger_model._base_danger.L99C57",
+    "tenpai_model:27:11": "tenpai_model._P_FLOOR",
+    "tenpai_model:28:10": "tenpai_model._P_SPAN",
+    "tenpai_model:29:18": "tenpai_model._SIGMOID_CENTER",
+    "tenpai_model:30:21": "tenpai_model._SIGMOID_STEEPNESS",
+    "tenpai_model:35:15": "tenpai_model._MELD3_FLOOR",
+    "tenpai_model:38:16": "tenpai_model._DEALER_BOOST",
+    "tenpai_model:43:16": "tenpai_model._CENTRAL_MULT",
+    "tenpai_model:44:15": "tenpai_model._CENTRAL_ADD",
+    "tenpai_model:48:20": "tenpai_model._PROGRESSION_MULT",
+    "tenpai_model:49:19": "tenpai_model._PROGRESSION_ADD",
+    "tenpai_model:55:20": "tenpai_model._SAFE_STREAK_MULT",
+    "tenpai_model:56:19": "tenpai_model._SAFE_STREAK_ADD",
+    "tenpai_model:33:16": "tenpai_model._MELD_ADD.1",
+    "tenpai_model:33:25": "tenpai_model._MELD_ADD.2",
+    "tenpai_model:33:34": "tenpai_model._MELD_ADD.3",
+    "tenpai_model:33:43": "tenpai_model._MELD_ADD.4",
+    "tenpai_model:34:16": "tenpai_model._MELD_CAP.1",
+    "tenpai_model:34:25": "tenpai_model._MELD_CAP.2",
+    "tenpai_model:34:34": "tenpai_model._MELD_CAP.3",
+    "tenpai_model:34:43": "tenpai_model._MELD_CAP.4",
+    "tenpai_model:209:52": "tenpai_model._apply_progression_boost.L209C52",
+    "ev_engine:56:18": "ev_engine.SHANTEN_PENALTY",
+    "ev_engine:58:21": "ev_engine._ZIMO_THREAT_PRIOR",
+    "ev_engine:62:27": "ev_engine._IISHANTEN_TURN_DISCOUNT",
+    "ev_engine:65:25": "ev_engine._UKEIRE_QUALITY_WEIGHT",
+    "ev_engine:67:21": "ev_engine._DEEP_SHANTEN_UNIT",
+    "ev_engine:68:28": "ev_engine._YAKUHAI_SINGLE_POTENTIAL",
+    "ev_engine:69:26": "ev_engine._YAKUHAI_PAIR_POTENTIAL",
+    "ev_engine:70:26": "ev_engine._YAKUHAI_PUNG_POTENTIAL",
+    "ev_engine:71:14": "ev_engine._SHAPE_PAIR",
+    "ev_engine:72:14": "ev_engine._SHAPE_PUNG",
+    "ev_engine:73:17": "ev_engine._SHAPE_RYANMEN",
+    "ev_engine:74:17": "ev_engine._SHAPE_KANCHAN",
+    "ev_engine:75:17": "ev_engine._SHAPE_PENCHAN",
+    "ev_engine:76:35": "ev_engine._COMPOSITE_KANCHAN_UPGRADE_BONUS",
+    "ev_engine:77:28": "ev_engine._ANTI_PONG_TERMINAL_BONUS",
+    "ev_engine:78:22": "ev_engine._SHAPE_ISOLATED_MID",
+    "ev_engine:79:23": "ev_engine._SHAPE_ISOLATED_TERM",
+    "ev_engine:80:15": "ev_engine._SHAPE_JOKER",
+    "ev_engine:81:29": "ev_engine._GUEST_WIND_SINGLE_PENALTY",
+    "ev_engine:82:27": "ev_engine._GUEST_WIND_PAIR_PENALTY",
+    "ev_engine:83:31": "ev_engine._GUEST_SUBSTITUTE_HOLD_SCALE",
+    "ev_engine:84:31": "ev_engine._SUBSTITUTE_HONOR_KEEP_BONUS",
+    "ev_engine:85:32": "ev_engine._ORPHAN_TERMINAL_UKEIRE_SCALE",
+    "ev_engine:86:34": "ev_engine._GUEST_SINGLE_PAIR_UKEIRE_SCALE",
+    "ev_engine:87:32": "ev_engine._ORPHAN_TERMINAL_KEEP_PENALTY",
+    "ev_engine:90:24": "ev_engine._JANTOU_BREAK_PENALTY",
+    "ev_engine:91:22": "ev_engine._ISOLATED_CUT_BONUS",
+    "ev_engine:92:26": "ev_engine._TERMINAL_ISO_CUT_BONUS",
+    "ev_engine:93:29": "ev_engine._ORPHAN_TERMINAL_CUT_BONUS",
+    "ev_engine:94:24": "ev_engine._DEAD_HONOR_CUT_BONUS",
+    "ev_engine:95:25": "ev_engine._ISOLATED_KEEP_PENALTY",
+    "ev_engine:96:27": "ev_engine._DEAD_HONOR_KEEP_PENALTY",
+    "ev_engine:97:25": "ev_engine._GOOD_SHAPE_PUSH_BONUS",
+    "ev_engine:98:28": "ev_engine._GOOD_SHAPE_DEFENSE_SCALE",
+    "ev_engine:100:29": "ev_engine._SEEN_GUEST_WIND_CUT_BONUS",
+    "ev_engine:101:34": "ev_engine._SUBSTITUTE_YAKUHAI_CUT_PENALTY",
+    "ev_engine:102:32": "ev_engine._SUBSTITUTE_HONOR_CUT_PENALTY",
+    "ev_engine:103:30": "ev_engine._HEALTHY_YAKUHAI_CUT_FACTOR",
+    "ev_engine:104:30": "ev_engine._NEIGHBOR_OF_GOD_KEEP_BONUS",
+    "ev_engine:119:22": "ev_engine._CENTRALITY_CUT_REF",
+    "ev_engine:120:31": "ev_engine._CENTRALITY_CUT_SCALE_TENPAI",
+    "ev_engine:121:29": "ev_engine._CENTRALITY_CUT_SCALE_DEEP",
+    "ev_engine:122:25": "ev_engine._JOKER_MID_CUT_PENALTY",
+    "ev_engine:124:19": "ev_engine._EV_NEAR_TIE_EPS",
+    "ev_engine:125:29": "ev_engine._GUEST_WITH_HEAD_CUT_BONUS",
+    "ev_engine:126:32": "ev_engine._GUEST_WITH_HEAD_HOLD_PENALTY",
+    "ev_engine:127:33": "ev_engine._TERMINAL_EXTENSION_KEEP_BONUS",
+    "ev_engine:128:30": "ev_engine._CENTRAL_SYNERGY_KEEP_BONUS",
+    "ev_engine:129:26": "ev_engine._DEFENSE_RISK_REFERENCE",
+    "ev_engine:109:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.1",
+    "ev_engine:110:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.2",
+    "ev_engine:111:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.3",
+    "ev_engine:112:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.4",
+    "ev_engine:113:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.5",
+    "ev_engine:114:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.6",
+    "ev_engine:115:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.7",
+    "ev_engine:116:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.8",
+    "ev_engine:117:7": "ev_engine._CENTRALITY_KEEP_BY_DIGIT.9",
+    "ev_engine:1345:15": "ev_engine._honor_rem_factor.L1345C15",
+    "ev_engine:613:17": "ev_engine._evaluate_self_gang_candidates.L613C17",
+    "ev_engine:613:39": "ev_engine._evaluate_self_gang_candidates.L613C39",
+    "ev_engine:614:46": "ev_engine._evaluate_self_gang_candidates.L614C46",
+    "ev_engine:2144:18": "ev_engine._apply_close_ukeire_safety_dominance.L2144C18",
+    "ev_engine:314:59": "ev_engine.calculate_best_discards.L314C59",
+    "ev_engine:1403:20": "ev_engine._guest_wind_hold_penalty.L1403C20",
+    "ev_engine:1416:41": "ev_engine._guest_wind_hold_penalty.L1416C41",
+    "ev_engine:2161:71": "ev_engine._apply_close_ukeire_safety_dominance.L2161C71",
+    "ev_engine:2385:67": "ev_engine._discard_candidate_note.L2385C67",
+    "ev_engine:332:48": "ev_engine.calculate_best_discards.L332C48",
+    "ev_engine:333:72": "ev_engine.calculate_best_discards.L333C72",
+    "ev_engine:482:44": "ev_engine.calculate_best_discards.L482C44",
+    "ev_engine:1403:44": "ev_engine._guest_wind_hold_penalty.L1403C44",
+    "ev_engine:1688:60": "ev_engine._central_synergy_keep_score.L1688C60",
+    "ev_engine:2384:69": "ev_engine._discard_candidate_note.L2384C69",
+    "ev_engine:2270:58": "ev_engine._discard_candidate_note.L2270C58",
+    "ev_engine:2122:76": "ev_engine._apply_isolated_tile_shape_dominance.L2122C76",
+    "ev_engine:2124:37": "ev_engine._apply_isolated_tile_shape_dominance.L2124C37",
+    "ev_engine:2154:80": "ev_engine._apply_close_ukeire_safety_dominance.L2154C80",
+    "ev_engine:2282:62": "ev_engine._discard_candidate_note.L2282C62",
+    "ev_engine:477:40": "ev_engine.calculate_best_discards.L477C40",
+    "ev_engine:1807:62": "ev_engine._structure_attack_adjustment.L1807C62",
+    "ev_engine:2156:31": "ev_engine._apply_close_ukeire_safety_dominance.L2156C31",
+    "ev_engine:2156:44": "ev_engine._apply_close_ukeire_safety_dominance.L2156C44",
+    "ev_engine:1896:25": "ev_engine._structure_attack_adjustment.L1896C25",
+    "ev_engine:1896:48": "ev_engine._structure_attack_adjustment.L1896C48",
+    "call_decision:53:27": "call_decision._CALL_TENPAI_TEMPO_BONUS",
+    "call_decision:54:36": "call_decision._DEALER_TENPAI_CONTINUATION_BONUS",
+    "call_decision:56:26": "call_decision._WIN_PASS_OPTION_CREDIT",
+    "call_decision:58:28": "call_decision._JUNK_CUT_SPEED_BONUS_MIN",
+    "call_decision:59:28": "call_decision._JUNK_CUT_SPEED_BONUS_MAX",
+    "call_decision:61:20": "call_decision._PONG_HU_EV_SCALE",
+    "call_decision:65:34": "call_decision._REDUNDANT_SEQUENCE_CHI_PENALTY",
+    "call_decision:67:32": "call_decision._NO_SHANTEN_DROP_CALL_PENALTY",
+    "call_decision:69:23": "call_decision._PASS_DRAW_TURN_BASE",
+    "call_decision:70:26": "call_decision._PASS_DRAW_UKEIRE_SCALE",
+    "call_decision:63:31": "call_decision._YAKUHAI_FAN_MAKE_CHANCE.0",
+    "call_decision:63:40": "call_decision._YAKUHAI_FAN_MAKE_CHANCE.1",
+    "call_decision:346:11": "call_decision._hard_hu_discount.L346C11",
+    "call_decision:345:15": "call_decision._hard_hu_discount.L345C15",
+    "call_decision:399:23": "call_decision._early_flush_ambition_bonus.L399C23",
+    "call_decision:399:44": "call_decision._early_flush_ambition_bonus.L399C44",
+    "call_decision:400:27": "call_decision._early_flush_ambition_bonus.L400C27",
+    "call_decision:401:24": "call_decision._early_flush_ambition_bonus.L401C24",
+    "call_decision:461:48": "call_decision._pong_incentive.L461C48",
+    "call_decision:522:17": "call_decision._pong_incentive.L522C17",
+    "call_decision:391:42": "call_decision._early_flush_ambition_bonus.L391C42",
+    "call_decision:402:29": "call_decision._early_flush_ambition_bonus.L402C29",
+    "call_decision:460:33": "call_decision._pong_incentive.L460C33",
+    "call_decision:481:66": "call_decision._pong_incentive.L481C66",
+    "call_decision:585:52": "call_decision._evaluate_call_ev.L585C52",
+    "call_decision:738:26": "call_decision._evaluate_pass_ev.L738C26",
+    "call_decision:215:22": "call_decision.evaluate_call_decision.L215C22",
+    "call_decision:301:53": "call_decision.evaluate_call_decision.L301C53",
+    "call_decision:400:33": "call_decision._early_flush_ambition_bonus.L400C33",
+    "call_decision:400:67": "call_decision._early_flush_ambition_bonus.L400C67",
+    "call_decision:610:69": "call_decision._evaluate_call_ev.L610C69",
+    "call_decision:304:50": "call_decision.evaluate_call_decision.L304C50",
+    "call_decision:400:40": "call_decision._early_flush_ambition_bonus.L400C40",
+    "call_decision:402:88": "call_decision._early_flush_ambition_bonus.L402C88",
+    "call_decision:515:16": "call_decision._pong_incentive.L515C16",
+    "call_decision:586:40": "call_decision._evaluate_call_ev.L586C40",
+    "call_decision:402:80": "call_decision._early_flush_ambition_bonus.L402C80",
+    "call_decision:303:28": "call_decision.evaluate_call_decision.L303C28"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "ev_engine.SHANTEN_PENALTY": {
+    "min": 60.0,
+    "max": 240,
+    "integer": true
+  },
+  "ev_engine._DEEP_SHANTEN_UNIT": {
+    "min": 12.5,
+    "max": 50,
+    "integer": true
+  },
+  "ev_engine._UKEIRE_QUALITY_WEIGHT": {
+    "min": 0.625,
+    "max": 2.5,
+    "integer": false
+  },
+  "ev_engine._SHAPE_JOKER": {
+    "min": 6.0,
+    "max": 24.0,
+    "integer": false
+  },
+  "ev_engine._JOKER_MID_CUT_PENALTY": {
+    "min": 2.25,
+    "max": 9.0,
+    "integer": false
+  },
+  "ev_engine._YAKUHAI_SINGLE_POTENTIAL": {
+    "min": 5.0,
+    "max": 20.0,
+    "integer": false
+  },
+  "ev_engine._YAKUHAI_PAIR_POTENTIAL": {
+    "min": 8.0,
+    "max": 32.0,
+    "integer": false
+  },
+  "ev_engine._JANTOU_BREAK_PENALTY": {
+    "min": 10.0,
+    "max": 40.0,
+    "integer": false
+  },
+  "ev_engine._GOOD_SHAPE_DEFENSE_SCALE": {
+    "min": 0.225,
+    "max": 0.9,
+    "integer": false
+  },
+  "ev_engine._DEFENSE_RISK_REFERENCE": {
+    "min": 0.06,
+    "max": 0.24,
+    "integer": false
+  },
+  "tenpai_model._SIGMOID_CENTER": {
+    "min": 5.5,
+    "max": 22.0,
+    "integer": false
+  },
+  "tenpai_model._SIGMOID_STEEPNESS": {
+    "min": 0.21,
+    "max": 0.84,
+    "integer": false
+  }
+}

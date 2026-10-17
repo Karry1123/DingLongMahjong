@@ -73,6 +73,10 @@ _EARLY_FLUSH_MIN_SUIT_TILES = 8
 _EARLY_FLUSH_MIN_HAND_TILES = 10
 
 
+class _UnchangedChow(Exception):
+    """AI-only exclusion; authoritative and manual claim legality is unchanged."""
+
+
 @dataclass
 class CallActionScore:
     """单个响应动作的 EV 评估。"""
@@ -170,6 +174,7 @@ def evaluate_call_decision(
     pass_ev: float | None = None
     est_final_points: int | None = None
     pass_flush_note = ""
+    guarded_chows: list[Action] = []
 
     if hu_actions:
         winning_tile = hu_actions[0].tiles[0] if hu_actions[0].tiles else disc
@@ -263,6 +268,9 @@ def evaluate_call_decision(
                     hard_hu_discount=hard_disc,
                     round_wind=round_wind,
                 )
+            except _UnchangedChow:
+                guarded_chows.append(action)
+                continue
             except ValueError as exc:
                 scores.append(
                     CallActionScore(
@@ -307,7 +315,25 @@ def evaluate_call_decision(
                 kong.note += f"；绝张暗刻相对碰牌锁定+{kong_hu - pong_hu}胡并获得岭上补张"
 
     best = max(scores, key=lambda s: s.net_ev)
+    # Keep every legal chow visible and manually selectable. This finite score is
+    # a guard-adjusted recommendation score, not a new rollout EV estimate.
+    # Select the AI action before appending guarded chows, so weights cannot
+    # override the rule and action ordering cannot affect it.
+    if guarded_chows:
+        if pass_ev is None:
+            raise ValueError("冗余吃牌评估需要合法的过牌选项")
+        scores.extend(
+            CallActionScore(
+                action=action,
+                net_ev=pass_ev - 1.0,
+                note="吃后原样打回且听口、胡数完全不变；硬规则评分低于过牌，仍可手动吃牌",
+                pass_ev=pass_ev,
+            )
+            for action in guarded_chows
+        )
     reason = _build_reason(best, scores, shanten_now)
+    if guarded_chows and best.action.action_type == ActionType.PASS:
+        reason = "推荐过牌：吃后原样打回且听口、胡数完全不变，玩家仍可选择吃牌；" + reason
     if (
         best.action.action_type == ActionType.PASS
         and hu_ev is not None
@@ -604,6 +630,15 @@ def _evaluate_call_ev(
     after_discard = list(new_hand)
     after_discard.remove(str(best['tile']))
     shanten_after = _hand_shanten(after_discard, new_melds, dealer_tile)
+    if (action.action_type == ActionType.CHI
+            and shanten_before == shanten_after == 0
+            and _logical_tile(str(best['tile']), dealer_tile) == _logical_tile(discarded_tile, dealer_tile)
+            and _same_live_win_profile(hand_tiles, melds, after_discard, new_melds,
+                                       dealer_tile, seat_wind, is_dealer,
+                                       discarded_tiles, opponents)):
+        # Exclude before any tunable reward/penalty. Returning the claimed face
+        # with identical waits and scores buys no progress or extra win value.
+        raise _UnchangedChow()
     # calculate_best_discards 已含明暗刻差额及硬胡番，勿再次惩罚副露。
     tempo_bonus = 0.0
     if shanten_before > 0 and shanten_after == 0 and best.get('effective_count', 0) > 0:
@@ -671,6 +706,22 @@ def _evaluate_call_ev(
         note_parts.append(redundant_note)
     note_parts.append(hard_note)
     return ev, "；".join(note_parts)
+
+
+def _same_live_win_profile(before_hand, before_melds, after_hand, after_melds,
+                           god, seat, dealer, river, opponents):
+    public = [t for m in before_melds for t in m.tiles]
+    public += [t for o in opponents for m in (o.melds or []) for t in m.tiles]
+    # Claiming moves river -> meld; cutting moves concealed -> river.
+    # Neither transfer changes the unseen pool. Use ONE pool for both states.
+    rem = _build_rem_map(before_hand, river, public, god)
+    def signature(hand, melds):
+        waits = _collect_ukeire(hand, rem, god, seat, dealer, 4-len(melds), melds)
+        return sorted((u['tile'], u['rem'], u['est_base_points'],
+                       u['est_final_points'], u['est_win_points'], u['is_hard_hu'])
+                      for u in waits)
+    old = signature(before_hand, before_melds)
+    return bool(old) and old == signature(after_hand, after_melds)
 
 
 def _evaluate_pass_ev(
