@@ -28,19 +28,22 @@ import { usePvEClocks } from './composables/usePvEClocks.js'
 import SeatClock from './components/SeatClock.vue'
 import PvECircleSummary from './components/PvECircleSummary.vue'
 import PveStartDialog from './components/PveStartDialog.vue'
-import HomeModeSelect from './components/HomeModeSelect.vue'
-import PvpLobby from './components/PvpLobby.vue'
-import { pvpRoute } from './utils/pvpEntry.js'
+import { useRoute, useRouter } from 'vue-router'
+import AppShell from './layouts/AppShell.vue'
+import TableShell from './layouts/TableShell.vue'
+import { useAppLifecycle } from './composables/useAppLifecycle.js'
+import { backButton } from './platform/index.js'
+import { registerBackDismiss, handleAndroidBack } from './platform/androidBack.js'
+import { useSocialSocket } from './composables/useSocialSocket.js'
+import { preferences } from './stores/preferences.js'
 import { useGameSession } from './composables/useGameSession.js'
 import { useHuPreview } from './composables/useHuPreview.js'
 import { gameStatusHint, createGameStatusTracker } from './utils/gameStatusHint.js'
-import { useOrientation } from './composables/useOrientation.js'
 import { useFullscreen } from './composables/useFullscreen.js'
 import { cloudWakeMessage, getRecommendDecision, getOpponentThreats, isAbortError } from './services/api.js'
 import { relativeOpponents, tileLabel } from './constants/tiles.js'
 import { DEALER_SEAT, windLabel } from './utils/seatLayout.js'
 import { createSoundEngine } from './utils/soundEngine.js'
-import { createScreenWakeLock } from './utils/screenWakeLock.js'
 import appInfo from '../package.json'
 
 const appVersion = `v${appInfo.version}`
@@ -53,11 +56,8 @@ watch(dissolvedMessage, async message => { if (message) { await nextTick(); docu
 // ---------------------------------------------------------------------------
 
 const soundEngine = createSoundEngine()
-const screenWakeLock = createScreenWakeLock()
-onMounted(() => screenWakeLock.start())
-onUnmounted(() => { void screenWakeLock.stop() })
-const soundMuted = ref(false)
-const soundVolume = ref(70)
+const soundMuted = computed({ get:() => preferences.muted, set:value => { preferences.muted = value } })
+const soundVolume = computed({ get:() => preferences.volume, set:value => { preferences.volume = value } })
 function unlockSoundFromGesture() {
   if (!soundMuted.value) soundEngine.unlock()
 }
@@ -104,7 +104,6 @@ function showGodOpening({ dealerTile }) {
 }
 onUnmounted(() => completeGodOpening(false))
 const session = useGameSession({ onAction: soundEngine.playAction, onPveOpening: showGodOpening })
-watch(() => [session.gameState.value, session.gameMode.value], () => { void screenWakeLock.request() })
 const {
   roundState,
   currentPhase,
@@ -188,33 +187,20 @@ const {
   currentRecommendAbortController,
 } = session
 
-const activeUiMode = ref(pvpRoute(location.hash) ? 'PVP' : '')
+const route = useRoute(), router = useRouter()
+const { error: socialError } = useSocialSocket()
+const { error: lifecycleError } = useAppLifecycle()
+const activeUiMode = ref('')
 const pvpPlaying = ref(false)
-watch(pvpPlaying, playing => { if (playing) void screenWakeLock.request() })
-const entryLayout = computed(() => !activeUiMode.value || activeUiMode.value === 'PVP' && !pvpPlaying.value)
-function choosePvpMode() { location.hash = '/pvp'; activeUiMode.value = 'PVP' }
-function closePvpMode() {
-  history.replaceState(null, '', `${location.pathname}${location.search}`)
-  activeUiMode.value = ''
-}
-function syncEntryRoute() {
-  if (pvpRoute(location.hash)) activeUiMode.value = 'PVP'
-  else if (activeUiMode.value === 'PVP') activeUiMode.value = ''
-}
-onMounted(() => window.addEventListener('hashchange', syncEntryRoute))
-onUnmounted(() => window.removeEventListener('hashchange', syncEntryRoute))
+const entryLayout = computed(() => route.path === '/pve' && gameMode.value !== 'PVE')
+const legacyTableRoute = computed(() => ['/pve','/sandbox'].includes(route.path))
+function choosePvpMode() { void router.push('/invite') }
+function closePvpMode() { void router.push('/home') }
+watch(() => route.path, path => { activeUiMode.value = path === '/sandbox' ? 'SANDBOX' : path === '/pve' && gameMode.value === 'PVE' ? 'PVE' : ''; if (path === '/pve' && gameMode.value !== 'PVE') pveConfigOpen.value = true })
+onMounted(() => { if (route.path === '/sandbox') activeUiMode.value = 'SANDBOX'; if (route.path === '/pve' && gameMode.value !== 'PVE') pveConfigOpen.value = true })
 const sandboxLeaving = ref(false)
 const stageActive = computed(() => gameMode.value === 'PVE' && activeUiMode.value === 'PVE' || activeUiMode.value === 'PVP' && pvpPlaying.value)
 watch(gameMode, mode => { if (mode !== 'PVE') completeGodOpening(false) })
-onMounted(() => {
-  document.documentElement.classList.add('game-stage-scroll-lock')
-  document.body.classList.add('game-stage-scroll-lock')
-})
-onUnmounted(() => {
-  document.documentElement.classList.remove('game-stage-scroll-lock')
-  document.body.classList.remove('game-stage-scroll-lock')
-})
-const { stageTransform } = useOrientation()
 const { isFullscreen, fullscreenAvailable, fullscreenError, enterFullscreen, exitFullscreen, toggleFullscreen } = useFullscreen()
 function enterFullscreenOnMobileStart() {
   if (fullscreenAvailable && !isFullscreen.value &&
@@ -251,13 +237,14 @@ async function choosePveMode() {
   }
 }
 
-function chooseSandboxMode() { activeUiMode.value = 'SANDBOX' }
+function chooseSandboxMode() { void router.push('/sandbox') }
 
 function closeSandbox() {
   if (sandboxLeaving.value) return
   sandboxLeaving.value = true
   window.setTimeout(() => {
     activeUiMode.value = ''
+    void router.push('/home')
     sandboxLeaving.value = false
   }, 150)
 }
@@ -1306,6 +1293,7 @@ async function onExitPve() {
   if (exitingGame.value) return
   exitingGame.value = true
   activeUiMode.value = ''
+  void router.push('/home')
   localRecommend.value = null
   recommendFetchKey.value = ''
   abortCurrentRecommend()
@@ -1450,27 +1438,33 @@ async function onReset(clearHistory = false) {
     analyzeError.value = error?.message || String(error)
   }
 }
+let stopNativeBack, stopBackDismiss
+onMounted(() => {
+  stopBackDismiss = registerBackDismiss(() => {
+    if (dissolvedMessage.value) { dissolvedMessage.value = ''; return true }
+    if (pveConfigOpen.value) { pveConfigOpen.value = false; void router.push('/home'); return true }
+    return false
+  })
+  stopNativeBack = backButton.subscribe(() => { void handleAndroidBack({ router, route, exit: backButton.exit, inGame: stageActive.value }).catch(() => {}) })
+})
+onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
 </script>
 
 <template>
-  <div class="viewport-wrapper viewport-container game-viewport" :class="{ 'is-stage-active': stageActive, 'is-sandbox-leaving': sandboxLeaving }">
-  <div
-    class="game-stage app-shell min-h-screen bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 px-4 py-8 sm:px-6 sm:py-10"
-    :style="{ transform: stageTransform }"
-    :class="[stageActive ? 'pve-stage-shell' : '', { 'is-stage-active': stageActive, 'is-home-stage': !activeUiMode, 'is-entry-stage': entryLayout }]"
-  >
+  <AppShell v-if="!legacyTableRoute"><RouterView v-slot="{ Component }"><component :is="Component" :key="route.params.id || route.path" :sound-muted="soundMuted" :sound-volume="soundVolume" @opening="soundEngine.stop(); soundEngine.playOpening()" @opening-end="soundEngine.stop()" @sound="soundEngine.playAction($event)" @mute="soundMuted = !soundMuted; if (!soundMuted) soundEngine.unlock()" @volume="soundVolume = $event" @fullscreen="enterFullscreenOnMobileStart" @playing="pvpPlaying = $event" /></RouterView><p v-if="socialError || lifecycleError" class="error" role="status">{{ socialError || lifecycleError }}</p></AppShell>
+  <TableShell v-else :active="stageActive" :leaving="sandboxLeaving" :entry="entryLayout">
     <GodOpeningCeremony v-if="openingRound" :key="openingRound.id" :dealer-tile="openingRound.tile" :reveal-until="openingRound.revealUntil || 0" @complete="completeGodOpening()" />
     <div v-if="dissolvedMessage" class="pvp-dissolved-overlay" @keydown.esc="dissolvedMessage = ''" @keydown.tab.prevent>
       <section class="pvp-dissolved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="room-dissolved-title"><h2 id="room-dissolved-title">房间已解散</h2><p>{{ dissolvedMessage }}</p><button type="button" data-dismiss-room @click="dissolvedMessage = ''">返回主页</button></section>
     </div>
     <section v-if="!activeUiMode" :inert="!!dissolvedMessage || undefined" class="home-screen mx-auto flex min-h-[75vh] max-w-5xl flex-col items-center justify-center text-center">
-      <HomeModeSelect :busy="pveStartLoading || exitingGame" @pve="openPveConfig" @pvp="choosePvpMode" @sandbox="chooseSandboxMode" />
+      <button class="text-amber-100" @click="router.push('/home')">← 返回首页</button><button class="text-amber-100" @click="openPveConfig">开始人机练习</button>
       <p v-if="pveStartLoading" class="mt-5 text-sm text-teal-100" role="status">正在连接云端计算引擎并初始化对局…</p>
       <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
       <p v-if="errorMsg" class="mt-5 text-sm text-rose-200">{{ errorMsg }}</p>
-      <PveStartDialog v-if="pveConfigOpen" v-model:enableEV="enableEV" :busy="pveStartLoading" @close="pveConfigOpen = false" @start="choosePveMode" />
+      <PveStartDialog v-if="pveConfigOpen" v-model:enableEV="enableEV" :busy="pveStartLoading" @close="pveConfigOpen = false; router.push('/home')" @start="choosePveMode" />
     </section>
-    <PvpLobby v-else-if="activeUiMode === 'PVP'" :key="activeUiMode" :opening="!!openingRound" :sound-muted="soundMuted" :sound-volume="soundVolume" @fullscreen="enterFullscreenOnMobileStart" @playing="pvpPlaying = $event" @home="closePvpMode" @dissolved="roomDissolved" @opening="showPvpOpening" @opening-end="closePvpOpening" @sound="soundEngine.playAction($event)" @mute="soundMuted = !soundMuted; if (!soundMuted) soundEngine.unlock()" @volume="soundVolume = $event" />
+
     <div v-else :class="gameMode === 'PVE' ? 'pve-session-view' : ''">
     <header class="mb-8 text-center">
       <h1
@@ -1987,8 +1981,7 @@ async function onReset(clearHistory = false) {
     <PvECircleSummary v-if="gameMode === 'PVE' && showRoundSummaryModal" :round-count="roundCount" :scores="cumulativeScores" :seat-wind="seatWind" @back="onReturnToSettlement" @continue="onContinuePveCircle" @exit="onExitPve" />
     </div>
     <footer class="app-version-footer mt-4 text-center text-xs text-teal-200/55" aria-label="当前版本">{{ appVersion }}</footer>
-  </div>
-  </div>
+  </TableShell>
 </template>
 
 <style>

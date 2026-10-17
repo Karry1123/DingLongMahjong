@@ -1,0 +1,5 @@
+export const user = { id:'user-1', account:'player_one', display_name:'Dong', active_match_id:null }
+export const friend = { id:'user-2', account:'player_two', display_name:'Nan', online:true, in_match:false }
+export const match = { id:'match-1', status:'waiting', host_id:user.id, members:[{ user_id:user.id, account:user.account, display_name:user.display_name, seat:1, ready:true, online:true }], invitations:[{ id:'invitation-1', invitee:friend, status:'pending', expires_at:'2099-01-01T00:00:00Z' }], ai_seats:[], start_at:null, server_time:1000 }
+export function mockSession() { const data = new Map(); globalThis.localStorage = { getItem:key => data.get(key) || null, setItem:(key,value) => data.set(key,value), removeItem:key => data.delete(key) }; return data }
+export function mockFetch(responses) { const calls=[]; globalThis.fetch = async (url,options) => { calls.push({url, ...options, body:options.body === undefined ? undefined : JSON.parse(options.body) }); const response=responses.shift(); if (!response) throw new Error('Unexpected request'); return { ok:response.status < 400, status:response.status, json:async () => response.data } }; return calls }

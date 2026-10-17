@@ -1,7 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ROOM_SEATS, countdownNumber, relativeRoomSeats } from '../src/utils/roomSeats.js'
-import { roomSocketUrl, roomHttpUrl } from '../src/services/roomApi.js'
+import { socketUrl } from '../src/services/authenticatedFetch.js'
+const roomSocketUrl = (id,base,origin) => socketUrl(`/matches/${id}/ws`,base,origin)
+const roomHttpUrl = (path,base,origin) => new URL(socketUrl(`/matches${path}`,base,origin).replace(/^ws/,'http')).href
 import { resolveApiBase } from '../src/services/apiBase.js'
 
 test('physical wind positions stay fixed for all viewers', () => {
@@ -26,23 +28,23 @@ test('countdown follows the server deadline even when the local clock differs', 
   assert.equal(countdownNumber(deadline, offset, 11000), 0)
 })
 test('WebSocket endpoint follows relative proxy or remote HTTPS API configuration', () => {
-  assert.equal(roomSocketUrl('123456', '', 'http://localhost:5178'), 'ws://localhost:5178/api/rooms/123456/ws')
-  assert.equal(roomSocketUrl('123456', 'https://backend.example', 'https://frontend.example'), 'wss://backend.example/api/rooms/123456/ws')
+  assert.equal(roomSocketUrl('123456', '', 'http://localhost:5178'), 'ws://localhost:5178/api/matches/123456/ws')
+  assert.equal(roomSocketUrl('123456', 'https://backend.example', 'https://frontend.example'), 'wss://backend.example/api/matches/123456/ws')
 })
 
 test('LAN and hotspot clients share the current HTTP and WebSocket proxy origin', () => {
   for (const origin of ['http://172.20.10.2:5173','http://192.168.1.25:5181','http://10.35.246.104:5173']) {
-    assert.equal(roomHttpUrl('', '', origin),`${origin}/api/rooms`)
-    assert.equal(roomSocketUrl('123456', '', origin),`${origin.replace('http:','ws:')}/api/rooms/123456/ws`)
+    assert.equal(roomHttpUrl('', '', origin),`${origin}/api/matches`)
+    assert.equal(roomSocketUrl('123456', '', origin),`${origin.replace('http:','ws:')}/api/matches/123456/ws`)
   }
-  assert.equal(roomSocketUrl('123456','/','https://192.168.1.25:5173'),'wss://192.168.1.25:5173/api/rooms/123456/ws')
+  assert.equal(roomSocketUrl('123456','/','https://192.168.1.25:5173'),'wss://192.168.1.25:5173/api/matches/123456/ws')
 })
 
 test('explicit loopback backend configurations follow the browser host, while deployed APIs stay explicit', () => {
   const origin='http://172.20.10.2:5173'
   for(const base of ['http://localhost:8000','http://127.0.0.1:8000/','http://[::1]:8000']) {
-    assert.equal(roomHttpUrl('',base,origin),'http://172.20.10.2:8000/api/rooms')
-    assert.equal(roomSocketUrl('123456',base,origin),'ws://172.20.10.2:8000/api/rooms/123456/ws')
+    assert.equal(roomHttpUrl('',base,origin),'http://172.20.10.2:8000/api/matches')
+    assert.equal(roomSocketUrl('123456',base,origin),'ws://172.20.10.2:8000/api/matches/123456/ws')
   }
   assert.equal(resolveApiBase('https://backend.example/',origin),'https://backend.example')
   assert.equal(resolveApiBase('http://127.0.0.1:8000','http://localhost:5173'),'http://127.0.0.1:8000')

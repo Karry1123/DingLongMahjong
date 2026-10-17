@@ -1,30 +1,32 @@
-import asyncio
-from uuid import uuid4
-
 import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from app.main import app
-from app.api import rooms
+from app.api import matches as rooms
+from tests.test_rooms import visitor as make_visitor, invite_match
 from app.core.rooms_manager import RoomsManager
 
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("ROOM_DB_PATH", str(tmp_path / "rooms.sqlite3"))
+    monkeypatch.setenv("AUTH_DB_PATH", str(tmp_path / "auth.sqlite3"))
     monkeypatch.setenv("PVP_RECORD_DB_PATH", str(tmp_path / "pvp_records.sqlite3"))
     monkeypatch.setattr(rooms, "rooms_manager", RoomsManager(countdown_seconds=.15))
     with TestClient(app) as client:
+        global _client
+        _client = client
         yield client
 
 
 def visitor(name):
-    return {"client_id": str(uuid4()), "nickname": name}
+    return make_visitor(_client, name)
 
 
-def create(client, host, capacity=2):
-    return client.post("/api/rooms", json={**host, "capacity": capacity}).json()["room_id"]
+def create(client, host, capacity=2, guest=None):
+    guests = ([guest] if guest else []) + [visitor(f"玩家{i}") for i in range(capacity - 1 - bool(guest))]
+    host["guests"] = guests
+    return invite_match(client, host, guests).json()["match"]["id"]
 
 
 def receive_state(socket):
@@ -34,23 +36,23 @@ def receive_state(socket):
 
 
 def join(socket, person):
-    socket.send_json({"type": "join", **person})
+    socket.send_json({"type": "authenticate", "token": person["token"]})
     return receive_state(socket)
 
 
 def test_seats_ready_ai_cancel_and_shared_private_deal(client):
     host, guest = visitor("东家"), visitor("南家")
-    room_id = create(client, host)
-    with client.websocket_connect(f"/api/rooms/{room_id}/ws") as first:
+    room_id = create(client, host, guest=guest)
+    with client.websocket_connect(f"/api/matches/{room_id}/ws") as first:
         state = join(first, host)
         assert state["room"]["my_seat"] == 0
-        assert len(state["room"]["players"]) == 1
+        assert len(state["room"]["players"]) == 4
         # Four physical seats exist even in a two-human room.
         first.send_json({"type": "seat", "seat": "N"})
         assert receive_state(first)["room"]["my_seat"] == 3
-        with client.websocket_connect(f"/api/rooms/{room_id}/ws") as second:
+        with client.websocket_connect(f"/api/matches/{room_id}/ws") as second:
             state = join(second, guest)
-            assert state["room"]["my_seat"] == 0
+            assert state["room"]["my_seat"] == 1
             assert len(state["room"]["players"]) == 4
             assert [p["nickname"] for p in state["room"]["players"] if p["is_ai"]] == ["AI 1号", "AI 2号"]
             assert all(p["ready"] for p in state["room"]["players"] if p["is_ai"])
@@ -64,6 +66,8 @@ def test_seats_ready_ai_cancel_and_shared_private_deal(client):
             assert receive_state(first)["room"]["status"] == "waiting"
             assert any(p["ready"] and not p["is_ai"] for p in receive_state(second)["room"]["players"])
             second.send_json({"type": "ready", "ready": True})
+            receive_state(first); receive_state(second)
+            assert client.post(f"/api/matches/{room_id}/start", headers=host["headers"]).status_code == 200
             one, two = receive_state(first), receive_state(second)
             assert one["room"]["status"] == two["room"]["status"] == "countdown"
             assert one["room"]["start_at"] == two["room"]["start_at"]
@@ -89,37 +93,45 @@ def test_seats_ready_ai_cancel_and_shared_private_deal(client):
             assert room_id not in rooms.rooms_manager.games
 
 
-def test_disconnect_dissolves_all_and_cancels_countdown(client):
+def test_disconnect_grace_cancels_countdown_then_dissolves(client):
     rooms.rooms_manager.countdown_seconds = 10
+    rooms.rooms_manager.disconnect_seconds = .08
     host, guest = visitor("房主"), visitor("牌友")
-    room_id = create(client, host)
-    with client.websocket_connect(f"/api/rooms/{room_id}/ws") as first:
+    room_id = create(client, host, guest=guest)
+    with client.websocket_connect(f"/api/matches/{room_id}/ws") as first:
         join(first, host)
-        with client.websocket_connect(f"/api/rooms/{room_id}/ws") as second:
+        with client.websocket_connect(f"/api/matches/{room_id}/ws") as second:
             join(second, guest); receive_state(first)
-            first.send_json({"type": "ready", "ready": True}); receive_state(first); receive_state(second)
-            second.send_json({"type": "ready", "ready": True}); receive_state(first); receive_state(second)
+            assert client.post(f"/api/matches/{room_id}/start", headers=host["headers"]).status_code == 200
+            receive_state(first); receive_state(second)
             second.close()
+        disconnected = receive_state(first)["room"]
+        assert disconnected["status"] == "waiting"
+        assert not rooms.rooms_manager.countdowns
+        assert not next(p for p in disconnected["players"] if p.get("user_id") == guest["id"])["connected"]
         notification = first.receive_json()
-        assert notification["type"] == "room_closed" and "玩家 牌友 退出" in notification["message"]
+        assert notification["type"] == "room_closed" and notification["code"] == "disconnect_timeout"
     assert not rooms.rooms_manager.connections and not rooms.rooms_manager.countdowns
-    assert client.post(f"/api/rooms/{room_id}/join", json=visitor("后来者")).status_code == 404
+    assert client.get("/api/me", headers=guest["headers"]).json()["active_match_id"] is None
 
 
 def test_full_and_duplicate_sockets_do_not_dissolve_room(client):
     host, guest = visitor("房主"), visitor("牌友")
-    room_id = create(client, host)
-    with client.websocket_connect(f"/api/rooms/{room_id}/ws") as first:
+    room_id = create(client, host, guest=guest)
+    with client.websocket_connect(f"/api/matches/{room_id}/ws") as first:
         join(first, host)
-        with client.websocket_connect(f"/api/rooms/{room_id}/ws") as second:
+        with client.websocket_connect(f"/api/matches/{room_id}/ws") as second:
             join(second, guest); receive_state(first)
             for person in [host, visitor("多余玩家")]:
-                with client.websocket_connect(f"/api/rooms/{room_id}/ws") as rejected:
-                    rejected.send_json({"type": "join", **person})
-                    assert rejected.receive_json()["type"] == "error"
+                with client.websocket_connect(f"/api/matches/{room_id}/ws") as rejected:
+                    rejected.send_json({"type": "authenticate", "token": person["token"]})
+                    if person is host:
+                        assert rejected.receive_json()["code"] == "already_connected"
+                    with pytest.raises(WebSocketDisconnect):
+                        rejected.receive_json()
             first.send_json({"type": "ping"})
             assert first.receive_json()["type"] == "pong"
-            second.send_json({"type": "leave"})
+            first.send_json({"type": "leave"})
             assert first.receive_json()["type"] == "room_closed"
 
 
@@ -127,65 +139,71 @@ def test_full_and_duplicate_sockets_do_not_dissolve_room(client):
 def test_ai_fill_count_for_capacities(client, capacity):
     host = visitor("房主")
     room_id = create(client, host, capacity)
-    for index in range(capacity - 1):
-        result = client.post(f"/api/rooms/{room_id}/join", json=visitor(f"玩家{index}")).json()
-    assert result["human_count"] == capacity and len(result["players"]) == 4
-    assert sum(p["is_ai"] for p in result["players"]) == 4 - capacity
+    result = client.get(f"/api/matches/{room_id}", headers=host["headers"]).json()["match"]
+    assert len(result["members"]) == capacity
+    assert len(result["members"]) + len(result["ai_seats"]) == 4
+    assert len(result["ai_seats"]) == 4 - capacity
 
 
 def test_illegal_protocol_and_origin(client):
     room_id = create(client, visitor("房主"))
     with pytest.raises(WebSocketDisconnect):
-        with client.websocket_connect(f"/api/rooms/{room_id}/ws", headers={"origin": "https://evil.example"}):
+        with client.websocket_connect(f"/api/matches/{room_id}/ws", headers={"origin": "https://evil.example"}):
             pass
-    with client.websocket_connect(f"/api/rooms/{room_id}/ws") as socket:
+    with client.websocket_connect(f"/api/matches/{room_id}/ws") as socket:
         socket.send_json({"type": "ready", "ready": True})
-        assert socket.receive_json()["type"] == "error"
+        with pytest.raises(WebSocketDisconnect) as error:
+            socket.receive_json()
+        assert error.value.code == 4401
 
 
 @pytest.mark.parametrize("origin", ["http://172.20.10.2:5173", "http://192.168.1.25:5181", "http://10.35.246.104:5173", "http://localhost:5181"])
 def test_lan_create_join_and_websocket_share_origin_policy(client, origin):
     host, guest = visitor("电脑房主"), visitor("手机牌友")
-    created = client.post("/api/rooms", json={**host, "capacity":2}, headers={"Origin":origin})
-    assert created.status_code == 200 and created.headers["access-control-allow-origin"] == origin
-    room_id = created.json()["room_id"]
-    with client.websocket_connect(f"/api/rooms/{room_id}/ws", headers={"Origin":"http://localhost:5173"}) as first:
+    created = invite_match(client, host, [guest], origin=origin)
+    assert created.status_code == 201 and created.headers["access-control-allow-origin"] == origin
+    room_id = created.json()["match"]["id"]
+    with client.websocket_connect(f"/api/matches/{room_id}/ws", headers={"Origin":"http://localhost:5173"}) as first:
         join(first, host)
-        with client.websocket_connect(f"/api/rooms/{room_id}/ws", headers={"Origin":origin}) as second:
+        with client.websocket_connect(f"/api/matches/{room_id}/ws", headers={"Origin":origin}) as second:
             joined = join(second, guest); shared = receive_state(first)
             assert joined["room"]["human_count"] == shared["room"]["human_count"] == 2
-            second.send_json({"type":"leave"})
+            first.send_json({"type":"leave"})
             assert first.receive_json()["type"] == second.receive_json()["type"] == "room_closed"
 
 
 def test_moving_seat_cancels_own_ready_and_countdown(client):
     rooms.rooms_manager.countdown_seconds = 10
     host, guest = visitor("房主"), visitor("牌友")
-    room_id = create(client, host)
-    with client.websocket_connect(f"/api/rooms/{room_id}/ws") as first:
+    room_id = create(client, host, guest=guest)
+    with client.websocket_connect(f"/api/matches/{room_id}/ws") as first:
         join(first, host)
-        with client.websocket_connect(f"/api/rooms/{room_id}/ws") as second:
+        with client.websocket_connect(f"/api/matches/{room_id}/ws") as second:
             join(second, guest); receive_state(first)
             first.send_json({"type": "ready", "ready": True}); receive_state(first); receive_state(second)
             second.send_json({"type": "ready", "ready": True}); receive_state(first); receive_state(second)
+            assert client.post(f"/api/matches/{room_id}/start", headers=host["headers"]).status_code == 200
+            receive_state(first); receive_state(second)
             first.send_json({"type": "seat", "seat": "W"})
             state = receive_state(first)["room"]; receive_state(second)
             assert state["status"] == "waiting" and state["my_seat"] == 2
             assert not next(p for p in state["players"] if p["seat"] == 2)["ready"]
             assert not rooms.rooms_manager.countdowns
-            second.send_json({"type": "leave"}); first.receive_json(); second.receive_json()
+            first.send_json({"type": "leave"}); first.receive_json(); second.receive_json()
 
 
 def test_opening_barrier_and_authoritative_live_discard(client):
     rooms.rooms_manager.opening_seconds = .03
     host, guest = visitor("东家"), visitor("南家")
-    room_id = create(client, host)
-    with client.websocket_connect(f"/api/rooms/{room_id}/ws") as first:
+    room_id = create(client, host, guest=guest)
+    with client.websocket_connect(f"/api/matches/{room_id}/ws") as first:
         join(first, host)
-        with client.websocket_connect(f"/api/rooms/{room_id}/ws") as second:
+        with client.websocket_connect(f"/api/matches/{room_id}/ws") as second:
             join(second, guest); receive_state(first)
             first.send_json({"type": "ready", "ready": True}); receive_state(first); receive_state(second)
             second.send_json({"type": "ready", "ready": True}); receive_state(first); receive_state(second)
+            assert client.post(f"/api/matches/{room_id}/start", headers=host["headers"]).status_code == 200
+            receive_state(first); receive_state(second)
             initial_one, initial_two = receive_state(first), receive_state(second)
             game = initial_one["game"]
             assert game["phase"] == "opening" and not game["actions"]
@@ -228,13 +246,15 @@ def test_server_timer_auto_win_and_all_humans_confirm_exactly_one_next_game(clie
         return match
     monkeypatch.setattr(manager_module, "PvpMatch", winning)
     host, guest = visitor("房主"), visitor("牌友")
-    room_id = create(client, host)
-    with client.websocket_connect(f"/api/rooms/{room_id}/ws") as first:
+    room_id = create(client, host, guest=guest)
+    with client.websocket_connect(f"/api/matches/{room_id}/ws") as first:
         join(first, host)
-        with client.websocket_connect(f"/api/rooms/{room_id}/ws") as second:
+        with client.websocket_connect(f"/api/matches/{room_id}/ws") as second:
             join(second, guest); receive_state(first)
             first.send_json({"type":"ready", "ready":True}); receive_state(first); receive_state(second)
             second.send_json({"type":"ready", "ready":True}); receive_state(first); receive_state(second)
+            assert client.post(f"/api/matches/{room_id}/start", headers=host["headers"]).status_code == 200
+            receive_state(first); receive_state(second)
             game = receive_state(first)["game"]; receive_state(second)
             for socket in [first, second]:
                 socket.send_json({"type":"opening_complete", "game_id":game["game_id"]})
@@ -266,3 +286,9 @@ def test_server_timer_auto_win_and_all_humans_confirm_exactly_one_next_game(clie
             assert "玩家 牌友 退出" in first.receive_json()["message"]
             second.receive_json()
     assert not rooms.rooms_manager.game_tasks and not rooms.rooms_manager.games
+    history = client.get('/api/me/match-history', headers=host['headers']).json()
+    assert history['next_cursor'] is None
+    assert history['items'][0]['match_id'] == room_id
+    assert history['items'][0]['hands'] == 1
+    assert history['items'][0]['members'][0]['score'] == finished['scores']['E']
+    assert len(history['items'][0]['members']) == 2

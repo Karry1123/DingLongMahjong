@@ -2,6 +2,7 @@
 import asyncio
 import time
 import logging
+import json
 
 from fastapi import HTTPException
 
@@ -17,18 +18,21 @@ class RoomsManager:
         self.countdown_seconds = countdown_seconds
         self.opening_seconds = opening_seconds
         self.lock = asyncio.Lock()
+        self.disconnect_seconds = 60
+        self.disconnects = {}
+        self.roster_locked = set()
 
-    async def attach(self, room_id, visitor, socket):
-        from app.api.rooms import connect, join_room, membership_snapshot
-        client_id = str(visitor.client_id)
+    async def attach(self, room_id, user_id, socket):
+        from app.storage.db import connect
+        from app.core.match_repository import membership_snapshot
         async with self.lock:
-            if client_id in self.connections.get(room_id, {}):
+            if user_id in self.connections.get(room_id, {}):
                 raise HTTPException(409, "此玩家已在另一窗口入席")
-            join_room(room_id, visitor)
             with connect() as db:
-                membership_snapshot(db, room_id, client_id)
-                db.execute("UPDATE members SET ready=0 WHERE room_id=? AND client_id=?", (room_id, client_id))
-            self.connections.setdefault(room_id, {})[client_id] = socket
+                membership_snapshot(db, room_id, user_id)
+            task = self.disconnects.pop((room_id, user_id), None)
+            if task: task.cancel()
+            self.connections.setdefault(room_id, {})[user_id] = socket
             await self._broadcast(room_id)
 
     async def _send(self, socket, message):
@@ -39,12 +43,16 @@ class RoomsManager:
             return False
 
     async def _broadcast(self, room_id):
-        from app.api.rooms import connect, membership_snapshot
+        from app.storage.db import connect
+        from app.core.match_repository import membership_snapshot
         game = self.games.get(room_id)
         if game and game.phase == 'finished' and not game.archived:
             from app.core.pvp_records import archive_pvp_game
             try:
                 await asyncio.to_thread(archive_pvp_game, game.archive_record())
+                with connect() as db:
+                    from app.storage.db import utcnow
+                    db.execute('INSERT INTO match_hands(match_id,game_id,hand_number,scores,finished_at) VALUES(?,?,?,?,?) ON CONFLICT(game_id) DO NOTHING', (room_id,game.game_id,game.hand_number,json.dumps(game.room_scores),utcnow()))
                 game.archived = True
                 game.result.pop('archive_error', None)
             except Exception:
@@ -53,8 +61,8 @@ class RoomsManager:
         sockets = list(self.connections.get(room_id, {}).items())
         messages = []
         with connect() as db:
-            for client_id, socket in sockets:
-                room = membership_snapshot(db, room_id, client_id)
+            for user_id, socket in sockets:
+                room = membership_snapshot(db, room_id, user_id)
                 room["players"] = [{**p, "connected": p["is_ai"] or self._seat_connected(db, room_id, p["seat"])} for p in room["players"]]
                 message = {"type": "room_state", "room": room, "server_time": time.time() * 1000}
                 if room["status"] == "playing":
@@ -64,28 +72,32 @@ class RoomsManager:
                 messages.append((socket, message))
         results = await asyncio.gather(*(self._send(socket, message) for socket, message in messages))
         if not all(results):
-            failed = next(client_id for (client_id, _), ok in zip(sockets, results) if not ok)
-            await self._dissolve_for_player(room_id, failed, "退出")
+            for (user_id, socket), ok in zip(sockets, results):
+                if not ok:
+                    self._disconnect(room_id, user_id, socket)
+            if self.connections.get(room_id):
+                await self._broadcast(room_id)
 
     def _seat_connected(self, db, room_id, seat):
-        member = db.execute("SELECT client_id FROM members WHERE room_id=? AND seat=?", (room_id, seat)).fetchone()
-        return bool(member and member["client_id"] in self.connections.get(room_id, {}))
+        member = db.execute("SELECT user_id FROM match_members WHERE match_id=? AND seat=?", (room_id, seat + 1)).fetchone()
+        return bool(member and member["user_id"] in self.connections.get(room_id, {}))
 
-    async def handle(self, room_id, client_id, socket, message):
-        from app.api.rooms import connect, membership_snapshot
+    async def handle(self, room_id, user_id, socket, message):
+        from app.storage.db import connect
+        from app.core.match_repository import membership_snapshot
         async with self.lock:
-            if self.connections.get(room_id, {}).get(client_id) is not socket:
+            if self.connections.get(room_id, {}).get(user_id) is not socket:
                 raise HTTPException(403, "连接已失效")
             kind = message.get("type")
             if kind == "ping":
                 await self._send(socket, {"type": "pong", "server_time": time.time() * 1000})
                 return
             if kind == "leave":
-                await self._dissolve_for_player(room_id, client_id, "退出")
+                await self._leave(room_id, user_id)
                 return
             if kind in ("game_action", "opening_complete", "next_hand"):
                 with connect() as db:
-                    room = membership_snapshot(db, room_id, client_id)
+                    room = membership_snapshot(db, room_id, user_id)
                 game = self.games.get(room_id)
                 if not game:
                     raise HTTPException(409, "牌局尚未开始")
@@ -112,8 +124,7 @@ class RoomsManager:
                 self._schedule_bots(room_id)
                 return
             with connect() as db:
-                db.execute("BEGIN IMMEDIATE")
-                room = membership_snapshot(db, room_id, client_id)
+                room = membership_snapshot(db, room_id, user_id)
                 if room["status"] == "playing":
                     raise HTTPException(409, "对局已开始，不能换座或修改准备状态")
                 if kind == "seat":
@@ -121,28 +132,28 @@ class RoomsManager:
                     if wind not in ("E", "S", "W", "N"):
                         raise HTTPException(422, "请选择有效风位")
                     seat = "ESWN".index(wind)
-                    occupant = db.execute("SELECT client_id FROM members WHERE room_id=? AND seat=?", (room_id, seat)).fetchone()
-                    if occupant and occupant["client_id"] != client_id:
+                    occupant = db.execute("SELECT user_id FROM match_members WHERE match_id=? AND seat=?", (room_id, seat + 1)).fetchone()
+                    if occupant and occupant["user_id"] != user_id:
                         raise HTTPException(409, "此风位已有玩家，请选择空位")
                     if seat == room["my_seat"]:
                         return
-                    db.execute("UPDATE members SET seat=?, ready=0 WHERE room_id=? AND client_id=?", (seat, room_id, client_id))
+                    db.execute("UPDATE match_members SET seat=?, ready=0 WHERE match_id=? AND user_id=?", (seat + 1, room_id, user_id))
                 elif kind == "ready":
                     if not isinstance(message.get("ready"), bool):
                         raise HTTPException(422, "准备状态必须为布尔值")
-                    db.execute("UPDATE members SET ready=? WHERE room_id=? AND client_id=?", (int(message["ready"]), room_id, client_id))
+                    db.execute("UPDATE match_members SET ready=? WHERE match_id=? AND user_id=?", (int(message["ready"]), room_id, user_id))
                 else:
                     raise HTTPException(422, "暂不支持此房间操作")
-                updated = membership_snapshot(db, room_id, client_id)
+                updated = membership_snapshot(db, room_id, user_id)
                 humans = [p for p in updated["players"] if not p["is_ai"]]
                 all_ready = len(humans) == updated["capacity"] and all(p["ready"] for p in humans) and len(self.connections.get(room_id, {})) == len(humans)
-                if all_ready and updated["status"] == "waiting":
+                if all_ready and updated["status"] == "waiting" and room_id in self.roster_locked:
                     deadline = time.time() + self.countdown_seconds
-                    db.execute("UPDATE rooms SET status='countdown', start_at=? WHERE id=?", (deadline * 1000, room_id))
+                    db.execute("UPDATE matches SET status='countdown', start_at=? WHERE id=?", (deadline * 1000, room_id))
                     self.countdowns[room_id] = asyncio.create_task(self._start_after(room_id, deadline))
                 elif not all_ready and updated["status"] == "countdown":
                     self._cancel_countdown(room_id)
-                    db.execute("UPDATE rooms SET status='waiting', start_at=NULL WHERE id=?", (room_id,))
+                    db.execute("UPDATE matches SET status='waiting', start_at=NULL WHERE id=?", (room_id,))
             await self._broadcast(room_id)
 
     def _cancel_countdown(self, room_id):
@@ -151,18 +162,18 @@ class RoomsManager:
             task.cancel()
 
     async def _start_after(self, room_id, deadline):
-        from app.api.rooms import connect, snapshot
+        from app.storage.db import connect
+        from app.core.match_repository import snapshot
         try:
             await asyncio.sleep(max(0, deadline - time.time()))
             async with self.lock:
                 with connect() as db:
-                    db.execute("BEGIN IMMEDIATE")
                     room = snapshot(db, room_id)
                     humans = [p for p in room["players"] if not p["is_ai"]]
                     if room["status"] != "countdown" or len(humans) != room["capacity"] or not all(p["ready"] for p in humans):
                         return
                     self.games[room_id] = PvpMatch(room["players"], opening_seconds=self.opening_seconds)
-                    db.execute("UPDATE rooms SET status='playing' WHERE id=?", (room_id,))
+                    db.execute("UPDATE matches SET status='playing' WHERE id=?", (room_id,))
                 await self._broadcast(room_id)
                 if room_id in self.games:
                     self.game_tasks[room_id] = asyncio.create_task(self._run_game(room_id, opening=True))
@@ -218,25 +229,34 @@ class RoomsManager:
             if self.game_tasks.get(room_id) is asyncio.current_task():
                 self.game_tasks.pop(room_id, None)
 
-    async def _dissolve_for_player(self, room_id, client_id, action):
-        from app.api.rooms import connect, membership_snapshot
+    async def _dissolve_for_player(self, room_id, user_id, action):
+        from app.storage.db import connect
+        from app.core.match_repository import membership_snapshot
         with connect() as db:
-            room = membership_snapshot(db, room_id, client_id)
+            room = membership_snapshot(db, room_id, user_id)
         name = next(p["nickname"] for p in room["players"] if p["seat"] == room["my_seat"])
         await self._dissolve(room_id, f"玩家 {name} {action}，房间已解散")
 
     async def _dissolve(self, room_id, reason):
-        from app.api.rooms import connect
+        from app.storage.db import connect
         self._cancel_countdown(room_id)
         game_task = self.game_tasks.pop(room_id, None)
         if game_task and game_task is not asyncio.current_task():
             game_task.cancel()
         self.games.pop(room_id, None)
+        self.roster_locked.discard(room_id)
+        for key, task in list(self.disconnects.items()):
+            if key[0] == room_id:
+                self.disconnects.pop(key, None)
+                if task is not asyncio.current_task(): task.cancel()
         with connect() as db:
-            db.execute("UPDATE rooms SET closed=1, status='closed', start_at=NULL WHERE id=?", (room_id,))
-            db.execute("DELETE FROM members WHERE room_id=?", (room_id,))
+            from app.storage.db import utcnow
+            row = db.execute('SELECT status FROM matches WHERE id=?', (room_id,)).fetchone()
+            status = "aborted" if reason == "disconnect_timeout" else ("finished" if row and row['status'] == 'playing' else "cancelled")
+            db.execute("UPDATE matches SET status=?, start_at=NULL, updated_at=? WHERE id=?", (status, utcnow(), room_id))
+            db.execute("UPDATE invitations SET status='cancelled', responded_at=? WHERE match_id=? AND status='pending'", (utcnow(), room_id))
         sockets = list(self.connections.pop(room_id, {}).values())
-        await asyncio.gather(*(self._send(socket, {"type": "room_closed", "message": reason}) for socket in sockets))
+        await asyncio.gather(*(self._send(socket, {"type": "room_closed", "message": reason, "reason": reason, "code": reason}) for socket in sockets))
         async def close(socket):
             try:
                 await asyncio.wait_for(socket.close(code=1000), timeout=2)
@@ -244,12 +264,85 @@ class RoomsManager:
                 pass
         await asyncio.gather(*(close(socket) for socket in sockets))
 
-    async def dissolve(self, room_id, client_id, action):
+    async def dissolve(self, room_id, user_id, action):
         async with self.lock:
-            await self._dissolve_for_player(room_id, client_id, action)
+            await self._dissolve_for_player(room_id, user_id, action)
 
-    async def detach(self, room_id, client_id, socket):
+    async def detach(self, room_id, user_id, socket):
         async with self.lock:
             # A rejected duplicate connection must never evict the original player.
-            if self.connections.get(room_id, {}).get(client_id) is socket:
-                await self._dissolve_for_player(room_id, client_id, "退出")
+            if self.connections.get(room_id, {}).get(user_id) is socket:
+                self._disconnect(room_id, user_id, socket)
+                await self._broadcast(room_id)
+
+    def _disconnect(self, room_id, user_id, socket):
+        if self.connections.get(room_id, {}).get(user_id) is not socket:
+            return
+        self.connections[room_id].pop(user_id, None)
+        from app.storage.db import connect
+        with connect() as db:
+            db.execute("UPDATE matches SET status='waiting',start_at=NULL WHERE id=? AND status='countdown'", (room_id,))
+        self._cancel_countdown(room_id)
+        key = (room_id, user_id)
+        if key not in self.disconnects:
+            self.disconnects[key] = asyncio.create_task(self._disconnect_timeout(room_id,user_id))
+
+    async def _disconnect_timeout(self, room_id, user_id):
+        try:
+            await asyncio.sleep(self.disconnect_seconds)
+            async with self.lock:
+                if user_id not in self.connections.get(room_id, {}):
+                    await self._dissolve(room_id, 'disconnect_timeout')
+        except asyncio.CancelledError:
+            pass
+        finally:
+            key = (room_id, user_id)
+            if self.disconnects.get(key) is asyncio.current_task():
+                self.disconnects.pop(key, None)
+
+    async def start(self, room_id, user_id):
+        from app.storage.db import connect, utcnow
+        from app.core.match_repository import member_match, snapshot
+        from app.auth import fail
+        async with self.lock:
+            with connect() as db:
+                row=member_match(db,room_id,user_id)
+                if row['host_id']!=user_id: fail(403,'host_required','仅房主可以开局')
+                if row['status'] not in ('inviting','waiting'): fail(409,'roster_locked','对局已经开始')
+                room=snapshot(db,room_id)
+                if room['human_count']<2: fail(409,'not_enough_players','至少需要两位真人')
+                if not all(p['ready'] for p in room['players']): fail(409,'not_ready','请等待所有玩家准备')
+                deadline=time.time()+self.countdown_seconds
+                db.execute("UPDATE invitations SET status='cancelled',responded_at=? WHERE match_id=? AND status='pending'",(utcnow(),room_id))
+                db.execute("UPDATE matches SET status='countdown',start_at=?,updated_at=? WHERE id=?",(deadline*1000,utcnow(),room_id))
+            self.roster_locked.add(room_id)
+            self._cancel_countdown(room_id)
+            self.countdowns[room_id]=asyncio.create_task(self._start_after(room_id,deadline))
+
+    async def _leave(self, room_id, user_id):
+        from app.storage.db import connect, utcnow
+        from app.core.match_repository import member_match, ACTIVE
+        from app.auth import fail
+        with connect() as db:
+            row=member_match(db,room_id,user_id)
+            if row['status'] not in ACTIVE:
+                fail(409, 'match_ended', '对局已结束')
+            dissolve=row['host_id']==user_id or row['status']=='playing'
+            if not dissolve:
+                db.execute('DELETE FROM match_members WHERE match_id=? AND user_id=?',(room_id,user_id))
+                db.execute("UPDATE matches SET status='waiting',start_at=NULL,updated_at=? WHERE id=?",(utcnow(),room_id))
+        if dissolve:
+            await self._dissolve_for_player(room_id,user_id,'退出')
+        else:
+            self._cancel_countdown(room_id)
+            task=self.disconnects.pop((room_id,user_id),None)
+            if task: task.cancel()
+            socket=self.connections.get(room_id,{}).pop(user_id,None)
+            if socket:
+                await self._send(socket,{'type':'room_closed','message':'你已离开对局'})
+                await socket.close(code=1000)
+            await self._broadcast(room_id)
+
+    async def leave(self, room_id, user_id):
+        async with self.lock:
+            await self._leave(room_id,user_id)

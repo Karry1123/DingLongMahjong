@@ -1,11 +1,10 @@
 <script setup>
 import { computed } from 'vue'
 import { relativeOpponents } from '../constants/tiles.js'
-import { useOrientation } from '../composables/useOrientation.js'
+import TableShell from '../layouts/TableShell.vue'
 
 const props = defineProps({ roundCount: Number, scores: { type: Object, default: () => ({}) }, seatWind: { type: String, default: 'E' } })
 const emit = defineEmits(['back', 'continue', 'exit'])
-const { stageTransform } = useOrientation(1080, 560, 16, 1)
 const rows = computed(() => [
   { role: '自家', seat: props.seatWind },
   ...relativeOpponents(props.seatWind).map(({ role, seat_wind }) => ({ role, seat: seat_wind })),
@@ -15,7 +14,7 @@ const signedScore = (score) => `${score > 0 ? '+' : ''}${score}`
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="body"><TableShell overlay v-slot="{ stageTransform }">
     <div class="circle-backdrop" role="dialog" aria-modal="true" aria-label="本圈对局总结">
       <section class="circle-panel" :style="{ transform: stageTransform }">
         <div class="circle-intro">
@@ -40,7 +39,7 @@ const signedScore = (score) => `${score > 0 ? '+' : ''}${score}`
         </div>
       </section>
     </div>
-  </Teleport>
+  </TableShell></Teleport>
 </template>
 
 <style scoped>

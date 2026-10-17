@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { tileLabel } from '../constants/tiles.js'
 import { windLabel } from '../utils/seatLayout.js'
 import { getGameRecord, listGameRecords } from '../services/api.js'
-import { useOrientation } from '../composables/useOrientation.js'
+import TableShell from '../layouts/TableShell.vue'
 
 const props = defineProps({ currentGameId: { type: String, default: '' } })
 const emit = defineEmits(['close'])
@@ -15,7 +15,6 @@ const activeRecord = ref(null)
 const activeIndex = ref(0)
 const loadingRecord = ref('')
 const controller = new AbortController()
-const { stageTransform } = useOrientation(1080, 560, 16, 1)
 
 const orderedRecords = computed(() => {
   const rows = [...records.value]
@@ -103,7 +102,7 @@ onUnmounted(() => { controller.abort(); window.removeEventListener('keydown', on
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="body"><TableShell overlay v-slot="{ stageTransform }">
     <div class="history-backdrop" @click.self="emit('close')">
       <section class="history-modal" :style="{ transform: stageTransform }" role="dialog" aria-modal="true" aria-label="复盘历史">
         <header class="history-header">
@@ -164,7 +163,7 @@ onUnmounted(() => { controller.abort(); window.removeEventListener('keydown', on
         </div>
       </section>
     </div>
-  </Teleport>
+  </TableShell></Teleport>
 </template>
 
 <style scoped>

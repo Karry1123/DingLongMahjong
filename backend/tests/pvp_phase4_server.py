@@ -76,7 +76,7 @@ def fixture_match(players, **kwargs):
 
 if __name__ == "__main__":
     with TemporaryDirectory(prefix="dinglong-phase4-") as folder:
-        os.environ["ROOM_DB_PATH"] = str(Path(folder) / "rooms.sqlite3")
+        os.environ["AUTH_DB_PATH"] = str(Path(folder) / "auth.sqlite3")
         os.environ["PVP_RECORD_DB_PATH"] = str(Path(folder) / "pvp_records.sqlite3")
         os.environ["ALLOWED_ORIGINS"] = "http://127.0.0.1:5182"
         import app.core.rooms_manager as manager

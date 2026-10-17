@@ -1,84 +1,123 @@
+"""Legacy room behavior migrated to authenticated friend invitations."""
 from concurrent.futures import ThreadPoolExecutor
-from uuid import uuid4
+from datetime import datetime, timedelta, timezone
+from hashlib import sha256
+import os
+import sqlite3
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.api import rooms
+from app.api import matches
 from app.core.rooms_manager import RoomsManager
 
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("ROOM_DB_PATH", str(tmp_path / "rooms.sqlite3"))
-    monkeypatch.setattr(rooms, "rooms_manager", RoomsManager())
-    return TestClient(app)
+    monkeypatch.setenv("AUTH_DB_PATH", str(tmp_path / "auth.sqlite3"))
+    monkeypatch.setattr(matches, "rooms_manager", RoomsManager())
+    with TestClient(app) as client:
+        yield client
 
 
-def visitor(name="牌友"):
-    return {"client_id": str(uuid4()), "nickname": name}
+def visitor(client, name="牌友"):
+    user_id, token = str(uuid4()), str(uuid4())
+    account = "u" + uuid4().hex[:15]
+    now = datetime.now(timezone.utc)
+    with sqlite3.connect(os.environ["AUTH_DB_PATH"]) as db:
+        db.execute("INSERT INTO users(id,account,account_normalized,display_name,password_hash,created_at) VALUES(?,?,?,?,?,?)",
+                   (user_id, account, account, name, "fixture", now.isoformat()))
+        db.execute("INSERT INTO auth_tokens(token_digest,user_id,client_type,expires_at,created_at) VALUES(?,?,?,?,?)",
+                   (sha256(token.encode()).hexdigest(), user_id, "web", (now + timedelta(days=1)).isoformat(), now.isoformat()))
+    return {"id": user_id, "token": token, "nickname": name, "headers": {"Authorization": f"Bearer {token}"}}
+
+
+def befriend(first, second):
+    now = datetime.now(timezone.utc).isoformat()
+    low, high = sorted([first["id"], second["id"]])
+    with sqlite3.connect(os.environ["AUTH_DB_PATH"]) as db:
+        db.execute("INSERT INTO friendships(id,user_low,user_high,requested_by,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+                   (str(uuid4()), low, high, first["id"], "accepted", now, now))
+
+
+def invite_match(client, host, guests, *, accept=True, origin=None):
+    for guest in guests:
+        befriend(host, guest)
+    headers = {**host["headers"], **({"Origin": origin} if origin else {})}
+    response = client.post("/api/matches", json={"invitee_ids": [p["id"] for p in guests]}, headers=headers)
+    assert response.status_code == 201, response.text
+    match = response.json()["match"]
+    if accept:
+        for guest in guests:
+            invitation = next(i for i in match["invitations"] if i["invitee"]["id"] == guest["id"])
+            joined = client.post(f'/api/invitations/{invitation["id"]}/accept', headers=guest["headers"])
+            assert joined.status_code == 200, joined.text
+    return response
 
 
 def test_room_flow_membership_capacity_and_exit_dissolves(client):
-    host, guest = visitor("房主"), visitor("来客")
-    room = client.post("/api/rooms", json={**host, "capacity": 2}).json()
-    room_id = room["room_id"]
-    assert len(room_id) == 6 and room_id.isdigit()
-    assert room["my_seat"] == 0 and room["players"][0]["is_host"]
-    assert "client_id" not in room["players"][0]
-    path = f"/api/rooms/{room_id}"
-    assert client.post(path + "/join", json=guest).status_code == 200
-    assert client.post(path + "/join", json=guest).json()["my_seat"] == 1
-    assert client.post(path + "/join", json={**host, "nickname": guest["nickname"]}).status_code == 409
-    assert client.post(path + "/join", json=visitor("第三人")).status_code == 409
-    state = client.post(path + "/state", json=host).json()
-    assert state["human_count"] == 2
-    assert len(state["players"]) == 4
-    assert sum(p["is_ai"] for p in state["players"]) == 2
-    assert client.post(path + "/state", json=visitor()).status_code == 403
-    assert client.post(path + "/leave", json=host).status_code == 200
-    assert client.post(path + "/state", json=guest).status_code == 404
-    assert client.post(path + "/leave", json=guest).status_code == 404
-    assert client.post(path + "/join", json=host).status_code == 404
+    host, guest = visitor(client, "房主"), visitor(client, "来客")
+    match = invite_match(client, host, [guest]).json()["match"]
+    UUID(match["id"])
+    path = f'/api/matches/{match["id"]}'
+    state = client.get(path, headers=host["headers"]).json()["match"]
+    assert state["host_id"] == host["id"] and state["members"][0]["seat"] == 1
+    assert len(state["members"]) == 2 and len(state["ai_seats"]) == 2
+    assert all("client_id" not in p for p in state["members"])
+    assert client.get(path, headers=visitor(client)["headers"]).status_code == 404
+    assert client.post(path + "/leave", headers=host["headers"]).status_code == 204
+    assert client.get("/api/me", headers=guest["headers"]).json()["active_match_id"] is None
+    assert client.post(path + "/start", headers=host["headers"]).status_code in (404, 409)
 
 
 @pytest.mark.parametrize("name", ["", "   ", "AI 1号", "aI2号", "来客A I-3号", "ＡＩ４号", "ai四号", "\u200b", "龙" * 7])
 def test_server_rechecks_nickname(client, name):
-    assert client.post("/api/rooms", json={**visitor(name), "capacity": 4}).status_code == 422
+    person = visitor(client)
+    assert client.patch("/api/me", json={"display_name": name}, headers=person["headers"]).status_code == 422
 
 
 def test_nickname_six_character_boundary_for_create_and_join(client):
-    host = visitor("顶龙真人牌友")
-    response = client.post("/api/rooms", json={**host, "capacity": 2})
-    assert response.status_code == 200
-    path = f'/api/rooms/{response.json()["room_id"]}/join'
-    assert client.post(path, json=visitor("七字昵称不允许")).status_code == 422
-    assert client.post(path, json=visitor("六字真人牌友")).status_code == 200
+    person = visitor(client)
+    assert client.patch("/api/me", json={"display_name": "顶龙真人牌友"}, headers=person["headers"]).status_code == 200
+    assert client.patch("/api/me", json={"display_name": "七字昵称不允许"}, headers=person["headers"]).status_code == 422
+    assert client.patch("/api/me", json={"display_name": "六字真人牌友"}, headers=person["headers"]).status_code == 200
 
 
-def test_unique_numbers_retry_collision_and_persist(client, monkeypatch):
-    values = iter([123456, 123456, 234567])
-    monkeypatch.setattr(rooms.secrets, "randbelow", lambda _: next(values))
-    first = client.post("/api/rooms", json={**visitor("甲"), "capacity": 3}).json()
-    second = client.post("/api/rooms", json={**visitor("乙"), "capacity": 4}).json()
-    assert first["room_id"] == "223456"
-    assert second["room_id"] == "334567"
-    assert TestClient(app).post(f'/api/rooms/{first["room_id"]}/join', json=visitor("丙")).status_code == 200
+def test_unique_match_ids_and_persist(client):
+    first_host, second_host = visitor(client, "甲"), visitor(client, "丙")
+    first = invite_match(client, first_host, [visitor(client, "乙")]).json()["match"]
+    second = invite_match(client, second_host, [visitor(client, "丁")]).json()["match"]
+    assert first["id"] != second["id"]
+    UUID(first["id"]); UUID(second["id"])
+    # Identity and membership persist across HTTP client instances.
+    persisted = TestClient(app).get(f'/api/matches/{first["id"]}', headers=first_host["headers"])
+    assert persisted.status_code == 200
+    assert persisted.json()["match"]["id"] == first["id"]
+    assert len(persisted.json()["match"]["members"]) == 2
 
 
-def test_concurrent_join_does_not_overfill(client):
-    room = client.post("/api/rooms", json={**visitor(), "capacity": 2}).json()
-    def join(index):
-        return client.post(f'/api/rooms/{room["room_id"]}/join', json=visitor(f"玩家{index}")).status_code
+def test_concurrent_accept_does_not_duplicate_or_overfill(client):
+    host, guest = visitor(client), visitor(client)
+    match = invite_match(client, host, [guest], accept=False).json()["match"]
+    invitation = match["invitations"][0]["id"]
+    def accept(_):
+        return client.post(f"/api/invitations/{invitation}/accept", headers=guest["headers"]).status_code
     with ThreadPoolExecutor(max_workers=4) as executor:
-        results = list(executor.map(join, range(4)))
+        results = list(executor.map(accept, range(4)))
     assert sorted(results) == [200, 409, 409, 409]
+    state = client.get(f'/api/matches/{match["id"]}', headers=host["headers"]).json()["match"]
+    assert len(state["members"]) == 2
+    assert len({p["seat"] for p in state["members"]}) == 2
 
 
-def test_room_and_capacity_errors(client):
-    assert client.post("/api/rooms/000000/join", json=visitor()).status_code == 404
-    for capacity in [1, 5]:
-        assert client.post("/api/rooms", json={**visitor(), "capacity": capacity}).status_code == 422
-    host = visitor("相同昵称")
-    room = client.post("/api/rooms", json={**host, "capacity": 4}).json()
-    assert client.post(f'/api/rooms/{room["room_id"]}/join', json=visitor("相同昵称")).status_code == 409
+def test_removed_room_numbers_and_invitation_capacity_errors(client):
+    assert client.post("/api/rooms", json={}).status_code == 410
+    response = client.get("/api/rooms/000000")
+    assert response.status_code == 410 and response.json()["code"] == "rooms_removed"
+    host = visitor(client, "相同昵称")
+    for invitees in ([], [str(uuid4()) for _ in range(4)]):
+        assert client.post("/api/matches", json={"invitee_ids": invitees}, headers=host["headers"]).status_code == 422
+    # Nicknames are presentation only; authenticated users may share them.
+    same_name = visitor(client, "相同昵称")
+    assert invite_match(client, host, [same_name]).status_code == 201
