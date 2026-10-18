@@ -41,7 +41,7 @@ export function usePvEClocks(session, options = {}) {
   watch([desired,s.gameRoundId],sync,{deep:true,immediate:true,flush:'sync'})
   async function tick(){
     const now=Date.now();state.value=store.snapshot(now)
-    if(executing||s.loading.value)return
+    if(s.gameMode.value!=='PVE'||s.gameState.value!=='PLAYING'||s.pveOpening?.value||executing||s.loading.value)return
     const wind=store.expired(now)[0],clock=store.clocks[wind]
     if(!clock||expiredToken===clock.token)return
     expiredToken=clock.token;executing=true
@@ -61,7 +61,13 @@ export function usePvEClocks(session, options = {}) {
       }
     }catch(e){error.value=e.message||String(e)}finally{executing=false;sync()}
   }
-  onMounted(()=>{interval=setInterval(tick,100)})
+  let mounted=false
+  function syncInterval(){
+    clearInterval(interval)
+    if(mounted&&s.gameMode.value==='PVE'&&s.gameState.value==='PLAYING'&&!s.pveOpening?.value)interval=setInterval(tick,100)
+  }
+  watch([s.gameMode,s.gameState,()=>s.pveOpening?.value],syncInterval,{flush:'sync'})
+  onMounted(()=>{mounted=true;syncInterval()})
   onUnmounted(()=>{clearInterval(interval);store.sync({},Date.now())})
   return {clocks:computed(()=>state.value.clocks),timeBanks:computed(()=>state.value.banks),error}
 }

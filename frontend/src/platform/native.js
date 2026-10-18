@@ -2,8 +2,8 @@ import { TOKEN_KEY } from './web.js'
 
 // Inject plugins so tests require neither a device nor SDK packages.
 export function createNativePlatform({ Preferences, ScreenOrientation, App, Haptics, KeepAwake, StatusBar }) {
-  let token = '', initialized, writes = Promise.resolve(), owners = 0, orientationOwners = 0
-  let wakeOperations = Promise.resolve(), orientationOperations = Promise.resolve()
+  let token = '', initialized, writes = Promise.resolve(), owners = 0, orientationOwners = 0, statusBarOwners = 0
+  let wakeOperations = Promise.resolve(), orientationOperations = Promise.resolve(), statusBarOperations = Promise.resolve()
   const optional = async operation => { try { await operation(); return true } catch { return false } }
   const listen = (event, callback) => {
     let disposed = false
@@ -40,7 +40,22 @@ export function createNativePlatform({ Preferences, ScreenOrientation, App, Hapt
       acquire() { if (++owners === 1) wakeOperations = wakeOperations.then(() => optional(() => KeepAwake.keepAwake())); return wakeOperations },
       release() { if (owners && --owners === 0) wakeOperations = wakeOperations.then(() => optional(() => KeepAwake.allowSleep())); return wakeOperations },
     },
-    statusBar: { async dark() {
+    statusBar: {
+      enterTable() {
+        if (++statusBarOwners === 1) statusBarOperations = statusBarOperations.then(async () => {
+          await optional(() => StatusBar.setOverlaysWebView({ overlay: true }))
+          await optional(() => StatusBar.hide())
+        })
+        return statusBarOperations
+      },
+      leaveTable() {
+        if (statusBarOwners && --statusBarOwners === 0) statusBarOperations = statusBarOperations.then(async () => {
+          await optional(() => StatusBar.setOverlaysWebView({ overlay: false }))
+          await optional(() => StatusBar.show())
+        })
+        return statusBarOperations
+      },
+      async dark() {
       await optional(() => StatusBar.setStyle({ style: 'DARK' }))
       await optional(() => StatusBar.setBackgroundColor({ color: '#06221D' }))
     } },

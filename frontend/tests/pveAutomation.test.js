@@ -380,3 +380,28 @@ test('a recommendation from the previous round cannot discard in the new round',
     assert.ok(s.roundState.opponents.every((o) => o.discards.length === 0))
   } finally { driver.stop() }
 })
+
+
+test('leaving PvE aborts AI and ignores a late recommendation before a fresh game', async () => {
+  const s = await fixture()
+  let resolve, signal
+  const driver = usePvEAutomation(s, { delayMs: () => 0, recommend: (_, options) => {
+    signal = options.signal
+    return new Promise(r => { resolve = r })
+  } })
+  try {
+    await s.discardTile('N', s.roundState.handTiles.indexOf('N'))
+    await waitFor(() => !!resolve)
+    const tile = s.roundState.opponents.find(o => o.seat_wind === 'S').hand_tiles[0]
+    s.exitPveGame()
+    assert.ok(signal.aborted)
+    resolve({ best_tile: tile })
+    await nextTick(); await new Promise(r => setImmediate(r))
+    assert.equal(s.gameState.value, 'SETUP')
+    assert.deepEqual(s.roundState.handTiles, [])
+    assert.equal(driver.announcement.value, '')
+    await s.startPveGame()
+    assert.equal(s.currentTurnSeat.value, 'E')
+    assert.ok(s.roundState.opponents.every(o => o.discards.length === 0))
+  } finally { driver.stop() }
+})

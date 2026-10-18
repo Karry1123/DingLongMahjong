@@ -196,7 +196,7 @@ const entryLayout = computed(() => route.path === '/pve' && gameMode.value !== '
 const legacyTableRoute = computed(() => ['/pve','/sandbox'].includes(route.path))
 function choosePvpMode() { void router.push('/invite') }
 function closePvpMode() { void router.push('/home') }
-watch(() => route.path, path => { activeUiMode.value = path === '/sandbox' ? 'SANDBOX' : path === '/pve' && gameMode.value === 'PVE' ? 'PVE' : ''; if (path === '/pve' && gameMode.value !== 'PVE') pveConfigOpen.value = true })
+watch(() => route.path, (path, previous) => { if (previous === '/pve' && path !== '/pve') void onExitPve(false); activeUiMode.value = path === '/sandbox' ? 'SANDBOX' : path === '/pve' && gameMode.value === 'PVE' ? 'PVE' : ''; if (path === '/pve' && gameMode.value !== 'PVE') pveConfigOpen.value = true })
 onMounted(() => { if (route.path === '/sandbox') activeUiMode.value = 'SANDBOX'; if (route.path === '/pve' && gameMode.value !== 'PVE') pveConfigOpen.value = true })
 const sandboxLeaving = ref(false)
 const stageActive = computed(() => gameMode.value === 'PVE' && activeUiMode.value === 'PVE' || activeUiMode.value === 'PVP' && pvpPlaying.value)
@@ -1289,19 +1289,19 @@ async function onContinuePveCircle() {
   } catch (e) { analyzeError.value = e?.message || String(e) }
 }
 
-async function onExitPve() {
+async function onExitPve(navigate = true) {
   if (exitingGame.value) return
   exitingGame.value = true
   activeUiMode.value = ''
-  void router.push('/home')
+  // End the session before any navigation/fullscreen promise can delay cleanup.
+  exitPveGame()
+  completeGodOpening(false)
+  soundEngine.stop()
   localRecommend.value = null
   recommendFetchKey.value = ''
-  abortCurrentRecommend()
   try {
-    // Remove the game canvas before resetting its perspective or fullscreen size.
-    await nextTick()
+    if (navigate) await router.replace('/home')
     if (isFullscreen.value) await exitFullscreen()
-    await exitPveGame()
   } catch (e) { analyzeError.value = e?.message || String(e) }
   finally { exitingGame.value = false }
 }
@@ -1500,7 +1500,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
           </div>
           <div class="flex shrink-0 items-center gap-2">
             <button type="button" class="rounded-full border border-amber-300/40 px-3 py-1 text-amber-100 hover:border-amber-300 hover:bg-amber-300/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45" :disabled="!fullscreenAvailable" :title="fullscreenAvailable ? '' : '当前浏览器不支持网页全屏'" :aria-pressed="isFullscreen" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '⛶ 全屏' }}</button>
-            <button type="button" class="rounded-lg border border-slate-500/50 px-2 py-1 text-slate-200" @click="returnHome">返回主页</button>
+            <button type="button" class="rounded-lg border border-slate-500/50 px-2 py-1 text-slate-200" @click="returnHome">离开本局</button>
           </div>
           <span v-if="fullscreenError" class="sr-only" role="alert">{{ fullscreenError }}</span>
         </div>
@@ -1978,7 +1978,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
       @next-round="onStartNextRound"
       @review-history="() => {}"
     />
-    <PvECircleSummary v-if="gameMode === 'PVE' && showRoundSummaryModal" :round-count="roundCount" :scores="cumulativeScores" :seat-wind="seatWind" @back="onReturnToSettlement" @continue="onContinuePveCircle" @exit="onExitPve" />
+    <PvECircleSummary v-if="gameMode === 'PVE' && showRoundSummaryModal" :round-count="roundCount" :scores="cumulativeScores" :seat-wind="seatWind" @back="onReturnToSettlement" @continue="onContinuePveCircle" @exit="onExitPve()" />
     </div>
     <footer class="app-version-footer mt-4 text-center text-xs text-teal-200/55" aria-label="当前版本">{{ appVersion }}</footer>
   </TableShell>
@@ -1987,7 +1987,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
 <style>
 .pvp-dissolved-overlay { position:fixed; inset:0; z-index:160; display:grid; place-items:center; padding:20px; background:#001b17c9; backdrop-filter:blur(5px); }.pvp-dissolved-dialog { width:min(100%,420px); padding:28px; border:1px solid #d5b16a80; border-radius:20px; background:#123e32; color:#f4e1b0; text-align:center; }.pvp-dissolved-dialog h2 { font-size:22px; }.pvp-dissolved-dialog p { margin:18px 0; overflow-wrap:anywhere; }.pvp-dissolved-dialog button { padding:10px 20px; border-radius:10px; background:#d5b875; color:#173f30; }
 .viewport-wrapper:has(.god-opening) [data-god-slot] .mahjong-tile { opacity:0; }
-.viewport-wrapper { position:fixed; top:0; left:0; z-index:20; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:#06221d; }
+.viewport-wrapper { position:fixed; top:0; left:0; z-index:20; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:#06221d; box-sizing:border-box; padding:env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 .viewport-wrapper > .game-stage { box-sizing:border-box; position:absolute; top:50%; left:50%; width:1280px !important; height:720px !important; min-height:0 !important; overflow:auto; padding:24px 32px !important; transform-origin:center center; }
 .viewport-wrapper > .game-stage.is-home-stage { overflow:hidden; padding:36px 64px !important; }
 .viewport-wrapper .home-screen { width:100%; max-width:1080px; min-height:100%; }
@@ -2007,7 +2007,7 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-table > header,
 .viewport-wrapper.is-stage-active .pve-landscape-hint { display:none !important; }
 .viewport-wrapper.is-stage-active .pve-game-main { position:absolute; top:0; left:0; display:grid !important; grid-template-columns:minmax(0,1fr); grid-template-rows:36px minmax(0,1fr) 94px !important; gap:0 !important; width:83.333333%; height:83.333333%; max-width:none; min-height:0; padding:0 !important; overflow:hidden; transform:scale(1.2); transform-origin:top left; }
-.viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] { grid-row:1; width:100%; height:36px; min-height:0; padding:2px 10px; overflow:hidden; }
+.viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] { grid-row:1; width:100%; height:36px; min-height:0; padding:2px max(10px, env(safe-area-inset-right, 0px)) 2px max(10px, env(safe-area-inset-left, 0px)); overflow:hidden; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] > :not(:first-child) { display:none; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] > :first-child { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; height:100%; margin:0; padding:0 4px; font-size:13px; }
 .viewport-wrapper.is-stage-active .pve-game-main > .pve-table { grid-row:2; width:100%; height:100%; min-height:0; padding:0; overflow:visible; border:0; border-radius:0; }

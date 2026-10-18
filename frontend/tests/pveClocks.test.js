@@ -69,3 +69,19 @@ test('PvE chi clock waits for pong and resumes without charging its bank',async(
     now=61000;await tick();assert.deepEqual(f.calls,[['pass','3p','E']])
   }finally{f.stop();Date.now=original}
 })
+
+
+test('leaving PvE clears clocks and prevents timeout actions while root remains mounted',async()=>{
+  const original=Date.now;let now=1000;Date.now=()=>now
+  const f=fixture()
+  try{
+    assert.ok(f.clock.clocks.value.E)
+    f.s.gameMode.value='SANDBOX';f.s.gameRoundId.value=''
+    assert.deepEqual(f.clock.clocks.value,{})
+    now=100000;await tick()
+    assert.deepEqual(f.calls,[])
+    f.s.gameMode.value='PVE';f.s.gameRoundId.value='new-hand'
+    assert.ok(f.clock.clocks.value.E)
+    assert.equal(f.clock.timeBanks.value.E,30000)
+  }finally{f.stop();Date.now=original}
+})

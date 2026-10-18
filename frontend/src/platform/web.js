@@ -25,6 +25,6 @@ export function createWebPlatform(browser = globalThis.window) {
       async acquire() { if (++owners === 1) { wakeLock = createScreenWakeLock(browser); wakeLock.start() } },
       async release() { if (owners && --owners === 0) { const previous = wakeLock; wakeLock = null; await previous?.stop() } },
     },
-    statusBar: { async dark() {} },
+    statusBar: { async dark() {}, async enterTable() {}, async leaveTable() {} },
   }
 }

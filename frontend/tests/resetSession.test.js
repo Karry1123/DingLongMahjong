@@ -162,3 +162,51 @@ test('failed redeal leaves clean setup and supports retry', async () => {
   await s.resetGame()
   assertClean(s)
 })
+
+
+test('leaving PvE clears the session synchronously without dealing another game', async () => {
+  const requests = []
+  installFetch((url) => { requests.push(String(url)); return null })
+  const s = useGameSession()
+  await s.startPveGame()
+  const oldId = s.gameRoundId.value
+  const signal = s.beginRecommendFetch()
+  requests.length = 0
+  const leaving = s.exitPveGame()
+  assert.equal(s.gameState.value, 'SETUP')
+  assert.equal(s.loading.value, false)
+  assert.equal(s.gameRoundId.value, '')
+  await leaving
+  assert.ok(signal.aborted)
+  assert.deepEqual(requests, [])
+  assert.equal(s.gameMode.value, 'SANDBOX')
+  assert.deepEqual(s.roundState.handTiles, [])
+  assert.deepEqual(s.wallTiles.value, [])
+  assert.deepEqual(s.pendingHuQueue.value, [])
+  assert.deepEqual(s.roundHistory.value, [])
+  assert.equal(s.roundIndex.value, 0)
+  await s.startPveGame()
+  assert.notEqual(s.gameRoundId.value, oldId)
+  assert.equal(s.gameMode.value, 'PVE')
+  assert.equal(s.gameState.value, 'PLAYING')
+})
+
+
+test('a late deal from an exited game cannot reopen the ceremony in a new game', async () => {
+  let resolve, oldSignal, openings = 0
+  globalThis.fetch = async (_, options) => {
+    oldSignal = options.signal
+    return new Promise(r => { resolve = r })
+  }
+  const s = useGameSession({onPveOpening: () => { openings++; return true }})
+  const pending = s.startPveGame()
+  s.exitPveGame()
+  assert.ok(oldSignal.aborted)
+  installFetch()
+  await s.startPveGame()
+  const id = s.gameRoundId.value
+  resolve(response(deal()))
+  assert.equal(await pending, false)
+  assert.equal(openings, 1)
+  assert.equal(s.gameRoundId.value, id)
+})

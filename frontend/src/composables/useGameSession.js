@@ -3821,7 +3821,9 @@ export function useGameSession(initial = {}) {
     roundState.seatWind = pveWindForPlayer(0, dealerPlayerId.value)
     roundState.opponents = pveOpponentsForDealer(dealerPlayerId.value)
     applyEastDealerFlags()
+    const epoch = sessionEpoch
     await applyAutoDeal()
+    if (epoch !== sessionEpoch) return false
     return openDealtPveRound()
   }
 
@@ -3856,7 +3858,9 @@ export function useGameSession(initial = {}) {
     roundState.seatWind = pveWindForPlayer(0, dealerPlayerId.value)
     roundState.opponents = pveOpponentsForDealer(dealerPlayerId.value)
     applyEastDealerFlags()
+    const epoch = sessionEpoch
     await applyAutoDeal()
+    if (epoch !== sessionEpoch) return false
     return openDealtPveRound()
   }
 
@@ -3956,7 +3960,7 @@ export function useGameSession(initial = {}) {
     return startNextPveRound(null, false, { isDraw: true, newCircle: true })
   }
 
-  async function exitPveGame() {
+  function exitPveGame() {
     gameMode.value = 'SANDBOX'
     showGameOverModal.value = false
     showRoundSummaryModal.value = false
@@ -3969,7 +3973,12 @@ export function useGameSession(initial = {}) {
     roundState.seatWind = homeTable.selfWind
     roundState.isDealer = homeTable.isDealer
     roundState.opponents = homeTable.opponents
-    return resetGame({ clearHistory: true })
+    // Leaving must invalidate pending work and clear the board, never redeal.
+    reopenTable()
+    roundState.dealerTile = ''
+    cumulativeScores.value = { E: 0, S: 0, W: 0, N: 0 }
+    roundHistory.value = []
+    roundIndex.value = 0
   }
 
   /** @deprecated 兼容旧名 → startNextRound */

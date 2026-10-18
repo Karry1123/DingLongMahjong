@@ -16,7 +16,7 @@ function nativeMock() {
     App: { async addListener(name, callback) { listeners.set(name,callback); return { async remove() { listeners.delete(name) } } }, exitApp:record('exit') },
     Haptics: { selectionStart:record('selection-start'), selectionEnd:record('selection-end'), selectionChanged:record('selection'), impact:record('impact') },
     KeepAwake: { keepAwake:record('awake'), allowSleep:record('sleep') },
-    StatusBar: { setStyle:record('style'), setBackgroundColor:record('background') },
+    StatusBar: { setStyle:record('style'), setBackgroundColor:record('background'), hide:record('hide'), show:record('show'), setOverlaysWebView:record('overlay') },
   }
   return { plugins, calls, listeners, values, platform:createNativePlatform(plugins) }
 }
@@ -151,4 +151,24 @@ test('App resume revalidates /me and active match before sockets; logged-out res
     app?.unmount(); connection?.stop(); later?.stop(); resumeRealtimeConnections(); clearActiveMatch(); await clearAuth()
     globalThis.fetch=originalFetch; globalThis.Capacitor=originalCapacitor
   }
+})
+
+
+test('status bar immersive ownership orders rapid enter/leave and tolerates plugin failures', async () => {
+  const { platform:p, calls, plugins } = nativeMock()
+  await Promise.all([p.statusBar.enterTable(), p.statusBar.enterTable(), p.statusBar.leaveTable()])
+  assert.deepEqual(calls, [['overlay', { overlay:true }], ['hide', undefined]])
+  await p.statusBar.leaveTable()
+  await p.statusBar.leaveTable()
+  assert.deepEqual(calls.slice(2), [['overlay', { overlay:false }], ['show', undefined]])
+  calls.length = 0
+  await Promise.all([p.statusBar.enterTable(), p.statusBar.leaveTable(), p.statusBar.enterTable(), p.statusBar.leaveTable()])
+  assert.deepEqual(calls.map(([name]) => name), ['overlay','hide','overlay','show','overlay','hide','overlay','show'])
+  plugins.StatusBar.setOverlaysWebView = async () => { throw Error('edge to edge') }
+  await p.statusBar.enterTable(); await p.statusBar.leaveTable()
+  assert.equal(calls.at(-1)[0], 'show')
+  plugins.StatusBar.hide = plugins.StatusBar.show = async () => { throw Error('unsupported') }
+  await p.statusBar.enterTable(); await p.statusBar.leaveTable()
+  const web = createWebPlatform()
+  await web.statusBar.enterTable(); await web.statusBar.leaveTable()
 })

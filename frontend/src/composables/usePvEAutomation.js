@@ -11,7 +11,13 @@ const priority = (type) => ({ ming_gang: 2, pong: 2, chi: 1 })[type] || 0
 export function usePvEAutomation(session, options = {}) {
   const recommend = options.recommend || getRecommendDecision
   const delayMs = options.delayMs || ((kind) => kind === 'response' ? 3000 : AI_THINK_MS)
-  const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
+  const sleep = options.sleep || ((ms) => new Promise(resolve => {
+    const signal = controller.signal
+    const finish = () => { clearTimeout(timer); signal.removeEventListener('abort', finish); resolve() }
+    const timer = setTimeout(finish, ms)
+    signal.addEventListener('abort', finish, { once: true })
+    if (signal.aborted) finish()
+  }))
   const busy = ref(false)
   const thinkingSeat = ref('')
   const status = ref('')
@@ -33,6 +39,7 @@ export function usePvEAutomation(session, options = {}) {
     s.wallTiles.value.length,
   ]))
   const announce = (message) => {
+    if (!active()) return
     announcement.value = message
     clearTimeout(announcementTimer)
     announcementTimer = setTimeout(() => { announcement.value = '' }, 1800)
@@ -44,6 +51,8 @@ export function usePvEAutomation(session, options = {}) {
     () => [s.gameMode.value, s.gameRoundId.value, s.gameState.value],
     () => {
       generation++
+      clearTimeout(announcementTimer)
+      busy.value = false
       controller.abort()
       controller = new AbortController()
       failedKey = null
