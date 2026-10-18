@@ -126,7 +126,7 @@ class Policy:
             return value
         return min((a for a in rows if a['action_type']=='discard'),key=score)
 
-def play_hand(seed, dealer, configs, mode='ev'):
+def play_hand(seed, dealer, configs, mode='ev', observer=None):
     policies=[Policy(c,mode) for c in configs]
     players=[{'seat':i,'is_ai':True,'name':f'AI-{i}'} for i in range(4)]
     match=HeadlessMatch(players,opening_seconds=0,deal=setup_new_game('E',rng=random.Random(seed)),dealer_seat=WINDS[dealer],now_ms=lambda:0)
@@ -137,7 +137,9 @@ def play_hand(seed, dealer, configs, mode='ev'):
         if seat is None: raise RuntimeError(f'No legal actor: seed={seed}, phase={match.phase}')
         physical=WINDS.index(match.players[seat]['room_seat'])
         action=policies[physical].choose(match,seat)
+        if observer is not None: observer.before(match,seat,physical,action,policies[physical])
         match.act(seat,{'game_id':match.game_id,'revision':match.revision,'action_id':action['action_id']},automatic=True)
+        if observer is not None: observer.after(match,seat,physical,action)
     else: raise RuntimeError(f'Nonterminating hand: seed={seed}')
     physical_tiles=Counter([match.god]+match.wall)
     for wind in WINDS:
@@ -153,7 +155,10 @@ def play_hand(seed, dealer, configs, mode='ev'):
     if winner is not None and result.get('win_type') in ('ron','rob_kong'):
         provider=match.last_discard['seat']
     dealin=WINDS.index(match.players[provider]['room_seat']) if provider else None
-    return {'seed':seed,'dealer':dealer,'net':net,'winner':winner,'dealin':dealin,'draw':winner is None,'actions':steps,'policies':[fingerprint(c) for c in configs]}
+    row = {'seed':seed,'dealer':dealer,'net':net,'winner':winner,'dealin':dealin,'draw':winner is None,'actions':steps,'policies':[fingerprint(c) for c in configs]}
+    if observer is not None:
+        row.update(win_type=result.get('win_type'), behavior=observer.metrics)
+    return row
 
 def _block(job):
     seed, configs, mode = job

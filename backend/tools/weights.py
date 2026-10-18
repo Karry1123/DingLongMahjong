@@ -46,19 +46,27 @@ def validate_weights(cfg):
         v1 = json.loads((POOL/'baseline_v1.json').read_text(encoding='utf-8'))
         if values != v1['weights']:
             raise ValueError('V2 must freeze all 165 V1 base weights')
+    elif cfg.get('policy_version') == 'V3-guard':
+        from tools.v3_experiment import validate_v3
+        validate_v3(cfg)
     elif 'claim_weights' in cfg or cfg.get('policy_version'):
         raise ValueError('Unknown policy version')
     return cfg
 
 def fingerprint(cfg):
     identity = cfg['weights']
-    if cfg.get('policy_version'):
+    if cfg.get('policy_version') == 'V3-guard':
+        identity = [cfg['policy_version'], identity, cfg['runtime_hashes']]
+    elif cfg.get('policy_version'):
         identity = [cfg['policy_version'], identity, cfg['claim_weights']]
     return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
 
 @lru_cache(maxsize=8)
 def _runtime(serialized, accelerated=True):
     cfg = validate_weights(json.loads(serialized))
+    if cfg.get('policy_version') == 'V3-guard':
+        from tools.v3_experiment import guard_runtime
+        return guard_runtime(cfg, accelerated)
     name = "app.core._offline_" + fingerprint(cfg)[:16]
     package = types.ModuleType(name)
     package.__path__ = [str(ROOT.parent / 'app' / 'core')]

@@ -1,0 +1,9 @@
+{
+  "runtime_version": "v3-guard-1",
+  "source_hashes": {
+    "call_decision": "4bea8cf3b02d81ae4f013b99d155b5a2c375aa9f0d678be280d56a8a923db66b",
+    "danger_model": "b56ff8c5537ffa373adbb9226faa7264b02b4e06c8d6cb7c0ebe3ef30536b5e5",
+    "ev_engine": "f17d16037b4a38f2bfee359ce55915cf0ce6d0fd588bfaed7edd13e9b7b61008",
+    "tenpai_model": "85eb576e213f90ebacc6098fd452f78b6f5e3c5eb058d5f73c1412922417fb21"
+  }
+}
