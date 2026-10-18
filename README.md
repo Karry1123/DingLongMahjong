@@ -7,7 +7,7 @@
 以现代 Web 技术复刻顶龙牌桌：人机磨砺、真人对战、残局推演，共用一套规则与算胡引擎。
 
 [![Build](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml/badge.svg)](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/badge/release-v0.4.0--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.4.0-beta)
+[![Release](https://img.shields.io/badge/release-v0.4.1--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.4.1-beta)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-184C43?style=flat-square)
@@ -18,7 +18,7 @@
 
 ---
 
-> **当前版本 v0.4.0-beta**（2026-10-16）：账号体系与好友对战取代六位房间号匹配，注册需站长本地生成的注册码；新增 Capacitor 手机 App 工程；AI 权重 V1 固化接入与离线调优工具链；EV 权重 V3 调优设计。详见 [更新日志](CHANGELOG.md#v040-beta--2026-10-16)。
+> **当前版本 v0.4.1-beta**（2026-10-17）：App 修复离开人机对局未结束、牌桌顶部按钮被状态栏遮挡；推送即自动构建签名 APK 并挂到 Release，App 内提示更新；完成 EV 权重 V3 第一小轮调优（未晋升，保留证据与报告）。上一版本 v0.4.0-beta 引入账号、注册码、好友对战与 Capacitor App。详见 [更新日志](CHANGELOG.md#v041-beta--2026-10-17)。
 
 ## 目录
 
@@ -169,12 +169,12 @@ npm.cmd run build
 .\.venv\Scripts\python.exe -m pytest -v --tb=long
 ```
 
-**本地基线（2026-10-16，v0.4.0-beta）**
+**本地基线（2026-10-17，v0.4.1-beta）**
 
 | 项目 | 结果 |
 | --- | --- |
 | 后端 pytest | 505 项通过，17 个子测试通过（不含两组耗时离线 AI 工具测试） |
-| 前端 node:test | 125 项中 124 项通过，1 项失败（见[已知问题](#已知问题与运行边界)） |
+| 前端 node:test | 141 项中 140 项通过，1 项失败（见[已知问题](#已知问题与运行边界)） |
 | 生产构建 | 通过 |
 
 以上为本地结果，不能替代物理手机、微信 WebView 或公网数据库验收。GitHub Pages 工作流只构建并部署前端，目前没有运行全量测试的 CI 阶段。逐用例清单与非失败警告见 [诊断报告](docs/audit-2026-09-28.md)。
@@ -219,7 +219,8 @@ npm.cmd run build
 | v0.3.1-beta | 2026-09-28 | 三模式入口、PvP 联机、视角映射、双倒计时与 Time Bank、共用结算、500 局私有牌谱、常亮与鸣牌隐私、统一规则文档 |
 | v0.3.2-beta | 2026-09-28 | 修复 PvP 换庄后门风轮转与自风算番；修复结算中吃进牌横置显示 |
 | v0.3.3-beta | 2026-10-11 | README 重整、测试基线校准、已知问题公开 |
-| **v0.4.0-beta** | **2026-10-16** | **当前版本**：账号 + 注册码 + 好友邀请对战取代房间号；Capacitor App 工程；AI 权重 V1 接入与调优工具链；V3 调优设计 |
+| v0.4.0-beta | 2026-10-16 | 账号 + 注册码 + 好友邀请对战取代房间号；Capacitor App 工程；AI 权重 V1 接入与调优工具链；V3 调优设计 |
+| **v0.4.1-beta** | **2026-10-17** | **当前版本**：App 离局与安全区修复；自动构建 APK 与应用内更新；V3 第一小轮调优执行（未晋升） |
 
 各版本完整记录见 [CHANGELOG.md](CHANGELOG.md)，发布摘要见 [docs/releases/](docs/releases/)。
 
