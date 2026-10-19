@@ -51,7 +51,6 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "name=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-          case "$VERSION" in *beta*|*alpha*|*rc*) echo "prerelease=true" >> "$GITHUB_OUTPUT";; *) echo "prerelease=false" >> "$GITHUB_OUTPUT";; esac
 
       - name: Build mobile web bundle
         run: npm run build:mobile
@@ -94,17 +93,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
-          PRERELEASE: ${{ steps.version.outputs.prerelease }}
         run: |
           NOTES="../docs/releases/$TAG.md"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG exists; replacing APK asset"
           else
-            FLAGS=""; [ "$PRERELEASE" = "true" ] && FLAGS="--prerelease"
             if [ -f "$NOTES" ]; then
-              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$NOTES" $FLAGS
+              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --notes-file "$NOTES" --latest
             else
-              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --generate-notes $FLAGS
+              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --generate-notes --latest
             fi
           fi
           gh release upload "$TAG" "${{ steps.apk.outputs.path }}" --repo "$GITHUB_REPOSITORY" --clobber

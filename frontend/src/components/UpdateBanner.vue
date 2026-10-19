@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { isNative, lifecycle } from '../platform/index.js'
-import { RELEASES_API, updateAvailable } from '../utils/appUpdate.js'
+import { checkForUpdate } from '../utils/appUpdate.js'
 
 const current = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0'
 const update = ref(null), dismissed = ref(''), checking = ref(false)
@@ -12,8 +12,7 @@ async function check() {
   if (checking.value) return
   checking.value = true
   try {
-    const response = await fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' } })
-    if (response.ok) update.value = updateAvailable(current, await response.json())
+    update.value = await checkForUpdate(current)
   } catch { /* offline or rate limited: stay quiet, retry on next resume */ } finally { checking.value = false }
 }
 function dismiss() { dismissed.value = update.value?.version || ''; try { localStorage.setItem(DISMISS_KEY, dismissed.value) } catch { /* ignore */ } }
@@ -24,7 +23,7 @@ onMounted(() => { if (!isNative()) return; void check(); lifecycle.onResume(() =
 </script>
 
 <template>
-  <aside v-if="update && update.version !== dismissed" class="update-banner" role="status">
+  <aside v-if="isNative() && update && update.version !== dismissed" class="update-banner" role="status">
     <div class="update-text"><b>新版本 {{ update.version }}</b><span>当前 v{{ current }} · 安装包 {{ megabytes(update.size) }} MB</span></div>
     <div class="update-actions"><button type="button" @click="dismiss">稍后</button><button type="button" class="primary" @click="download">下载更新</button></div>
   </aside>
