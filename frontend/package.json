@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.4.2-beta",
+  "version": "0.4.3-beta",
   "type": "module",
   "scripts": {
     "predev": "node scripts/prepare-voice-data.mjs",

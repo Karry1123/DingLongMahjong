@@ -11,6 +11,7 @@ from app.core.origins import LanCORSMiddleware
 
 from app.api.routes import router
 from app.api.rooms import router as room_router
+from app.api.app_update import router as app_update_router
 from app.core.ai_weights import ai_weights_session
 
 _LOCAL_ORIGINS = [
@@ -41,7 +42,7 @@ async def lifespan(application):
         application.state.ai_policy = policy
         yield
 
-app = FastAPI(title="顶龙麻将", version="0.4.2-beta", lifespan=lifespan)
+app = FastAPI(title="顶龙麻将", version="0.4.3-beta", lifespan=lifespan)
 
 app.add_middleware(
     LanCORSMiddleware,
@@ -53,6 +54,7 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(room_router)
+app.include_router(app_update_router)
 for api_router in (auth.router, friends.router, matches.router, realtime.router):
     app.include_router(api_router)
 
