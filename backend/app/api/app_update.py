@@ -1,19 +1,27 @@
 """Public APK release metadata, with a last-known-good cache."""
 import json
+import logging
+import os
 import re
 import time
 from functools import cmp_to_key
 from threading import Lock
-from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+from urllib.parse import quote, unquote, urljoin, urlsplit
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/api/app", tags=["app"])
 RELEASES_API = "https://api.github.com/repos/Karry1123/DingLongMahjong/releases?per_page=10"
+RELEASES_PAGE = "https://github.com/Karry1123/DingLongMahjong/releases"
 CACHE_SECONDS = 600
+FAILURE_CACHE_SECONDS = 60
 _cached = None
 _cached_at = 0
+_failed_at = None
 _lock = Lock()
+logger = logging.getLogger(__name__)
 
 
 def _version(text):
@@ -61,23 +69,88 @@ def select_latest(releases):
     return max(candidates, key=cmp_to_key(_compare))
 
 
-def fetch_releases():
-    request = Request(RELEASES_API, headers={"Accept": "application/vnd.github+json", "User-Agent": "DingLongMahjong"})
+def fetch_releases(token=None):
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "DingLongMahjong"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = Request(RELEASES_API, headers=headers)
     with urlopen(request, timeout=8) as response:
         return json.load(response)
 
 
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _warn_failure(source, error):
+    logger.warning("%s failed (HTTP status %s): %s", source, getattr(error, "code", "N/A"), error)
+
+
+def fetch_latest_redirect():
+    request = Request(f"{RELEASES_PAGE}/latest", headers={"User-Agent": "DingLongMahjong"})
+    try:
+        with build_opener(_NoRedirect()).open(request, timeout=8):
+            raise ValueError("GitHub latest did not redirect")
+    except HTTPError as error:
+        try:
+            if error.code not in (301, 302, 303, 307, 308):
+                raise
+            location = error.headers.get("Location", "")
+        finally:
+            error.close()
+    page = urlsplit(urljoin(request.full_url, location))
+    prefix = "/Karry1123/DingLongMahjong/releases/tag/"
+    tag = unquote(page.path[len(prefix):]) if page.path.startswith(prefix) else ""
+    if (page.scheme != "https" or page.netloc != "github.com"
+            or not re.fullmatch(r"v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", tag)):
+        raise ValueError(f"Invalid GitHub latest Location: {location}")
+    tag = quote(tag, safe="")
+    url = f"{RELEASES_PAGE}/download/{tag}/DingLongMahjong-{tag}.apk"
+    size = 0
+    try:
+        with urlopen(Request(url, headers={"User-Agent": "DingLongMahjong"}, method="HEAD"), timeout=8) as response:
+            size = max(0, int(response.headers.get("Content-Length", 0)))
+    except Exception as error:
+        _warn_failure("GitHub APK HEAD", error)
+    return dict(version=unquote(tag), url=url, size=size, notes="", page=f"{RELEASES_PAGE}/tag/{tag}")
+
+
+def fetch_latest():
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    if token:
+        try:
+            return select_latest(fetch_releases(token))
+        except Exception as error:
+            _warn_failure("GitHub authenticated releases API", error)
+    try:
+        return fetch_latest_redirect()
+    except Exception as error:
+        _warn_failure("GitHub latest redirect", error)
+    try:
+        return select_latest(fetch_releases())
+    except Exception as error:
+        _warn_failure("GitHub unauthenticated releases API", error)
+        raise
+
+
 @router.get("/latest")
 def latest():
-    global _cached, _cached_at
+    global _cached, _cached_at, _failed_at
     with _lock:
         if _cached is not None and time.monotonic() - _cached_at < CACHE_SECONDS:
             return _cached
+        if _failed_at is not None and time.monotonic() - _failed_at < FAILURE_CACHE_SECONDS:
+            if _cached is not None:
+                return _cached
+            raise HTTPException(status_code=503, detail="更新服务暂不可用，请稍后重试")
         try:
-            info = select_latest(fetch_releases())
+            info = fetch_latest()
         except Exception as error:
+            _failed_at = time.monotonic()
             if _cached is not None:
                 return _cached
             raise HTTPException(status_code=503, detail="更新服务暂不可用，请稍后重试") from error
         _cached, _cached_at = info, time.monotonic()
+        _failed_at = None
         return info

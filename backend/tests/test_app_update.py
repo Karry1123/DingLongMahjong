@@ -1,5 +1,7 @@
 from io import BytesIO
 import json
+from types import SimpleNamespace
+from urllib.error import HTTPError
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,6 +19,14 @@ def release(version, **extra):
 def clear_cache(monkeypatch):
     monkeypatch.setattr(app_update, "_cached", None)
     monkeypatch.setattr(app_update, "_cached_at", 0)
+    monkeypatch.setattr(app_update, "_failed_at", None)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+    def offline(*args, **kwargs):
+        raise OSError("offline")
+
+    monkeypatch.setattr(app_update, "urlopen", offline)
+    monkeypatch.setattr(app_update, "build_opener", lambda *args: SimpleNamespace(open=offline))
 
 
 def github(monkeypatch, payload):
@@ -78,3 +88,165 @@ def test_failure_returns_503_or_stale_cache(monkeypatch, failure):
 def test_no_apk_is_unavailable(monkeypatch):
     github(monkeypatch, [release("v1.0.0", assets=[])])
     assert TestClient(app).get("/api/app/latest").status_code == 503
+
+
+def redirect(monkeypatch, location, status=302):
+    calls = []
+
+    def open_request(request, timeout):
+        calls.append((request.full_url, request.get_method(), timeout))
+        raise HTTPError(request.full_url, status, "redirect", {"Location": location}, BytesIO())
+
+    def opener(handler):
+        assert isinstance(handler, app_update._NoRedirect)
+        assert handler.redirect_request(None, None, 302, "redirect", {}, location) is None
+        return SimpleNamespace(open=open_request)
+
+    monkeypatch.setattr(app_update, "build_opener", opener)
+    return calls
+
+
+def test_redirect_parses_tag_and_head_size(monkeypatch):
+    page = f"{app_update.RELEASES_PAGE}/tag/v0.4.3-beta"
+    redirects = redirect(monkeypatch, page)
+    calls = []
+
+    def head(request, timeout):
+        calls.append((request.full_url, request.get_method(), timeout))
+        response = BytesIO()
+        response.headers = {"Content-Length": "123456"}
+        return response
+
+    monkeypatch.setattr(app_update, "urlopen", head)
+    expected_url = f"{app_update.RELEASES_PAGE}/download/v0.4.3-beta/DingLongMahjong-v0.4.3-beta.apk"
+    assert app_update.latest() == dict(version="v0.4.3-beta", url=expected_url,
+                                       size=123456, notes="", page=page)
+    assert redirects == [(f"{app_update.RELEASES_PAGE}/latest", "GET", 8)]
+    assert calls == [(expected_url, "HEAD", 8)]
+
+
+@pytest.mark.parametrize("length", [None, "invalid", "-1"])
+def test_head_missing_or_invalid_size_is_zero(monkeypatch, length):
+    redirect(monkeypatch, "/Karry1123/DingLongMahjong/releases/tag/v0.4.3-beta")
+
+    def head(request, timeout):
+        assert request.get_method() == "HEAD"
+        response = BytesIO()
+        response.headers = {} if length is None else {"Content-Length": length}
+        return response
+
+    monkeypatch.setattr(app_update, "urlopen", head)
+    assert app_update.latest()["size"] == 0
+
+
+def test_head_failure_is_zero_and_logs_status(monkeypatch, caplog):
+    redirect(monkeypatch, f"{app_update.RELEASES_PAGE}/tag/v0.4.3-beta")
+
+    def head(request, timeout):
+        assert request.get_method() == "HEAD"
+        raise HTTPError(request.full_url, 404, "Not Found", {}, None)
+
+    monkeypatch.setattr(app_update, "urlopen", head)
+    assert app_update.latest()["size"] == 0
+    assert "HTTP status 404" in caplog.text
+
+
+@pytest.mark.parametrize("location", ["", "https://example.test/releases/tag/v1.0.0",
+                                      f"{app_update.RELEASES_PAGE}/tag/latest"])
+def test_invalid_redirect_falls_back_to_api(monkeypatch, location):
+    redirect(monkeypatch, location)
+    calls = github(monkeypatch, [release("v1.0.0")])
+    assert app_update.latest()["version"] == "v1.0.0"
+    assert calls == [(app_update.RELEASES_API, 8)]
+
+
+def test_token_api_precedes_redirect(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    calls = []
+
+    def api(request, timeout):
+        calls.append(request)
+        assert request.full_url == app_update.RELEASES_API
+        assert request.get_header("Authorization") == "Bearer test-token"
+        return BytesIO(json.dumps([release("v0.4.3-beta")]).encode())
+
+    def unexpected_redirect(*args):
+        pytest.fail("Token API succeeded; redirect must not run")
+
+    monkeypatch.setattr(app_update, "urlopen", api)
+    monkeypatch.setattr(app_update, "build_opener", unexpected_redirect)
+    assert app_update.latest()["version"] == "v0.4.3-beta"
+    assert len(calls) == 1
+
+
+def test_token_failure_falls_back_to_redirect(monkeypatch, caplog):
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    redirects = redirect(monkeypatch, f"{app_update.RELEASES_PAGE}/tag/v0.4.3-beta")
+    calls = []
+
+    def open_request(request, timeout):
+        calls.append(request)
+        if request.full_url == app_update.RELEASES_API:
+            assert request.get_header("Authorization") == "Bearer test-token"
+            raise HTTPError(request.full_url, 403, "Forbidden", {}, None)
+        assert request.get_method() == "HEAD"
+        assert request.get_header("Authorization") is None
+        response = BytesIO()
+        response.headers = {"Content-Length": "42"}
+        return response
+
+    monkeypatch.setattr(app_update, "urlopen", open_request)
+    assert app_update.latest()["size"] == 42
+    assert len(redirects) == 1
+    assert len(calls) == 2
+    assert "HTTP status 403" in caplog.text
+
+
+def test_all_sources_fail_then_unauthenticated_api(monkeypatch, caplog):
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    redirects = redirect(monkeypatch, "", status=429)
+    calls = []
+
+    def api(request, timeout):
+        calls.append(request.get_header("Authorization"))
+        raise HTTPError(request.full_url, 403, "Forbidden", {}, None)
+
+    monkeypatch.setattr(app_update, "urlopen", api)
+    response = TestClient(app).get("/api/app/latest")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "更新服务暂不可用，请稍后重试"}
+    assert calls == ["Bearer test-token", None]
+    assert len(redirects) == 1
+    assert "HTTP status 403" in caplog.text
+    assert "HTTP status 429" in caplog.text
+
+
+@pytest.mark.parametrize("stale", [False, True])
+def test_negative_cache_expires_and_recovers(monkeypatch, stale):
+    clock = [1000]
+    monkeypatch.setattr(app_update.time, "monotonic", lambda: clock[0])
+    cached = dict(version="v0.4.2", url="old.apk", size=0, notes="", page="")
+    if stale:
+        monkeypatch.setattr(app_update, "_cached", cached)
+    redirects = redirect(monkeypatch, "", status=503)
+    calls = []
+
+    def api(request, timeout):
+        calls.append(request.full_url)
+        raise OSError("offline")
+
+    monkeypatch.setattr(app_update, "urlopen", api)
+    client = TestClient(app)
+    for seconds in (0, 59):
+        clock[0] = 1000 + seconds
+        response = client.get("/api/app/latest")
+        assert response.status_code == (200 if stale else 503)
+        if stale:
+            assert response.json() == cached
+    assert len(calls) == len(redirects) == 1
+    recovered = github(monkeypatch, [release("v0.4.3-beta")])
+    clock[0] = 1060
+    assert client.get("/api/app/latest").json()["version"] == "v0.4.3-beta"
+    assert len(recovered) == 1
+    assert len(redirects) == 2
+    assert app_update._failed_at is None
