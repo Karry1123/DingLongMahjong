@@ -46,7 +46,7 @@ def validate_v3(cfg):
     return cfg
 
 
-def guard_runtime(cfg, accelerated=True):
+def guard_runtime(cfg, accelerated=True, extra_keys=()):
     """Compile private snapshot modules, overriding named assignments before imports."""
     from tools.weights import fingerprint
     name = 'app.core._v3_' + fingerprint(cfg)[:16]
@@ -68,10 +68,17 @@ def guard_runtime(cfg, accelerated=True):
             for node in tree.body:
                 if isinstance(node, ast.Assign) and len(node.targets)==1 and isinstance(node.targets[0],ast.Name):
                     key = module+'.'+node.targets[0].id
-                    if key in BOUNDS:
+                    dict_keys = [k for k in extra_keys if k.startswith(key+'.')]
+                    if dict_keys and isinstance(node.value, ast.Dict):
+                        for dk, dv in zip(node.value.keys, node.value.values):
+                            full = key+'.'+str(dk.value)
+                            if full in dict_keys:
+                                dv.value = cfg['weights'][full]
+                                found.add(full)
+                    if key in BOUNDS or key in extra_keys:
                         node.value = ast.copy_location(ast.Constant(cfg['weights'][key]),node.value)
                         found.add(key)
-            expected = {k for k in BOUNDS if k.startswith(module+'.')}
+            expected = {k for k in (*BOUNDS, *extra_keys) if k.startswith(module+'.')}
             if found != expected:
                 raise ValueError('Named V3 loading mismatch')
             obj = types.ModuleType(name+'.'+module)

@@ -46,6 +46,12 @@ def validate_weights(cfg):
         v1 = json.loads((POOL/'baseline_v1.json').read_text(encoding='utf-8'))
         if values != v1['weights']:
             raise ValueError('V2 must freeze all 165 V1 base weights')
+    elif cfg.get('policy_version') == 'V4-R1':
+        from tools.sensitivity_scan import validate_r1
+        validate_r1(cfg)
+    elif cfg.get('policy_version') == 'V4-guard':
+        from tools.v4_experiment import validate_v4
+        validate_v4(cfg)
     elif cfg.get('policy_version') == 'V3-guard':
         from tools.v3_experiment import validate_v3
         validate_v3(cfg)
@@ -55,7 +61,7 @@ def validate_weights(cfg):
 
 def fingerprint(cfg):
     identity = cfg['weights']
-    if cfg.get('policy_version') == 'V3-guard':
+    if cfg.get('policy_version') in ('V3-guard', 'V4-guard', 'V4-R1'):
         identity = [cfg['policy_version'], identity, cfg['runtime_hashes']]
     elif cfg.get('policy_version'):
         identity = [cfg['policy_version'], identity, cfg['claim_weights']]
@@ -64,6 +70,12 @@ def fingerprint(cfg):
 @lru_cache(maxsize=8)
 def _runtime(serialized, accelerated=True):
     cfg = validate_weights(json.loads(serialized))
+    if cfg.get('policy_version') == 'V4-R1':
+        from tools.sensitivity_scan import guard_runtime
+        return guard_runtime(cfg, accelerated)
+    if cfg.get('policy_version') == 'V4-guard':
+        from tools.v4_experiment import guard_runtime
+        return guard_runtime(cfg, accelerated)
     if cfg.get('policy_version') == 'V3-guard':
         from tools.v3_experiment import guard_runtime
         return guard_runtime(cfg, accelerated)
