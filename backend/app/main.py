@@ -42,7 +42,7 @@ async def lifespan(application):
         application.state.ai_policy = policy
         yield
 
-app = FastAPI(title="顶龙麻将", version="0.4.3-beta", lifespan=lifespan)
+app = FastAPI(title="顶龙麻将", version="0.4.4-beta", lifespan=lifespan)
 
 app.add_middleware(
     LanCORSMiddleware,

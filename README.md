@@ -7,7 +7,7 @@
 以现代 Web 技术复刻顶龙牌桌：人机磨砺、真人对战、残局推演，共用一套规则与算胡引擎。
 
 [![Build](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml/badge.svg)](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/badge/release-v0.4.3--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.4.3-beta)
+[![Release](https://img.shields.io/badge/release-v0.4.4--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.4.4-beta)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-184C43?style=flat-square)
@@ -18,7 +18,7 @@
 
 ---
 
-> **当前版本 v0.4.3-beta**（2026-10-18）：修复 App 收不到更新提示——此前所有版本都以预发布形式发布，GitHub"最新版本"接口对本仓库返回 404；现在每个版本都作为正式版并标为最新，App 改为优先查询后端 `/api/app/latest`、失败回退 GitHub 版本列表，设置页新增"检查更新"。上一版本 v0.4.2-beta 结束了 V4 权重调优阶段。详见 [更新日志](CHANGELOG.md#v043-beta--2026-10-18)。
+> **当前版本 v0.4.4-beta**（2026-10-21）：新 App 图标——以麻将「發」牌为原型，象牙白牌面配绿色楷体「發」，置于墨绿底与细金边上；同步更新 Android 自适应图标、启动画面、iOS 图标与网页 favicon。上一版本 v0.4.3-beta 修复了 App 收不到更新提示。详见 [更新日志](CHANGELOG.md#v044-beta--2026-10-21)。
 
 ## 目录
 
@@ -222,7 +222,8 @@ npm.cmd run build
 | v0.4.0-beta | 2026-10-16 | 账号 + 注册码 + 好友邀请对战取代房间号；Capacitor App 工程；AI 权重 V1 接入与调优工具链；V3 调优设计 |
 | v0.4.1-beta | 2026-10-17 | App 离局与安全区修复；自动构建 APK 与应用内更新；V3 第一小轮调优执行（未晋升） |
 | v0.4.2-beta | 2026-10-18 | V4 调优收尾；敏感度扫描、杠专项、功效分析与序贯检验；三轮均未晋升，生产权重不变 |
-| **v0.4.3-beta** | **2026-10-18** | **当前版本**：修复 App 更新提示；正式版发布、后端版本接口、设置页检查更新 |
+| v0.4.3-beta | 2026-10-18 | 修复 App 更新提示；正式版发布、后端版本接口、设置页检查更新 |
+| **v0.4.4-beta** | **2026-10-21** | **当前版本**：「發」牌 App 图标、启动画面与网页 favicon |
 
 各版本完整记录见 [CHANGELOG.md](CHANGELOG.md)，发布摘要见 [docs/releases/](docs/releases/)。
 
