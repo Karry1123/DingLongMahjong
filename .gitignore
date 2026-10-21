@@ -43,3 +43,6 @@ backend/visual-tests.log
 backend/data/headless/
 backend/data/ai_tuning/
 backend/data/checkpoints/
+
+# Local asset-generation tools
+.venv-tools/
