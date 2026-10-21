@@ -60,13 +60,19 @@ python backend/scripts/registration_codes.py revoke --batch 2026-10
 
 ## 自动构建 APK 与应用内更新
 
-- 工作流 `.github/workflows/android-release.yml`：推送到 `main`（忽略纯文档改动）、推送 `v*` 标签或手动触发时，在 GitHub Actions 中执行 `build:mobile`、`cap sync android`、`gradlew assembleRelease`，用仓库 Secrets 中的发布密钥签名，并把 `DingLongMahjong-v<版本>.apk` 上传到以 `package.json` 版本号命名的 Release（已存在则替换附件，不存在则创建）。
-- 需要的 Secrets：`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`；可选 Variable `VITE_API_BASE_URL`（默认 Render 地址）。密钥库原件必须由站长离线保管，丢失后无法覆盖安装旧用户的 App。
-- `versionCode` 取工作流运行号（单调递增），`versionName` 取 `package.json` 版本；因此 **要让手机收到更新提示，必须先提升 `frontend/package.json` 的版本号再推送**。只推代码不改版本号时，Release 附件会被替换，但已安装的 App 不会提示。
-- 原因：此前 beta 版本均标为 prerelease，GitHub `/releases/latest` 排除预发布版本，导致接口返回 404，横幅静默忽略。现在新建 Release 不再加 prerelease 标记，并显式 `--latest`，让使用旧接口的已安装 App 也能发现后续新版本；已有 Release 仍只替换 APK 附件，不追溯修改发布标记。
-- 新 App 启动和回前台时，优先请求配置后端的公开只读接口 `GET /api/app/latest`（默认 `https://dinglongmahjong.onrender.com`）。后端读取 GitHub `/releases?per_page=10`，从非 draft 且带 APK 的版本中按语义版本选最新，包含 prerelease，返回 `{version, url, size, notes, page}`。成功结果缓存 10 分钟；GitHub 不可达时返回最近成功缓存，没有缓存则返回 503。
-- 客户端后端检查失败时，回退到 GitHub releases 列表并按相同规则选取。每个客户端请求限时 8 秒（含响应体读取）；后端 GitHub 请求也限时 8 秒。中国大陆访问 GitHub API 不稳定时，通常仍能通过 Render 检查；下载链接仍指向 GitHub APK 附件。
-- 横幅仅在原生 App 显示；设置页新增“检查更新”，与横幅共用检查函数，显示“已是最新版本 vX”“发现新版本 vY（下载）”或“检查失败（原因）”。网页端隐藏横幅和检查按钮。“下载更新”在系统浏览器打开 APK，安装需用户允许“安装未知应用”。
+`frontend/native-version.json` 的 `nativeBuild` 是 APK 原生兼容号，本次首个支持 OTA 的 APK 为 **1**。只有修改 `android/`、`ios/`、Capacitor 插件或权限时才加 1；纯网页改动不增加。Vite 构建注入 `__NATIVE_BUILD__`，Gradle 无需读取。发布仍需提升 package.json 的网页版本号（本次任务未改版本），同版本覆盖 Release 不会触发客户端更新。
+
+工作流 `.github/workflows/android-release.yml` 在推送 main、v* 标签或手动触发时运行 `build:mobile`、`cap sync android` 与签名 APK 构建；versionCode 为 github.run_number，versionName 为 package.json version。需要原有 ANDROID_KEYSTORE_BASE64、ANDROID_KEYSTORE_PASSWORD、ANDROID_KEY_ALIAS、ANDROID_KEY_PASSWORD Secrets；API 地址取 VITE_API_BASE_URL Variable 或默认 Render 地址。
+
+同一 Release 发布 `DingLongMahjong-v<ver>.apk`、`DingLongMahjong-v<ver>-web.zip` 和 `DingLongMahjong-v<ver>-update.json`，ZIP 根目录直接包含 index.html。manifest 含 version、nativeBuild、bundleUrl、bundleSha256（ZIP 的十六进制 SHA-256）、apkUrl、apkSize。后端从 github.com 的 latest 重定向和固定附件地址获取信息，保留现有 GitHub API 兜底与十分钟成功缓存；manifest 不可用时 nativeBuild=null，客户端按 APK 更新处理。
+
+仅 App 启动和回前台检查更新。网页版本更新且原生兼容号相同则静默下载、校验 SHA-256、设置下次启动包；仅在 `/home` 大厅且无进行中对局时立即 reload，牌桌、等待房和对局均不主动 reload。下载中进入牌桌也不会 reload。设置页显示网页版本、原生构建号和手动检查结果，已下载包可返回大厅立即重启。
+
+Vue 及初始路由挂载成功后才调用 LiveUpdate.ready()。readyTimeout=30000 毫秒，启动失败回退内置包并封锁坏包，避免重复安装；不关闭自动回滚。成功启动后清理旧包，只保留当前和上一个包（待启动包在启用前也保留）。回滚内置包不需要依赖上一个下载包。
+
+原生兼容号更高或缺少 manifest 时显示“需要安装新版本”。“立即更新”通过原生插件下载到 App 私有外部缓存 updates/，展示进度，再通过 FileProvider 打开系统安装确认。首次未允许安装未知应用时先打开系统授权页，授权返回后自动打开安装确认；拒绝后可再次点击按钮重试。Android 要求用户确认安装，不能静默绕过。覆盖安装必须沿用同一签名且 versionCode 更大。
+
+首次上线需要先安装本次 APK；旧 APK 没有原生插件，无法通过 OTA 获得此能力。GitHub 下载可达性、弱网下载、未知来源授权、安装取消/重试及坏包回滚须在 Android 真机验收；本机无 SDK，仅 Actions 能编译原生代码。
 
 ## 检查命令
 

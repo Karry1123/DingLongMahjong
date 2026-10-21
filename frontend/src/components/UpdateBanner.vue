@@ -1,31 +1,14 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { isNative, lifecycle } from '../platform/index.js'
-import { checkForUpdate } from '../utils/appUpdate.js'
-
-const current = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0'
-const update = ref(null), dismissed = ref(''), checking = ref(false)
-const DISMISS_KEY = 'dl.update.dismissed'
-try { dismissed.value = localStorage.getItem(DISMISS_KEY) || '' } catch { /* storage unavailable */ }
-
-async function check() {
-  if (checking.value) return
-  checking.value = true
-  try {
-    update.value = await checkForUpdate(current)
-  } catch { /* offline or rate limited: stay quiet, retry on next resume */ } finally { checking.value = false }
-}
-function dismiss() { dismissed.value = update.value?.version || ''; try { localStorage.setItem(DISMISS_KEY, dismissed.value) } catch { /* ignore */ } }
-function download() { window.open(update.value.url, '_blank') }
-const megabytes = size => (size / 1048576).toFixed(1)
-
-onMounted(() => { if (!isNative()) return; void check(); lifecycle.onResume(() => void check()) })
+import { ref } from 'vue'
+import { isNative } from '../platform/index.js'
+import { appUpdate, installAppUpdate } from '../services/appUpdates.js'
+const dismissed = ref('')
 </script>
 
 <template>
-  <aside v-if="isNative() && update && update.version !== dismissed" class="update-banner" role="status">
-    <div class="update-text"><b>新版本 {{ update.version }}</b><span>当前 v{{ current }} · 安装包 {{ megabytes(update.size) }} MB</span></div>
-    <div class="update-actions"><button type="button" @click="dismiss">稍后</button><button type="button" class="primary" @click="download">下载更新</button></div>
+  <aside v-if="isNative() && appUpdate.action === 'apk' && appUpdate.info?.version !== dismissed" class="update-banner" role="status">
+    <div class="update-text"><b>需要安装新版本 {{ appUpdate.info.version }}</b><span>{{ appUpdate.error || appUpdate.message }}</span><span v-if="appUpdate.downloading">下载中 {{ appUpdate.progress == null ? '…' : appUpdate.progress + '%' }}</span></div>
+    <div class="update-actions"><button type="button" :disabled="appUpdate.downloading" @click="dismissed = appUpdate.info.version">稍后</button><button type="button" class="primary" :disabled="appUpdate.downloading" @click="installAppUpdate">立即更新</button></div>
   </aside>
 </template>
 

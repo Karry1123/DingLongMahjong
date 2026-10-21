@@ -83,3 +83,41 @@ export async function checkForUpdate(current, { fetcher = globalThis.fetch, time
   }
   return compareVersions(info.version, current) > 0 ? info : null
 }
+
+export function updateAction(current, nativeBuild, info) {
+  if (!info || compareVersions(info.version, current) <= 0) return 'none'
+  if (!Number.isInteger(info.nativeBuild)) return 'apk'
+  if (info.nativeBuild > nativeBuild) return 'apk'
+  if (info.nativeBuild === nativeBuild) return info.bundleUrl ? 'ota' : 'apk'
+  return 'none'
+}
+
+// A whitelist keeps unknown routes and all table modes from reloading.
+export function canReloadUpdate({ path, inGame = false }) {
+  return !inGame && path === '/home'
+}
+
+export async function stageWebUpdate(liveUpdate, info, context) {
+  const { bundleIds: blocked } = await liveUpdate.getBlockedBundles()
+  if (blocked.includes(info.version)) throw new Error('该更新启动失败，已自动回退，请等待后续版本')
+  const { bundleIds } = await liveUpdate.getBundles()
+  if (!bundleIds.includes(info.version)) {
+    await liveUpdate.downloadBundle({ bundleId: info.version, url: info.bundleUrl,
+      ...(info.bundleSha256 ? { checksum: info.bundleSha256 } : {}) })
+  }
+  await liveUpdate.setNextBundle({ bundleId: info.version })
+  // Evaluate after every async step, immediately before the reload call.
+  if (canReloadUpdate(context())) { await liveUpdate.reload(); return true }
+  return false
+}
+
+export async function pruneWebBundles(liveUpdate, previousBundleId) {
+  const { bundleId: current } = await liveUpdate.getCurrentBundle()
+  const { bundleId: next } = await liveUpdate.getNextBundle()
+  const { bundleIds } = await liveUpdate.getBundles()
+  const previous = previousBundleId || bundleIds.filter(id => id !== current && id !== next)
+    .sort((a, b) => compareVersions(b, a))[0]
+  for (const bundleId of bundleIds) {
+    if (![current, previous, next].includes(bundleId)) await liveUpdate.deleteBundle({ bundleId })
+  }
+}

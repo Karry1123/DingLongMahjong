@@ -8,6 +8,9 @@ const config: CapacitorConfig = {
   server: { androidScheme: 'https', cleartext: false },
   android: { allowMixedContent: false, backgroundColor: '#06221D' },
   ios: { backgroundColor: '#06221D' },
-  plugins: { StatusBar: { style: 'DARK', backgroundColor: '#06221D' } },
+  plugins: {
+    StatusBar: { style: 'DARK', backgroundColor: '#06221D' },
+    LiveUpdate: { readyTimeout: 30000, autoBlockRolledBackBundles: true, autoDeleteBundles: false },
+  },
 }
 export default config

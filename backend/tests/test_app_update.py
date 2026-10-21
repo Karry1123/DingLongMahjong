@@ -33,6 +33,8 @@ def github(monkeypatch, payload):
     calls = []
 
     def open_request(request, timeout):
+        if request.full_url.endswith("-update.json"):
+            raise OSError("no manifest")
         calls.append((request.full_url, timeout))
         return BytesIO(json.dumps(payload).encode())
 
@@ -47,7 +49,7 @@ def test_public_latest_filters_and_sorts_releases(monkeypatch):
     response = TestClient(app).get("/api/app/latest")
     assert response.status_code == 200
     assert response.json() == dict(version="v1.10.0-beta.10", url="https://example.test/app.apk",
-                                   size=42, notes="notes", page="https://example.test/release")
+                                   size=42, notes="notes", page="https://example.test/release", nativeBuild=None)
     assert calls == [(app_update.RELEASES_API, 8)]
 
 
@@ -112,6 +114,8 @@ def test_redirect_parses_tag_and_head_size(monkeypatch):
     calls = []
 
     def head(request, timeout):
+        if request.full_url.endswith("-update.json"):
+            raise OSError("no manifest")
         calls.append((request.full_url, request.get_method(), timeout))
         response = BytesIO()
         response.headers = {"Content-Length": "123456"}
@@ -120,7 +124,7 @@ def test_redirect_parses_tag_and_head_size(monkeypatch):
     monkeypatch.setattr(app_update, "urlopen", head)
     expected_url = f"{app_update.RELEASES_PAGE}/download/v0.4.3-beta/DingLongMahjong-v0.4.3-beta.apk"
     assert app_update.latest() == dict(version="v0.4.3-beta", url=expected_url,
-                                       size=123456, notes="", page=page)
+                                       size=123456, notes="", page=page, nativeBuild=None)
     assert redirects == [(f"{app_update.RELEASES_PAGE}/latest", "GET", 8)]
     assert calls == [(expected_url, "HEAD", 8)]
 
@@ -165,6 +169,8 @@ def test_token_api_precedes_redirect(monkeypatch):
     calls = []
 
     def api(request, timeout):
+        if request.full_url.endswith("-update.json"):
+            raise OSError("no manifest")
         calls.append(request)
         assert request.full_url == app_update.RELEASES_API
         assert request.get_header("Authorization") == "Bearer test-token"
@@ -185,6 +191,8 @@ def test_token_failure_falls_back_to_redirect(monkeypatch, caplog):
     calls = []
 
     def open_request(request, timeout):
+        if request.full_url.endswith("-update.json"):
+            raise OSError("no manifest")
         calls.append(request)
         if request.full_url == app_update.RELEASES_API:
             assert request.get_header("Authorization") == "Bearer test-token"
@@ -250,3 +258,55 @@ def test_negative_cache_expires_and_recovers(monkeypatch, stale):
     assert len(recovered) == 1
     assert len(redirects) == 2
     assert app_update._failed_at is None
+
+
+def manifest_fixture(monkeypatch, **changes):
+    info = dict(version="v1.2.3", url="old.apk", size=42, notes="notes", page="page")
+    monkeypatch.setattr(app_update, "_fetch_latest_base", lambda: dict(info))
+    base = f"{app_update.RELEASES_PAGE}/download/v1.2.3/DingLongMahjong-v1.2.3"
+    manifest = dict(version="v1.2.3", nativeBuild=1, bundleUrl=f"{base}-web.zip",
+                    bundleSha256="A" * 64, apkUrl=f"{base}.apk", apkSize=1234)
+    manifest.update(changes)
+    calls = []
+
+    def download(request, timeout):
+        assert request.full_url == f"{base}-update.json"
+        assert "api.github.com" not in request.full_url
+        calls.append(request.full_url)
+        return BytesIO(json.dumps(manifest).encode())
+
+    monkeypatch.setattr(app_update, "urlopen", download)
+    return info, manifest, calls
+
+
+def test_manifest_enriches_latest_and_is_cached(monkeypatch):
+    _, manifest, calls = manifest_fixture(monkeypatch)
+    client = TestClient(app)
+    result = client.get("/api/app/latest").json()
+    assert result == dict(version="v1.2.3", url=manifest["apkUrl"], size=1234, notes="notes", page="page",
+                          nativeBuild=1, bundleUrl=manifest["bundleUrl"], bundleSha256="a" * 64)
+    assert client.get("/api/app/latest").json() == result
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("changes", [dict(version="v1.2.4"), dict(nativeBuild=True), dict(nativeBuild=None),
+                                     dict(nativeBuild=0), dict(bundleSha256="bad"), dict(bundleUrl="https://evil.test/a.zip"),
+                                     dict(apkUrl="http://example.test/app.apk"), dict(apkSize=-1)])
+def test_invalid_manifest_keeps_apk_fallback(monkeypatch, changes):
+    info, _, _ = manifest_fixture(monkeypatch, **changes)
+    assert app_update.latest() == dict(info, nativeBuild=None)
+
+
+@pytest.mark.parametrize("payload", [b"not json", b"[]", b"null"])
+def test_malformed_manifest_keeps_apk_fallback(monkeypatch, payload):
+    info, _, _ = manifest_fixture(monkeypatch)
+    monkeypatch.setattr(app_update, "urlopen", lambda *args, **kwargs: BytesIO(payload))
+    assert app_update.latest() == dict(info, nativeBuild=None)
+
+
+def test_missing_manifest_keeps_apk_fallback(monkeypatch):
+    info, _, _ = manifest_fixture(monkeypatch)
+    def missing(*args, **kwargs):
+        raise HTTPError("manifest", 404, "missing", {}, None)
+    monkeypatch.setattr(app_update, "urlopen", missing)
+    assert app_update.latest() == dict(info, nativeBuild=None)

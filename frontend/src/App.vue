@@ -1,4 +1,5 @@
 <script setup>
+import { setUpdateGameGuard } from './services/appUpdates.js'
 /**
  * 牌局闭环整合（SETUP 录入 → PLAYING 串行）：
  * 1) SETUP：自由录入 13/14 起手；HandBar 点击=移除；TilePicker 激活
@@ -210,6 +211,7 @@ function enterFullscreenOnMobileStart() {
 }
 const pveStartLoading = ref(false)
 const exitingGame = ref(false)
+setUpdateGameGuard(() => gameMode.value === 'PVE' || pvpPlaying.value || exitingGame.value)
 const pveConfigOpen = ref(false)
 const enableEV = ref(true)
 function openPveConfig() {

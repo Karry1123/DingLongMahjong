@@ -83,11 +83,36 @@ jobs:
           cp "$SRC" "$OUT"
           echo "path=$OUT" >> "$GITHUB_OUTPUT"
 
+      - name: Package web bundle and update manifest
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          APK_PATH: ${{ steps.apk.outputs.path }}
+        run: |
+          (cd dist-mobile && zip -qr "$RUNNER_TEMP/DingLongMahjong-$TAG-web.zip" .)
+          node --input-type=module <<'NODE'
+          import { readFileSync, statSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const { TAG, RUNNER_TEMP, GITHUB_REPOSITORY, APK_PATH } = process.env;
+          const base = `https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/DingLongMahjong-${TAG}`;
+          const manifest = {
+            version: TAG,
+            nativeBuild: JSON.parse(readFileSync('native-version.json', 'utf8')).nativeBuild,
+            bundleUrl: `${base}-web.zip`,
+            bundleSha256: createHash('sha256').update(readFileSync(`${RUNNER_TEMP}/DingLongMahjong-${TAG}-web.zip`)).digest('hex'),
+            apkUrl: `${base}.apk`,
+            apkSize: statSync(APK_PATH).size,
+          };
+          writeFileSync(`${RUNNER_TEMP}/DingLongMahjong-${TAG}-update.json`, JSON.stringify(manifest, null, 2));
+          NODE
+
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: DingLongMahjong-${{ steps.version.outputs.tag }}
-          path: ${{ steps.apk.outputs.path }}
+          path: |
+            ${{ steps.apk.outputs.path }}
+            ${{ runner.temp }}/DingLongMahjong-${{ steps.version.outputs.tag }}-web.zip
+            ${{ runner.temp }}/DingLongMahjong-${{ steps.version.outputs.tag }}-update.json
 
       - name: Create or update GitHub release
         env:
@@ -104,4 +129,4 @@ jobs:
               gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --generate-notes --latest
             fi
           fi
-          gh release upload "$TAG" "${{ steps.apk.outputs.path }}" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "$TAG" "${{ steps.apk.outputs.path }}" "$RUNNER_TEMP/DingLongMahjong-$TAG-web.zip" "$RUNNER_TEMP/DingLongMahjong-$TAG-update.json" --repo "$GITHUB_REPOSITORY" --clobber

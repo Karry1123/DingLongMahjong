@@ -1,7 +1,7 @@
 import { TOKEN_KEY } from './web.js'
 
 // Inject plugins so tests require neither a device nor SDK packages.
-export function createNativePlatform({ Preferences, ScreenOrientation, App, Haptics, KeepAwake, StatusBar }) {
+export function createNativePlatform({ Preferences, ScreenOrientation, App, Haptics, KeepAwake, StatusBar, ApkUpdater }) {
   let token = '', initialized, writes = Promise.resolve(), owners = 0, orientationOwners = 0, statusBarOwners = 0
   let wakeOperations = Promise.resolve(), orientationOperations = Promise.resolve(), statusBarOperations = Promise.resolve()
   const optional = async operation => { try { await operation(); return true } catch { return false } }
@@ -12,6 +12,7 @@ export function createNativePlatform({ Preferences, ScreenOrientation, App, Hapt
     return () => { if (disposed) return; disposed = true; return handle.then(listener => listener.remove()).catch(() => {}) }
   }
   return {
+    apkUpdater: ApkUpdater,
     secureSession: {
       ready() { return initialized ||= Preferences.get({ key: TOKEN_KEY }).then(result => { token = result.value || '' }) },
       get: () => token,

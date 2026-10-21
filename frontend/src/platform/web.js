@@ -10,6 +10,7 @@ export function createWebPlatform(browser = globalThis.window) {
     return () => browser?.document?.removeEventListener('visibilitychange', handler)
   }
   return {
+    apkUpdater: { async download() { return null }, async install() {}, async addListener() { return { remove() {} } } },
     secureSession: {
       async ready() {},
       get() { try { return storage()?.getItem(TOKEN_KEY) || '' } catch { return '' } },

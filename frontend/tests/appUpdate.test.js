@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { checkForUpdate, latestRelease, RELEASES_API, compareVersions, describeRelease, parseVersion, updateAvailable } from '../src/utils/appUpdate.js'
+import { updateAction, canReloadUpdate, stageWebUpdate, pruneWebBundles, checkForUpdate, latestRelease, RELEASES_API, compareVersions, describeRelease, parseVersion, updateAvailable } from '../src/utils/appUpdate.js'
 
 const release = (tag, assets = [{ name: 'DingLongMahjong-v0.4.1-beta.apk', browser_download_url: 'https://example.test/app.apk', size: 5242880 }]) =>
   ({ tag_name: tag, assets, html_url: 'https://example.test/release', body: 'notes' })
@@ -87,4 +87,81 @@ test('times out while reading JSON and reports both source failures', async () =
 test('missing APK list is a check failure, not an up-to-date result', async () => {
   const fetcher = async url => url === RELEASES_API ? response([release('v2.0.0', [])]) : { ok: false, status: 503 }
   await assert.rejects(checkForUpdate('1.0.0', { fetcher }), /未找到带 APK 的版本/)
+})
+
+
+test('update decisions compare versions and native compatibility, with legacy APK fallback', () => {
+  const info = { version: 'v1.1.0', nativeBuild: 1, bundleUrl: 'https://example.test/web.zip' }
+  assert.equal(updateAction('1.0.0', 1, info), 'ota')
+  assert.equal(updateAction('1.0.0', 1, { ...info, nativeBuild: 2 }), 'apk')
+  assert.equal(updateAction('1.0.0', 2, info), 'none')
+  assert.equal(updateAction('1.1.0', 1, info), 'none')
+  assert.equal(updateAction('2.0.0', 1, info), 'none')
+  assert.equal(updateAction('1.0.0', 1, { version: '1.1.0' }), 'apk')
+  assert.equal(updateAction('1.0.0', 1, { ...info, nativeBuild: null }), 'apk')
+  assert.equal(updateAction('1.0.0', 1, { ...info, bundleUrl: '' }), 'apk')
+  assert.equal(updateAction('1.0.0', 1, null), 'none')
+})
+
+function liveUpdateMock() {
+  const calls = []
+  return { calls, getBlockedBundles: async () => ({ bundleIds: [] }),
+    getBundles: async () => ({ bundleIds: [] }),
+    downloadBundle: async options => calls.push(['download', options]),
+    setNextBundle: async options => calls.push(['next', options]),
+    reload: async () => calls.push(['reload']) }
+}
+const bundleInfo = { version: 'v2.0.0', bundleUrl: 'https://example.test/web.zip', bundleSha256: 'a'.repeat(64) }
+
+test('OTA downloads with checksum, stages then reloads only in the idle lobby', async () => {
+  const plugin = liveUpdateMock()
+  assert.equal(await stageWebUpdate(plugin, bundleInfo, () => ({ path: '/home' })), true)
+  assert.deepEqual(plugin.calls, [['download', { bundleId: 'v2.0.0', url: bundleInfo.bundleUrl, checksum: bundleInfo.bundleSha256 }],
+    ['next', { bundleId: 'v2.0.0' }], ['reload']])
+})
+
+test('never reloads during PVE, sandbox, room, match or an active game in the lobby', async () => {
+  for (const context of [{ path: '/pve' }, { path: '/sandbox' }, { path: '/matches/1/play' },
+    { path: '/matches/1/waiting' }, { path: '/settings' }, { path: '/home', inGame: true }]) {
+    const plugin = liveUpdateMock()
+    assert.equal(canReloadUpdate(context), false)
+    assert.equal(await stageWebUpdate(plugin, bundleInfo, () => context), false)
+    assert.deepEqual(plugin.calls.map(c => c[0]), ['download', 'next'])
+  }
+})
+
+test('rechecks safety after download when a user enters a match', async () => {
+  let context = { path: '/home' }
+  const plugin = liveUpdateMock()
+  plugin.downloadBundle = async () => { context = { path: '/matches/1/play', inGame: true } }
+  await stageWebUpdate(plugin, bundleInfo, () => context)
+  assert.equal(plugin.calls.some(c => c[0] === 'reload'), false)
+})
+
+test('blocked bad bundles are not retried, downloaded bundles are reused', async () => {
+  const plugin = liveUpdateMock()
+  plugin.getBlockedBundles = async () => ({ bundleIds: ['v2.0.0'] })
+  await assert.rejects(stageWebUpdate(plugin, bundleInfo, () => ({ path: '/home' })))
+  assert.deepEqual(plugin.calls, [])
+  plugin.getBlockedBundles = async () => ({ bundleIds: [] })
+  plugin.getBundles = async () => ({ bundleIds: ['v2.0.0'] })
+  await stageWebUpdate(plugin, bundleInfo, () => ({ path: '/pve' }))
+  assert.deepEqual(plugin.calls, [['next', { bundleId: 'v2.0.0' }]])
+})
+
+test('cleans old bundles only after success while retaining current, previous and pending', async () => {
+  const deleted = []
+  await pruneWebBundles({ getCurrentBundle: async () => ({ bundleId: 'v3.0.0' }),
+    getNextBundle: async () => ({ bundleId: 'v4.0.0' }),
+    getBundles: async () => ({ bundleIds: ['v1.0.0', 'v2.0.0', 'v3.0.0', 'v4.0.0'] }),
+    deleteBundle: async ({ bundleId }) => deleted.push(bundleId) }, 'v2.0.0')
+  assert.deepEqual(deleted, ['v1.0.0'])
+})
+
+
+test('failed integrity download never stages or reloads a bundle', async () => {
+  const plugin = liveUpdateMock()
+  plugin.downloadBundle = async () => { throw new Error('checksum mismatch') }
+  await assert.rejects(stageWebUpdate(plugin, bundleInfo, () => ({ path: '/home' })), /checksum mismatch/)
+  assert.deepEqual(plugin.calls, [])
 })

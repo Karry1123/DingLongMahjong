@@ -4,6 +4,7 @@ import { assertMobileApiBase } from './src/services/apiBase.js'
 import { createRequire } from 'node:module'
 
 const { version: appVersion } = createRequire(import.meta.url)('./package.json')
+const { nativeBuild } = createRequire(import.meta.url)('./native-version.json')
 
 function voiceDataHeaders(server) {
   server.middlewares.use((req, res, next) => {
@@ -23,7 +24,7 @@ export default defineConfig(({ command, mode }) => {
   const mobile = mode === 'mobile'
   if (command === 'build' && mobile) assertMobileApiBase(env.VITE_API_BASE_URL)
   return {
-    define: { __APP_VERSION__: JSON.stringify(appVersion) },
+    define: { __APP_VERSION__: JSON.stringify(appVersion), __NATIVE_BUILD__: JSON.stringify(nativeBuild) },
     build: { outDir: mobile ? 'dist-mobile' : 'dist' },
     plugins: [vue(), { name: 'mobile-entry', transformIndexHtml: { order: 'pre', handler: html => mobile ? html.replace('/src/main.js', '/src/mobile.js') : html } }, { name: 'voice-data-headers', configureServer: voiceDataHeaders, configurePreviewServer: voiceDataHeaders }],
     base: mobile ? './' : process.env.NODE_ENV === 'production' ? '/DingLongMahjong/' : '/',

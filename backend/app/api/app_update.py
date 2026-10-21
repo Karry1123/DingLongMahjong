@@ -116,7 +116,7 @@ def fetch_latest_redirect():
     return dict(version=unquote(tag), url=url, size=size, notes="", page=f"{RELEASES_PAGE}/tag/{tag}")
 
 
-def fetch_latest():
+def _fetch_latest_base():
     token = os.environ.get("GITHUB_TOKEN", "").strip()
     if token:
         try:
@@ -132,6 +132,32 @@ def fetch_latest():
     except Exception as error:
         _warn_failure("GitHub unauthenticated releases API", error)
         raise
+
+
+def fetch_latest():
+    info = _fetch_latest_base()
+    info["nativeBuild"] = None
+    tag = quote(info["version"], safe="")
+    base = f"{RELEASES_PAGE}/download/{tag}/DingLongMahjong-{tag}"
+    try:
+        request = Request(f"{base}-update.json", headers={"User-Agent": "DingLongMahjong"})
+        with urlopen(request, timeout=8) as response:
+            manifest = json.loads(response.read(65537))
+        if not isinstance(manifest, dict):
+            raise ValueError("Invalid update manifest")
+        build = manifest.get("nativeBuild")
+        if (str(manifest.get("version", "")).removeprefix("v") != info["version"].removeprefix("v")
+                or type(build) is not int or build < 1
+                or manifest.get("bundleUrl") != f"{base}-web.zip"
+                or manifest.get("apkUrl") != f"{base}.apk"
+                or not re.fullmatch(r"[a-fA-F0-9]{64}", str(manifest.get("bundleSha256", "")))
+                or type(manifest.get("apkSize")) is not int or manifest["apkSize"] < 0):
+            raise ValueError("Invalid update manifest fields")
+        info.update(nativeBuild=build, bundleUrl=manifest["bundleUrl"],
+                    bundleSha256=manifest["bundleSha256"].lower(), url=manifest["apkUrl"], size=manifest["apkSize"])
+    except Exception as error:
+        _warn_failure("GitHub update manifest", error)
+    return info
 
 
 @router.get("/latest")
