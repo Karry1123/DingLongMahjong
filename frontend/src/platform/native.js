@@ -58,6 +58,7 @@ export function createNativePlatform({ Preferences, ScreenOrientation, App, Hapt
       },
       async dark() {
       await optional(() => StatusBar.setStyle({ style: 'DARK' }))
+      // Native background mirrors --ink-900; the plugin requires a literal color.
       await optional(() => StatusBar.setBackgroundColor({ color: '#06221D' }))
     } },
   }

@@ -310,25 +310,25 @@ function actionLabel(type) {
 function buttonClass(row) {
   const type = row.action.action_type
   const base =
-    'group relative flex min-w-[5.5rem] flex-1 flex-col items-center gap-1 rounded-2xl px-3 py-3 text-center transition duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80 disabled:cursor-not-allowed disabled:opacity-45'
+    'ui-btn--action group relative flex min-w-[5.5rem] flex-1 flex-col items-center gap-1 rounded-2xl px-3 py-3 text-center transition duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-gilt-300/80 disabled:cursor-not-allowed disabled:opacity-45'
   const recommendedRing = row.isRecommended
-    ? ' ring-2 ring-offset-2 ring-offset-emerald-950 scale-[1.03]'
+    ? ' ring-2 ring-offset-2 ring-offset-ink-950 ring-highlight scale-[1.03]'
     : ' hover:-translate-y-0.5 hover:shadow-lg'
 
-  if (type === 'hu') {
-    return `${base}${recommendedRing} bg-gradient-to-b from-rose-500 to-amber-500 text-amber-50 shadow-lg shadow-rose-900/40 ring-amber-300`
+  if (isHuAction(type)) {
+    return `${base}${recommendedRing} is-hu border border-btn-action-edge bg-gradient-to-b from-cinnabar-600 to-cinnabar-600 text-paper shadow-lg shadow-ink-950/40 ring-accent-line`
   }
   if (type === 'pass') {
-    return `${base}${recommendedRing} border border-sky-400/50 bg-sky-950/80 text-sky-50 ring-sky-300/80`
+    return `${base}${recommendedRing} is-pass border border-line/[.16] bg-ink-600 text-fg ring-line/[.16]`
   }
   if (type === 'pong') {
-    return `${base}${recommendedRing} border border-amber-400/45 bg-amber-950/70 text-amber-50 ring-amber-400/70`
+    return `${base}${recommendedRing} border border-btn-action-edge bg-paper text-cinnabar-600 ring-accent-line/70`
   }
   if (type === 'ming_gang' || type === 'an_gang') {
-    return `${base}${recommendedRing} border border-violet-400/45 bg-violet-950/70 text-violet-50 ring-violet-400/70`
+    return `${base}${recommendedRing} border border-btn-action-edge bg-paper text-cinnabar-600 ring-accent-line/70`
   }
   // chi
-  return `${base}${recommendedRing} border border-emerald-400/45 bg-emerald-950/70 text-emerald-50 ring-emerald-400/70`
+  return `${base}${recommendedRing} border border-btn-action-edge bg-paper text-cinnabar-600 ring-accent-line/70`
 }
 
 function selectAction(row) {
@@ -369,24 +369,24 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
       aria-label="副露与和牌决策"
     >
       <div
-        class="action-prompt-panel pointer-events-auto w-full max-w-xl origin-bottom overflow-hidden rounded-3xl border border-rose-400/50 bg-emerald-950/95 shadow-2xl shadow-rose-950/40 ring-2 ring-rose-500 backdrop-blur-md"
+        class="action-prompt-panel pointer-events-auto w-full max-w-xl origin-bottom overflow-hidden rounded-3xl border border-accent-line/45 bg-ink-900/95 shadow-2xl shadow-ink-950/40 ring-2 ring-accent-line/45 backdrop-blur-md"
       >
         <!-- 顶栏：对手打出 -->
         <header
-          class="relative border-b border-amber-500/20 bg-gradient-to-r from-teal-900/90 via-emerald-900/80 to-slate-900/90 px-4 py-3.5 sm:px-5"
+          class="relative border-b border-gilt-500/20 bg-gradient-to-r from-ink-900/90 via-ink-900/80 to-ink-800/90 px-4 py-3.5 sm:px-5"
         >
           <div
-            class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(251,191,36,0.18),_transparent_55%)]"
+            class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgb(var(--accent)_/_0.18),_transparent_55%)]"
           />
           <p
-            class="relative text-[11px] font-medium uppercase tracking-[0.18em] text-amber-200/70"
+            class="relative text-[11px] font-medium uppercase tracking-[0.18em] text-gilt-300/70"
           >
             {{ showRecommendation ? '系统综合推荐' : '请选择响应动作' }}
           </p>
           <div
-            class="relative mt-1.5 flex flex-wrap items-center gap-2 text-sm text-amber-50 sm:text-base"
+            class="relative mt-1.5 flex flex-wrap items-center gap-2 text-sm text-gilt-200 sm:text-base"
           >
-            <span class="font-medium text-teal-100/90">
+            <span class="font-medium text-fog-300/90">
               对手（{{ roleOf(resolvedProvider) }}·{{
                 windLabel(resolvedProvider) || '—'
               }}）打出
@@ -398,7 +398,7 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
             >
               <MahjongTile :code="resolvedDiscard" />
             </span>
-            <span v-else class="text-teal-300/70">（未知张）</span>
+            <span v-else class="text-fog-400/70">（未知张）</span>
           </div>
         </header>
 
@@ -421,10 +421,10 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
               :class="buttonClass(row)"
               @click="selectAction(row)"
             >
-              <span v-if="keyboardShortcuts && index < 9" class="action-shortcut absolute left-1.5 top-1 text-[10px] font-bold text-amber-100/70">{{ index + 1 }}</span>
+              <span v-if="keyboardShortcuts && index < 9" class="action-shortcut absolute left-1.5 top-1 text-[10px] font-bold text-gilt-200/70">{{ index + 1 }}</span>
               <span
                 v-if="row.isRecommended"
-                class="action-recommend-badge absolute -top-2 right-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-950"
+                class="action-recommend-badge absolute -top-2 right-2 rounded-full bg-highlight px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-fg-on-accent"
               >
                 荐
               </span>
@@ -437,7 +437,7 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
                   :key="`${tile.code}-${i}`"
                   class="action-preview-tile inline-flex items-center justify-center rounded border text-[10px] font-semibold opacity-95"
                   :data-tile="tile.code"
-                  :class="[tileSuitClass(tile.code), tile.claimed ? 'action-claimed-tile ring-2 ring-amber-300' : '']"
+                  :class="[tileSuitClass(tile.code), tile.claimed ? 'action-claimed-tile ring-2 ring-gilt-300' : '']"
                   :title="tile.claimed ? `供牌 ${displayTile(tile.code)}` : displayTile(tile.code)"
                 >
                   <MahjongTile :code="tile.code" />
@@ -453,14 +453,18 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
 </template>
 
 <style scoped>
+/* Labels retain their existing sizes; the action recipe supplies the display typeface. */
+.ui-btn--action { font:inherit; font-family:var(--font-display); letter-spacing:inherit; border-bottom:3px solid rgb(var(--gilt-700)); }
+.ui-btn--action.is-pass { border-bottom:1px solid rgb(var(--line) / .16); }
+.ui-btn--action .action-shortcut { color:inherit; opacity:.7; }
 .action-preview-tile { box-sizing:border-box; flex:0 0 24px; width:24px; min-width:24px; max-width:24px; height:32px; min-height:32px; max-height:32px; overflow:hidden; }
 .action-target-tile { box-sizing:border-box; flex:none; width:28px; height:36px; overflow:hidden; }
 .action-target-tile :deep(.mahjong-tile), .action-preview-tile :deep(.mahjong-tile) { --tw:24px; --th:32px; width:100%; height:100%; margin:0; box-shadow:none; }
 .action-target-tile :deep(.characters), .action-preview-tile :deep(.characters) { font-size:10px; line-height:1; gap:1px; }
 .action-target-tile :deep(.honor), .action-preview-tile :deep(.honor) { font-size:14px; line-height:1; }
-.action-substitute-note { color:#bae6fd; font-size:10px; line-height:1.2; }
+.action-substitute-note { color:rgb(var(--info)); font-size:10px; line-height:1.2; }
 .action-prompt-docked { height:auto; overflow:visible; }
-.action-prompt-docked .action-prompt-panel { max-width:none; height:auto; overflow:visible; display:flex; flex-direction:column; border-radius:16px; border-color:rgba(251,191,36,.45); background:rgba(3,46,43,.9); box-shadow:0 12px 32px rgba(0,20,20,.55); animation:none; }
+.action-prompt-docked .action-prompt-panel { max-width:none; height:auto; overflow:visible; display:flex; flex-direction:column; border-radius:16px; border-color:rgb(var(--accent-line) / .45); background:rgb(var(--ink-900) / .95); box-shadow:0 12px 32px rgb(var(--ink-950) / .55); animation:none; }
 .action-prompt-docked .action-prompt-panel > header { display:block; padding:7px 14px; background:transparent; }
 .action-prompt-docked .action-prompt-panel > header > p:first-of-type { display:none; }
 .action-prompt-docked .action-prompt-panel > header > div:last-child { margin:0; justify-content:center; font-size:.85rem; line-height:1.2; }
@@ -500,23 +504,23 @@ onUnmounted(() => window.removeEventListener('keydown', onNumberKey))
   0%,
   100% {
     box-shadow:
-      0 0 0 0 rgba(251, 191, 36, 0.35),
-      0 12px 28px rgba(127, 29, 29, 0.45);
+      0 0 0 0 rgb(var(--accent) / .35),
+      0 12px 28px rgb(var(--ink-950) / .45);
   }
   50% {
     box-shadow:
-      0 0 0 8px rgba(251, 191, 36, 0),
-      0 16px 36px rgba(127, 29, 29, 0.55);
+      0 0 0 8px rgb(var(--accent) / 0),
+      0 16px 36px rgb(var(--ink-950) / .55);
   }
 }
 
 @keyframes pass-glow {
   0%,
   100% {
-    border-color: rgba(56, 189, 248, 0.45);
+    border-color: rgb(var(--line) / .16);
   }
   50% {
-    border-color: rgba(125, 211, 252, 0.85);
+    border-color: rgb(var(--line) / .34);
   }
 }
 

@@ -1,0 +1,20 @@
+/* Existing stage/fullscreen rules, preserved for P1. */
+/* Every view uses the same fixed 1280×720 stage. */
+.pve-landscape-hint { display:none; }
+
+html.pvp-immersive-fullscreen, body.pvp-immersive-fullscreen { position:fixed; inset:0; width:100%; height:100%; overflow:hidden; overscroll-behavior:none; }
+html.pvp-immersive-fullscreen .viewport-wrapper { position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; overflow:hidden; z-index:9999; touch-action:none; }
+html.pvp-immersive-fullscreen .landscape-winner-hand { overscroll-behavior:contain; touch-action:pan-y; }
+
+
+/* Decoration is appended over the existing stage without changing its layout. */
+.game-stage:is(.is-stage-active, .is-entry-stage) {
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, rgb(var(--table-felt)), rgb(var(--felt-600)) 45%, rgb(var(--table-felt-deep)));
+}
+.game-stage:is(.is-stage-active, .is-entry-stage)::before {
+  content: ''; position: absolute; inset: 14px; border: 1.5px solid rgb(var(--accent-line) / .35); border-radius: 14px; pointer-events: none; z-index: 1;
+}
+.game-stage > .stage-cloud { position: absolute; width: 140px; height: 140px; pointer-events: none; z-index: 1; }
+.game-stage > .stage-cloud::before { opacity: .25; }
+.stage-cloud--top { top: 14px; left: 14px; }
+.stage-cloud--bottom { bottom: 14px; right: 14px; }

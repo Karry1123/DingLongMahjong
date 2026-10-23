@@ -62,7 +62,7 @@ function moveHand({ fromIndex, toIndex }) {
 <template>
   <section class="pvp-game-table pve-session-view" :data-game-id="game.game_id" :data-self-wind="game.seat_wind" :data-phase="game.phase" aria-label="玩家对战牌桌" :inert="opening ? true : undefined">
     <main class="pve-game-main">
-      <section class="pvp-topbar rounded-2xl border border-amber-300/30 text-amber-100" aria-label="轮次状态">
+      <section class="pvp-topbar rounded-2xl border border-gilt-300/30 text-gilt-200" aria-label="轮次状态">
         <div class="pvp-game-header">
           <span>第 {{ game.circle_number || 1 }} 圈 · 第 {{ game.hand_number || 1 }} 局 · 庄家 {{ accountPlayers.find(p => p.seat_wind === game.dealer_seat)?.nickname }} · {{ {E:'东',S:'南',W:'西',N:'北'}[game.dealer_seat] }}风</span>
           <span class="score-strip">累计：<span v-for="player in accountPlayers" :key="player.seat_wind">{{ player.nickname }} {{ game.scores?.[player.seat_wind] || 0 }}</span></span>
@@ -88,17 +88,17 @@ function moveHand({ fromIndex, toIndex }) {
   </section>
 </template>
 <style scoped>
-.pvp-game-header { justify-content:space-between; color:#f4dfac; white-space:nowrap; }
+.pvp-game-header { justify-content:space-between; color:rgb(var(--gilt-200)); white-space:nowrap; }
 .score-strip { display:flex; gap:8px; font-size:10px; }
-.game-id { color:#90b2a0; font-size:9px; }
-.pvp-game-header button { border:1px solid #c6b37866; padding:3px 8px; border-radius:16px; font-size:11px; }
-.pvp-volume { display:flex; align-items:center; gap:5px; font-size:11px; }.pvp-volume input { width:65px; accent-color:#edcc78; }
-.self-player-caption { position:absolute; z-index:12; bottom:3px; left:12px; display:flex; align-items:center; gap:6px; color:#d7c794; font-size:10px; white-space:nowrap; }
-.self-player-caption small { font-size:8px; padding:0 3px; border:1px solid #d4af5866; border-radius:3px; }
-.player-clock { color:#f5d68b; font-variant-numeric:tabular-nums; }
-.pvp-action-controls { position:absolute; z-index:100; left:50%; bottom:104px; transform:translateX(-50%); display:flex; justify-content:center; flex-wrap:wrap; gap:8px; width:700px; max-height:250px; overflow:auto; padding:10px; border:1px solid #cbb57188; border-radius:16px; background:#063b32f5; }
-.pvp-action-controls button { padding:10px 18px; border:1px solid #cbb57188; border-radius:10px; background:#174e40; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:16px; min-width:100px; }.pvp-action-controls button:disabled { opacity:.6; }
+.game-id { color:rgb(var(--fog-400)); font-size:9px; }
+.pvp-game-header button { border:1px solid rgb(var(--accent-line) / .4); padding:3px 8px; border-radius:16px; font-size:11px; }
+.pvp-volume { display:flex; align-items:center; gap:5px; font-size:11px; }.pvp-volume input { width:65px; accent-color:rgb(var(--accent)); }
+.self-player-caption { position:absolute; z-index:12; bottom:3px; left:12px; display:flex; align-items:center; gap:6px; color:rgb(var(--gilt-300)); font-size:10px; white-space:nowrap; }
+.self-player-caption small { font-size:8px; padding:0 3px; border:1px solid rgb(var(--accent-line) / .4); border-radius:3px; }
+.player-clock { color:rgb(var(--gilt-200)); font-variant-numeric:tabular-nums; }
+.pvp-action-controls { position:absolute; z-index:100; left:50%; bottom:104px; transform:translateX(-50%); display:flex; justify-content:center; flex-wrap:wrap; gap:8px; width:700px; max-height:250px; overflow:auto; padding:10px; border:1px solid rgb(var(--accent-line) / .45); border-radius:16px; background:rgb(var(--ink-900) / .95); }
+.pvp-action-controls button { padding:10px 18px; border:1px solid rgb(var(--accent-line) / .45); border-radius:10px; background:rgb(var(--ink-800)); display:flex; flex-direction:column; align-items:center; gap:6px; font-size:16px; min-width:100px; }.pvp-action-controls button:disabled { opacity:.6; }
 .action-tiles { display:flex; gap:3px; }.action-tiles :deep(.mahjong-tile) { --tw:23px; --th:31px; }
-.claim-paused { width:100%; text-align:center; font-size:12px; color:#d7c795; }
+.claim-paused { width:100%; text-align:center; font-size:12px; color:rgb(var(--gilt-300)); }
 
 </style>

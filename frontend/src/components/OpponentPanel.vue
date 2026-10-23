@@ -504,18 +504,18 @@ function claimHint(seat) {
 
 <template>
   <section
-    class="w-full max-w-2xl rounded-2xl border border-teal-700/40 bg-teal-950/50 p-5 sm:p-6 shadow-xl backdrop-blur-sm"
+    class="w-full max-w-2xl rounded-2xl border border-ink-700/40 bg-ink-900/55 p-5 sm:p-6 shadow-xl backdrop-blur-sm"
     aria-label="对手公开信息"
   >
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <div>
-        <h2 class="text-lg font-semibold tracking-wide text-amber-50">
+        <h2 class="text-lg font-semibold tracking-wide text-gilt-200">
           三方对手
         </h2>
-        <p class="mt-0.5 text-xs text-teal-300/70">
+        <p class="mt-0.5 text-xs text-fog-300/70">
           <template v-if="tableLocked">
             串行出牌 · 出牌后须先过响应窗再摸牌
-            <span v-if="claimWindowOpen" class="text-amber-200/90">
+            <span v-if="claimWindowOpen" class="text-gilt-300/90">
               · 响应 {{ windLabel(claimProvider) }} 的
               {{ tileLabel(claimTile) }}
             </span>
@@ -529,7 +529,7 @@ function claimHint(seat) {
         <button
           v-if="responseWindow || claimWindowOpen"
           type="button"
-          class="rounded-lg border border-teal-400/55 bg-teal-900/70 px-2.5 py-1 text-[11px] font-bold text-teal-50 transition hover:border-amber-300 disabled:opacity-40"
+          class="rounded-lg border border-accent-line/55 bg-ink-800/70 px-2.5 py-1 text-[11px] font-bold text-fog-100 transition hover:border-gilt-300 disabled:opacity-40"
           :disabled="disabled"
           @click="emit('pass-all-calls')"
         >
@@ -537,7 +537,7 @@ function claimHint(seat) {
         </button>
         <p
           v-if="tableLocked && isSelfTurn"
-          class="rounded-lg border border-amber-400/50 bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-100"
+          class="rounded-lg border border-accent-line/45 bg-gilt-500/15 px-2.5 py-1 text-xs font-semibold text-gilt-200"
         >
           轮到自家切牌
         </p>
@@ -548,33 +548,33 @@ function claimHint(seat) {
       <article
         v-for="opp in opponents"
         :key="opp.role + opp.seat_wind"
-        class="rounded-xl border bg-emerald-950/35 p-3 sm:p-4 transition-[box-shadow,opacity] duration-300"
+        class="rounded-xl border bg-ink-900/55 p-3 sm:p-4 transition-[box-shadow,opacity] duration-300"
         :class="
           isTurnActive(opp.seat_wind)
-            ? 'ring-2 ring-emerald-500 shadow-lg border-emerald-400/60 opacity-100 turn-active-glow'
+            ? 'ring-2 ring-highlight shadow-lg border-highlight/60 opacity-100 turn-active-glow'
             : claimWindowOpen &&
                 (canChiSeat(opp.seat_wind) || canPongOrGangSeat(opp.seat_wind))
-              ? 'border-amber-500/45 ring-1 ring-amber-400/30 opacity-100'
+              ? 'border-gilt-500/45 ring-1 ring-gilt-400/30 opacity-100'
               : tableLocked
-                ? 'border-teal-800/50 opacity-75'
-                : 'border-teal-800/50'
+                ? 'border-ink-700/50 opacity-75'
+                : 'border-ink-700/50'
         "
       >
         <!-- 标题行 -->
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-wrap items-center gap-2">
             <span
-              class="rounded-md bg-teal-800/70 px-2 py-0.5 text-sm font-semibold text-amber-100"
+              class="rounded-md bg-ink-700/70 px-2 py-0.5 text-sm font-semibold text-gilt-200"
             >
               {{ opp.role }}
             </span>
-            <span class="text-sm text-teal-200/90">
+            <span class="text-sm text-fog-300/90">
               {{ windLabel(opp.seat_wind) }}风
-              <span class="text-teal-400/70">({{ opp.seat_wind }})</span>
+              <span class="text-fog-400/70">({{ opp.seat_wind }})</span>
             </span>
             <span
               v-if="isTurnActive(opp.seat_wind)"
-              class="rounded bg-amber-400/90 px-1.5 py-0.5 text-[10px] font-bold text-emerald-950"
+              class="rounded bg-highlight px-1.5 py-0.5 text-[10px] font-bold text-ink-950"
             >
               出牌中
             </span>
@@ -583,8 +583,8 @@ function claimHint(seat) {
             class="rounded-lg px-3 py-1 text-xs font-medium"
             :class="
               opp.is_dealer
-                ? 'bg-amber-500 text-emerald-950 shadow'
-                : 'border border-teal-700/50 text-teal-400/80'
+                ? 'bg-gilt-500 text-ink-950 shadow'
+                : 'border border-ink-700/50 text-fog-400/80'
             "
             :title="
               opp.is_dealer
@@ -606,7 +606,7 @@ function claimHint(seat) {
               v-for="(combo, ci) in chiCombosForClaim(opp.seat_wind)"
               :key="'chi-' + ci"
               type="button"
-              class="rounded-lg border border-emerald-400/50 bg-emerald-950/70 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-50 transition hover:border-emerald-300 disabled:opacity-40"
+              class="rounded-lg border border-ok/50 bg-ok/[.16] px-2.5 py-1.5 text-[11px] font-semibold text-ok transition hover:border-ok disabled:opacity-40"
               :disabled="disabled"
               @click="onQuickChi(opp.seat_wind, combo)"
             >
@@ -616,7 +616,7 @@ function claimHint(seat) {
           <button
             v-if="canPongOrGangSeat(opp.seat_wind)"
             type="button"
-            class="rounded-lg border border-amber-400/50 bg-amber-950/70 px-2.5 py-1.5 text-[11px] font-semibold text-amber-50 transition hover:border-amber-300 disabled:opacity-40"
+            class="rounded-lg border border-accent-line/45 bg-ink-800/70 px-2.5 py-1.5 text-[11px] font-semibold text-gilt-200 transition hover:border-gilt-300 disabled:opacity-40"
             :disabled="
               disabled ||
               !remForNewMeld([claimTile, claimTile, claimTile], claimTile)
@@ -628,7 +628,7 @@ function claimHint(seat) {
           <button
             v-if="canPongOrGangSeat(opp.seat_wind)"
             type="button"
-            class="rounded-lg border border-violet-400/50 bg-violet-950/70 px-2.5 py-1.5 text-[11px] font-semibold text-violet-50 transition hover:border-violet-300 disabled:opacity-40"
+            class="rounded-lg border border-info/50 bg-info/[.16] px-2.5 py-1.5 text-[11px] font-semibold text-info transition hover:border-info disabled:opacity-40"
             :disabled="
               disabled ||
               claimTile === dealerTile ||
@@ -644,11 +644,11 @@ function claimHint(seat) {
           <button
             v-if="canAnGangSeat(opp.seat_wind)"
             type="button"
-            class="rounded-lg border border-fuchsia-400/55 bg-fuchsia-900/70 px-3 py-1.5 text-[11px] font-bold text-fuchsia-50 shadow-sm transition hover:border-fuchsia-200 hover:bg-fuchsia-800/80"
+            class="rounded-lg border border-info/55 bg-info/[.16] px-3 py-1.5 text-[11px] font-bold text-gilt-300 shadow-sm transition hover:border-info hover:bg-info/[.16]"
             :disabled="disabled"
             :class="
               isMeldPickerOpen(opp.seat_wind, 'an_gang')
-                ? 'ring-2 ring-fuchsia-300'
+                ? 'ring-2 ring-info'
                 : ''
             "
             @click="toggleMeldPicker(opp.seat_wind, 'an_gang')"
@@ -658,7 +658,7 @@ function claimHint(seat) {
           <button
             v-if="canZimoSeat(opp.seat_wind)"
             type="button"
-            class="rounded-lg border border-rose-400/60 bg-rose-800/80 px-3 py-1.5 text-[11px] font-bold text-rose-50 shadow transition hover:border-rose-200 hover:bg-rose-700"
+            class="rounded-lg border border-ok bg-ok px-3 py-1.5 text-[11px] font-bold text-ink-950 shadow transition hover:border-ok hover:bg-ok/[.16]"
             :disabled="disabled"
             @click="emitOpponentWin(opp.seat_wind, 'self_draw_win')"
           >
@@ -667,7 +667,7 @@ function claimHint(seat) {
           <button
             v-if="canRonSeat(opp.seat_wind)"
             type="button"
-            class="rounded-lg border-2 border-amber-300 bg-amber-600 px-3 py-2 text-[12px] font-bold text-amber-50 shadow-lg ring-2 ring-amber-200/50 transition hover:bg-amber-500"
+            class="rounded-lg border-2 border-ok bg-ok px-3 py-2 text-[12px] font-bold text-ink-950 shadow-lg ring-2 ring-ok/[.16] transition hover:bg-ok/[.16]"
             :disabled="disabled || !claimTile"
             @click="emitOpponentWin(opp.seat_wind, 'catch_win')"
           >
@@ -678,7 +678,7 @@ function claimHint(seat) {
           </button>
           <p
             v-if="claimHint(opp.seat_wind)"
-            class="w-full text-[10px] text-amber-200/75"
+            class="w-full text-[10px] text-gilt-300/75"
           >
             {{ claimHint(opp.seat_wind) }}
           </p>
@@ -687,18 +687,18 @@ function claimHint(seat) {
         <!-- 弃牌河（只读展示；无「添加弃牌」） -->
         <div class="mb-3">
           <div class="mb-1.5 flex items-center justify-between gap-2">
-            <p class="text-xs font-medium text-teal-300/80">
+            <p class="text-xs font-medium text-fog-300/80">
               弃牌河（{{ opp.discards.length }}）
             </p>
             <p
               v-if="isSelfTurn"
-              class="text-[10px] text-teal-500/80"
+              class="text-[10px] text-highlight"
             >
               轮到自家切牌
             </p>
             <p
               v-else-if="tableLocked && !isTurnActive(opp.seat_wind)"
-              class="text-[10px] text-teal-500/70"
+              class="text-[10px] text-fog-600/70"
             >
               等待 {{ windLabel(currentTurnSeat) }}风
             </p>
@@ -716,7 +716,7 @@ function claimHint(seat) {
               :class="[
                 tileSuitClass(t),
                 ti === opp.discards.length - 1
-                  ? 'ring-2 ring-amber-400/70'
+                  ? 'ring-2 ring-info/70'
                   : 'opacity-90',
               ]"
               :title="tileLabel(t)"
@@ -724,14 +724,14 @@ function claimHint(seat) {
               <MahjongTile :code="t" style="--tw:22px; --th:29px; margin-bottom:0" />
             </span>
           </div>
-          <p v-else class="text-xs text-teal-500/70">尚无弃牌</p>
+          <p v-else class="text-xs text-fog-600/70">尚无弃牌</p>
 
           <!-- 行动权对手：紧凑选牌键盘（副露后立刻可切，不依赖暗手张数） -->
           <div
             v-if="isTurnActive(opp.seat_wind) && !callPending"
-            class="mt-2 space-y-2 rounded-lg border border-amber-400/40 bg-amber-950/25 p-2"
+            class="mt-2 space-y-2 rounded-lg border border-accent-line/45 bg-ink-800/25 p-2"
           >
-            <p class="text-[11px] font-semibold text-amber-100/95">
+            <p class="text-[11px] font-semibold text-gilt-200/95">
               {{
                 props.lastStepNote?.includes('补')
                   ? '补牌完成 · 请打出 1 张牌'
@@ -739,7 +739,7 @@ function claimHint(seat) {
               }}
               <span
                 v-if="claimWindowOpen"
-                class="font-normal text-amber-200/70"
+                class="font-normal text-gilt-300/70"
               >
                 （亦可先代录他家吃碰）
               </span>
@@ -750,14 +750,14 @@ function claimHint(seat) {
                 opp.hand_tiles.length > 0 &&
                 !isOppHandDiscardReady(opp)
               "
-              class="text-[10px] text-rose-200/90"
+              class="text-[10px] text-danger/90"
             >
               暗手张数异常（{{ opp.hand_tiles.length }}/{{
                 14 - 3 * (opp.melds?.length || 0)
               }}），仍可用键盘代录切牌
             </p>
             <div v-for="group in TILE_GROUPS" :key="group.key">
-              <p class="mb-1 text-[10px] text-teal-400/70">{{ group.label }}</p>
+              <p class="mb-1 text-[10px] text-fog-400/70">{{ group.label }}</p>
               <div class="grid grid-cols-5 gap-1 sm:grid-cols-9">
                 <button
                   v-for="code in group.tiles"
@@ -766,8 +766,8 @@ function claimHint(seat) {
                   class="rounded-md border px-0.5 py-1.5 text-[11px] font-medium transition"
                   :class="
                     remaining(code) > 0 && !disabled
-                      ? 'border-amber-500/50 bg-emerald-900/60 text-amber-50 hover:border-amber-300 hover:bg-amber-500/20'
-                      : 'cursor-not-allowed border-slate-700/40 text-slate-600'
+                      ? 'border-accent-line/45 bg-ok/[.16] text-gilt-200 hover:border-gilt-300 hover:bg-highlight/[.16]'
+                      : 'cursor-not-allowed border-ink-700/40 text-fog-600'
                   "
                   :disabled="remaining(code) <= 0 || disabled"
                   @click="pushDiscard(opp.seat_wind, code)"
@@ -788,13 +788,13 @@ function claimHint(seat) {
               isMeldPickerOpen(opp.seat_wind, 'an_gang') &&
               canAnGangSeat(opp.seat_wind)
             "
-            class="mt-2 space-y-2 rounded-lg border border-fuchsia-400/40 bg-fuchsia-950/30 p-2"
+            class="mt-2 space-y-2 rounded-lg border border-info/40 bg-info/[.16] p-2"
           >
-            <p class="text-[10px] text-fuchsia-100/85">
+            <p class="text-[10px] text-info/85">
               选择同名牌录入暗杠（禁得）
             </p>
             <div v-for="group in TILE_GROUPS" :key="'ag-' + group.key">
-              <p class="mb-1 text-[10px] text-teal-400/70">{{ group.label }}</p>
+              <p class="mb-1 text-[10px] text-fog-400/70">{{ group.label }}</p>
               <div class="grid grid-cols-5 gap-1 sm:grid-cols-9">
                 <button
                   v-for="code in group.tiles"
@@ -803,8 +803,8 @@ function claimHint(seat) {
                   class="rounded-md border px-0.5 py-1.5 text-[11px] transition"
                   :class="
                     canAddMeld('an_gang', code)
-                      ? 'border-fuchsia-500/50 bg-fuchsia-900/50 text-amber-50'
-                      : 'cursor-not-allowed border-slate-700/40 text-slate-600'
+                      ? 'border-info/50 bg-info/[.16] text-gilt-200'
+                      : 'cursor-not-allowed border-ink-700/40 text-fog-600'
                   "
                   :disabled="!canAddMeld('an_gang', code) || disabled"
                   @click="onQuickAnGang(opp.seat_wind, code)"
@@ -819,7 +819,7 @@ function claimHint(seat) {
         <!-- 副露：开局前可录；锁定后只读 -->
         <div>
           <div class="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-            <p class="text-xs font-medium text-teal-300/80">
+            <p class="text-xs font-medium text-fog-300/80">
               副露（{{ opp.melds.length }}/4）
             </p>
             <div v-if="!tableLocked" class="flex flex-wrap gap-1">
@@ -830,10 +830,10 @@ function claimHint(seat) {
                 class="rounded-md px-2 py-0.5 text-[11px] font-medium transition"
                 :class="
                   opp.melds.length >= 4
-                    ? 'cursor-not-allowed text-slate-500'
+                    ? 'cursor-not-allowed text-fog-600'
                     : isMeldPickerOpen(opp.seat_wind, mode.type)
-                      ? 'bg-amber-500 text-emerald-950'
-                      : 'border border-teal-600/45 text-teal-100 hover:border-amber-400/50'
+                      ? 'bg-gilt-500 text-ink-950'
+                      : 'border border-ink-700/45 text-fog-100 hover:border-accent-line/45'
                 "
                 :disabled="opp.melds.length >= 4"
                 @click="toggleMeldPicker(opp.seat_wind, mode.type)"
@@ -849,27 +849,27 @@ function claimHint(seat) {
               v-for="(m, mi) in opp.melds"
               :key="`${opp.seat_wind}-m-${mi}`"
               type="button"
-              class="flex w-full items-center gap-2 rounded-lg border border-teal-800/40 bg-teal-950/40 px-2 py-1.5 text-left"
+              class="flex w-full items-center gap-2 rounded-lg border border-ink-700/40 bg-ink-900/55 px-2 py-1.5 text-left"
               :class="
                 tableLocked
                   ? ''
-                  : 'hover:border-rose-400/40 cursor-pointer'
+                  : 'hover:border-danger/40 cursor-pointer'
               "
               @click="!tableLocked && removeMeld(opp.seat_wind, mi)"
             >
-              <span class="text-[10px] text-amber-100/90">
+              <span class="text-[10px] text-gilt-200/90">
                 {{ MELD_TYPE_LABEL[m.meld_type] || m.meld_type }}
               </span>
               <MeldTiles :meld="m" :dealer-tile="dealerTile" style="--tw:22px; --th:29px" />
               <span
                 v-if="!tableLocked"
-                class="ml-auto text-[10px] text-teal-500"
+                class="ml-auto text-[10px] text-fog-600"
               >
                 删
               </span>
             </component>
           </div>
-          <p v-else class="mb-2 text-xs text-teal-500/70">尚无副露</p>
+          <p v-else class="mb-2 text-xs text-fog-600/70">尚无副露</p>
 
           <div
             v-if="
@@ -877,16 +877,16 @@ function claimHint(seat) {
               activeMeld?.seat === opp.seat_wind &&
               opp.melds.length < 4
             "
-            class="space-y-2 border-t border-teal-800/40 pt-2"
+            class="space-y-2 border-t border-ink-700/40 pt-2"
           >
-            <p class="text-[10px] text-teal-300/75">
+            <p class="text-[10px] text-fog-300/75">
               选择牌面添加{{ MELD_TYPE_LABEL[activeMeld.meldType] }}
             </p>
             <div v-for="group in TILE_GROUPS" :key="group.key">
               <template
                 v-if="tilesForMeldMode(group, activeMeld.meldType).length"
               >
-                <p class="mb-1 text-[10px] text-teal-400/70">
+                <p class="mb-1 text-[10px] text-fog-400/70">
                   {{ group.label }}
                 </p>
                 <div class="grid grid-cols-5 gap-1 sm:grid-cols-9">
@@ -900,8 +900,8 @@ function claimHint(seat) {
                     class="rounded-md border px-0.5 py-1.5 text-[11px] transition"
                     :class="
                       canAddMeld(activeMeld.meldType, code)
-                        ? 'border-teal-600/45 bg-emerald-900/50 text-amber-50'
-                        : 'cursor-not-allowed border-slate-700/40 text-slate-600'
+                        ? 'border-ink-700/45 bg-ok/[.16] text-gilt-200'
+                        : 'cursor-not-allowed border-ink-700/40 text-fog-600'
                     "
                     :disabled="!canAddMeld(activeMeld.meldType, code)"
                     @click="
@@ -929,13 +929,13 @@ function claimHint(seat) {
   0%,
   100% {
     box-shadow:
-      0 0 0 2px rgba(16, 185, 129, 0.55),
-      0 0 14px 2px rgba(52, 211, 153, 0.3);
+      0 0 0 2px rgb(var(--highlight) / .55),
+      0 0 14px 2px rgb(var(--highlight) / .3);
   }
   50% {
     box-shadow:
-      0 0 0 3px rgba(52, 211, 153, 0.85),
-      0 0 22px 4px rgba(16, 185, 129, 0.45);
+      0 0 0 3px rgb(var(--highlight) / .85),
+      0 0 22px 4px rgb(var(--highlight) / .45);
   }
 }
 

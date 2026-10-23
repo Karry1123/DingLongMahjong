@@ -416,29 +416,29 @@ function settlementReason(card) {
     class="settlement-capsule pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-end p-3 sm:p-4"
   >
     <div
-      class="pointer-events-auto flex max-w-[min(100%,28rem)] flex-col gap-2 rounded-2xl border border-amber-400/60 bg-teal-950/95 px-3 py-2.5 shadow-2xl shadow-black/40 backdrop-blur-md"
+      class="pointer-events-auto flex max-w-[min(100%,28rem)] flex-col gap-2 rounded-2xl border border-accent-line/60 bg-ink-800/95 px-3 py-2.5 shadow-2xl shadow-ink-950/40 backdrop-blur-md"
       role="status"
       aria-label="结算摘要（已最小化）"
     >
       <div class="flex items-start gap-2">
         <span class="mt-0.5 text-base leading-none" aria-hidden="true">🏆</span>
         <div class="min-w-0 flex-1">
-          <p class="text-[11px] font-bold uppercase tracking-wide text-amber-200/80">
+          <p class="text-[11px] font-bold uppercase tracking-wide text-gilt-200/80">
             结算摘要
           </p>
-          <p class="mt-0.5 text-sm font-semibold leading-snug text-amber-50">
+          <p class="mt-0.5 text-sm font-semibold leading-snug text-fog-100">
             {{ capsuleSummary }}
           </p>
-          <p v-if="!isDraw" class="mt-0.5 text-[11px] text-teal-200/75">
+          <p v-if="!isDraw" class="mt-0.5 text-[11px] text-fog-300/75">
             {{ finalHu }} 胡
             <span v-if="huDetail.fan"> · {{ huDetail.fan }} 翻</span>
           </p>
-          <p v-if="info.game_id" class="mt-1 text-[11px] text-amber-200">牌谱编号：{{ info.game_id }} <button type="button" class="underline" @click="copyGameId">复制</button></p>
-          <p v-if="copyStatus" role="status" class="text-[11px] text-teal-200">{{ copyStatus }}</p>
+          <p v-if="info.game_id" class="mt-1 text-[11px] text-gilt-200">牌谱编号：{{ info.game_id }} <button type="button" class="underline" @click="copyGameId">复制</button></p>
+          <p v-if="copyStatus" role="status" class="text-[11px] text-fog-300">{{ copyStatus }}</p>
         </div>
         <button
           type="button"
-          class="shrink-0 rounded-lg border border-teal-500/45 bg-teal-900/80 px-2 py-1 text-[11px] font-semibold text-teal-50 transition hover:border-amber-300/60 hover:bg-teal-800"
+          class="shrink-0 rounded-lg border border-accent-line/45 bg-ink-800/80 px-2 py-1 text-[11px] font-semibold text-fog-100 transition hover:border-accent-line/60 hover:bg-ink-700"
           title="展开结算明细"
           @click="expandPanel"
         >
@@ -448,7 +448,7 @@ function settlementReason(card) {
       <div class="flex gap-2">
         <button
           type="button"
-          class="flex-1 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 px-3 py-2 text-xs font-black text-amber-950 shadow transition hover:brightness-105"
+          class="flex-1 rounded-xl bg-gradient-to-r from-gilt-500 to-gilt-400 px-3 py-2 text-xs font-black text-fg-on-accent shadow transition hover:brightness-105"
           @click="onNextRound"
           :disabled="pvp && nextConfirmed"
         >
@@ -461,14 +461,14 @@ function settlementReason(card) {
   <!-- 完整结算面板 -->
   <div
     v-else
-    class="game-over-overlay fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/80 p-2 backdrop-blur-sm sm:p-4"
+    class="game-over-overlay fixed inset-0 z-50 flex items-center justify-center bg-ink-900/80 p-2 backdrop-blur-sm sm:p-4"
     :class="{'pvp-result':pvp}"
     role="dialog"
     aria-modal="true"
     aria-label="对局结束结算"
   >
     <div
-      class="game-over-panel flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-amber-400/55 bg-teal-950 shadow-2xl"
+      class="game-over-panel flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-accent-line/55 bg-ink-800 shadow-2xl"
     >
       <div class="landscape-settlement" aria-label="横屏四方结算看板">
         <section class="landscape-settlement-summary">
@@ -542,12 +542,12 @@ function settlementReason(card) {
       </div>
       <header
         v-if="!pvp"
-        class="relative shrink-0 bg-gradient-to-r from-rose-700 via-amber-500 to-yellow-400 px-4 py-4 text-center sm:px-6 sm:py-5"
+        class="relative shrink-0 bg-gradient-to-r from-ink-800 via-ink-700 to-ink-800 px-4 py-4 text-center sm:px-6 sm:py-5"
       >
         <div class="absolute right-2 top-2 flex gap-1 sm:right-3 sm:top-3">
           <button
             type="button"
-            class="rounded-lg border border-amber-950/25 bg-amber-950/15 px-2 py-1 text-[11px] font-bold text-amber-950/90 transition hover:bg-amber-950/25"
+            class="rounded-lg border border-accent-line/25 bg-ink-900/15 px-2 py-1 text-[11px] font-bold text-gilt-200/90 transition hover:bg-ink-900/25"
             title="最小化，查看牌桌"
             @click="minimizePanel"
           >
@@ -555,14 +555,14 @@ function settlementReason(card) {
           </button>
         </div>
         <p
-          class="text-[11px] font-bold uppercase tracking-[0.22em] text-amber-950/65"
+          class="text-[11px] font-bold uppercase tracking-[0.22em] text-gilt-200/65"
         >
           GAME_OVER · 台州无包牌
         </p>
-        <h2 class="mt-1.5 text-2xl font-black text-amber-950 sm:text-3xl">
+        <h2 class="mt-1.5 text-2xl font-black text-gilt-200 sm:text-3xl">
           {{ headline }}
         </h2>
-        <p v-if="!isDraw" class="mt-1 text-sm text-amber-950/85">
+        <p v-if="!isDraw" class="mt-1 text-sm text-gilt-200/85">
           {{ finalHu }} 胡
           <span v-if="hardLabel"> · {{ hardLabel }}</span>
           <span v-if="info.win_tile">
@@ -573,19 +573,19 @@ function settlementReason(card) {
             · 得 {{ tileLabel(dealerTile) }}
           </span>
         </p>
-        <p v-else class="mt-1 text-sm text-amber-950/80">
+        <p v-else class="mt-1 text-sm text-gilt-200/80">
           本局无人胡牌 · 不计主支付（固有胡头互结若有则已计入）
         </p>
-        <p class="mt-2 text-xs font-semibold text-amber-950">
-          <template v-if="info.game_id">牌谱编号：<b>{{ info.game_id }}</b> <button type="button" class="ml-1 rounded bg-amber-950/15 px-2 py-0.5 hover:bg-amber-950/25" @click="copyGameId">复制</button></template>
+        <p class="mt-2 text-xs font-semibold text-gilt-200">
+          <template v-if="info.game_id">牌谱编号：<b>{{ info.game_id }}</b> <button type="button" class="ml-1 rounded bg-ink-900/15 px-2 py-0.5 hover:bg-ink-900/25" @click="copyGameId">复制</button></template>
           <template v-else-if="info.archive_error">牌谱归档失败，请检查网络后再开下一局</template>
           <template v-else>牌谱归档中…</template>
         </p>
-        <p v-if="info.game_id" class="mt-1 text-[11px] text-amber-950/75">如遇不合理 EV 推荐，可将编号与截图反馈排查。</p>
-        <p v-if="copyStatus" role="status" class="mt-1 text-xs text-emerald-950">{{ copyStatus }}</p>
+        <p v-if="info.game_id" class="mt-1 text-[11px] text-gilt-200/75">如遇不合理 EV 推荐，可将编号与截图反馈排查。</p>
+        <p v-if="copyStatus" role="status" class="mt-1 text-xs text-ok">{{ copyStatus }}</p>
         <p
           v-if="info.payments?.label"
-          class="mt-1 text-xs text-amber-950/70"
+          class="mt-1 text-xs text-gilt-200/70"
         >
           {{ info.payments.label }}
         </p>
@@ -594,7 +594,7 @@ function settlementReason(card) {
       <div v-if="!pvp" class="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-5 sm:py-4">
         <!-- 四方门风卡片 -->
         <section class="mb-4">
-          <h3 class="mb-2 text-sm font-semibold text-amber-100">
+          <h3 class="mb-2 text-sm font-semibold text-gilt-200">
             四方结算明细
           </h3>
           <div
@@ -606,10 +606,10 @@ function settlementReason(card) {
               class="flex flex-col rounded-xl border p-3"
               :class="
                 card.isWinner
-                  ? 'border-amber-400/60 bg-amber-950/40 sm:col-span-2 lg:col-span-3'
+                  ? 'border-accent-line/60 bg-ink-900/40 sm:col-span-2 lg:col-span-3'
                   : card.isSelf
-                    ? 'border-teal-500/45 bg-teal-950/55'
-                    : 'border-teal-800/50 bg-emerald-950/45'
+                    ? 'border-accent-line/45 bg-ink-800/55'
+                    : 'border-line/50 bg-ink-900/45'
               "
             >
               <div class="mb-2 flex items-start justify-between gap-1">
@@ -617,15 +617,15 @@ function settlementReason(card) {
                   class="rounded-md px-2 py-0.5 text-[11px] font-bold"
                   :class="
                     card.isWinner
-                      ? 'bg-amber-400 text-amber-950'
-                      : 'bg-teal-800/80 text-teal-50'
+                      ? 'bg-gilt-500 text-fg-on-accent'
+                      : 'bg-ink-700/80 text-fog-100'
                   "
                 >
                   {{ card.badge }}
                 </span>
                 <span
                   v-if="card.isWinner"
-                  class="text-[10px] font-black uppercase tracking-wide text-amber-200"
+                  class="text-[10px] font-black uppercase tracking-wide text-gilt-200"
                 >
                   胡
                 </span>
@@ -633,11 +633,11 @@ function settlementReason(card) {
 
               <!-- 赢家：成胡拆解 -->
               <div v-if="card.isWinner && card.winningGroups.length" class="mb-2">
-                <p class="mb-1 text-[10px] font-semibold text-amber-200/90">
+                <p class="mb-1 text-[10px] font-semibold text-gilt-200/90">
                   最佳成胡牌型
                   <span
                     v-if="info.win_tile"
-                    class="ml-1 font-normal text-amber-100/70"
+                    class="ml-1 font-normal text-gilt-200/70"
                   >
                     · 胡张 {{ tileLabel(info.win_tile) }}
                   </span>
@@ -647,9 +647,9 @@ function settlementReason(card) {
                     v-for="(grp, gi) in card.winningGroups"
                     :key="gi"
                     class="inline-flex shrink-0 flex-col rounded-lg border px-2 pb-2 pt-1"
-                    :class="grp.kind === 'head' ? 'border-sky-400/60 bg-sky-950/40' : 'border-amber-500/35 bg-amber-950/30'"
+                    :class="grp.kind === 'head' ? 'border-info/60 bg-info/40' : 'border-accent-line/35 bg-ink-900/30'"
                   >
-                    <p class="mb-3 text-[10px] text-amber-100/80">
+                    <p class="mb-3 text-[10px] text-gilt-200/80">
                       {{ groupCaption(grp) }} <span v-if="grp.hu">+{{ grp.hu }}</span>
                     </p>
                     <div class="inline-flex flex-nowrap items-end gap-1 pb-3 pt-1">
@@ -663,23 +663,23 @@ function settlementReason(card) {
                 </div>
 
                 <div
-                  class="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-teal-700/40 bg-teal-950/50 p-1.5 text-center text-[10px]"
+                  class="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-line/40 bg-ink-800/50 p-1.5 text-center text-[10px]"
                 >
                   <div>
-                    <p class="text-teal-400/75">底胡</p>
-                    <p class="font-bold text-amber-100">
+                    <p class="text-fog-400/75">底胡</p>
+                    <p class="font-bold text-gilt-200">
                       {{ card.hu?.baseHu ?? 10 }}
                     </p>
                   </div>
                   <div>
-                    <p class="text-teal-400/75">牌型</p>
-                    <p class="font-bold text-amber-100">
+                    <p class="text-fog-400/75">牌型</p>
+                    <p class="font-bold text-gilt-200">
                       {{ card.hu?.tileHu ?? '—' }}
                     </p>
                   </div>
                   <div>
-                    <p class="text-teal-400/75">翻</p>
-                    <p class="font-bold text-amber-100">
+                    <p class="text-fog-400/75">翻</p>
+                    <p class="font-bold text-gilt-200">
                       {{ card.hu?.fan ?? 0 }}
                     </p>
                   </div>
@@ -691,7 +691,7 @@ function settlementReason(card) {
                   <li
                     v-for="[name, n] in fanEntries"
                     :key="name"
-                    class="rounded border border-amber-500/35 bg-amber-950/45 px-1.5 py-0.5 text-[9px] text-amber-100"
+                    class="rounded border border-accent-line/35 bg-ink-900/45 px-1.5 py-0.5 text-[9px] text-gilt-200"
                   >
                     {{ fanLabel(name) }} +{{ n }}
                     <span>（×{{ 2 ** Number(n) }}）</span>
@@ -704,14 +704,14 @@ function settlementReason(card) {
                   <li
                     v-for="(item, fi) in card.hu.fanItems"
                     :key="`fi-${fi}`"
-                    class="text-[9px] leading-snug text-amber-200/85"
+                    class="text-[9px] leading-snug text-gilt-200/85"
                   >
                     · {{ item }}
                   </li>
                 </ul>
                 <p
                   v-if="card.hu?.zimo || card.hu?.kanzhang"
-                  class="mt-1 text-[9px] text-teal-300/75"
+                  class="mt-1 text-[9px] text-fog-300/75"
                 >
                   <span v-if="card.hu.zimo">自摸 +{{ card.hu.zimo }} </span>
                   <span v-if="card.hu.kanzhang"
@@ -723,13 +723,13 @@ function settlementReason(card) {
               <!-- 未和 / 无拆解：暗手 + 副露 + 固有底胡 -->
               <div v-else class="mb-2 flex-1">
                 <div v-if="card.melds?.length" class="mb-1.5">
-                  <p class="mb-0.5 text-[9px] text-teal-400/70">副露</p>
+                  <p class="mb-0.5 text-[9px] text-fog-400/70">副露</p>
                   <div class="flex flex-wrap gap-1">
                     <MeldTiles v-for="(m, mi) in card.melds" :key="mi" :meld="m" :dealer-tile="dealerTile" />
                   </div>
                 </div>
                 <div v-if="card.handTiles?.length" class="mb-1.5">
-                  <p class="mb-0.5 text-[9px] text-teal-400/70">暗手</p>
+                  <p class="mb-0.5 text-[9px] text-fog-400/70">暗手</p>
                   <div class="flex flex-wrap gap-0.5">
                     <span
                       v-for="(t, ti) in card.handTiles"
@@ -742,14 +742,14 @@ function settlementReason(card) {
                   </div>
                 </div>
                 <div
-                  class="rounded-lg border border-violet-500/30 bg-violet-950/35 px-2 py-1.5"
+                  class="rounded-lg border border-info/30 bg-info/35 px-2 py-1.5"
                 >
                   <button
                     type="button"
                     class="flex w-full items-center justify-between text-left"
                     @click="toggleInherent(card.seat)"
                   >
-                    <span class="text-[11px] font-bold leading-snug text-violet-100">
+                    <span class="text-[11px] font-bold leading-snug text-fog-100">
                       <template v-if="(card.inherent.fan_count || 0) > 0">
                         【固有底胡：{{ card.inherent.base_hu ?? card.inherent.total_base_hu ?? 0 }} 胡】
                         × 【{{ card.inherent.fan_count }} 番】
@@ -759,7 +759,7 @@ function settlementReason(card) {
                         固有底胡：{{ card.inherent.total_base_hu ?? 0 }} 胡
                       </template>
                     </span>
-                    <span class="ml-1 shrink-0 text-[10px] text-violet-300/80">
+                    <span class="ml-1 shrink-0 text-[10px] text-fog-300/80">
                       {{ expandedInherent[card.seat] ? '▾' : '▸' }}
                     </span>
                   </button>
@@ -770,13 +770,13 @@ function settlementReason(card) {
                     <span
                       v-for="(fd, fi) in card.inherent.fan_details"
                       :key="`fan-${fi}`"
-                      class="rounded bg-amber-900/45 px-1 py-0.5 text-[9px] font-medium text-amber-100/95"
+                      class="rounded bg-ink-800/45 px-1 py-0.5 text-[9px] font-medium text-gilt-200/95"
                     >
                       {{ fd.label || fd.name }}
                     </span>
                     <span
                       v-if="(card.inherent.fan_count || 0) > 1"
-                      class="rounded bg-amber-800/50 px-1 py-0.5 text-[9px] font-bold text-amber-50"
+                      class="rounded bg-ink-700/50 px-1 py-0.5 text-[9px] font-bold text-fog-100"
                     >
                       合计 {{ card.inherent.fan_count }} 番 (×{{
                         2 ** (card.inherent.fan_count || 0)
@@ -788,18 +788,18 @@ function settlementReason(card) {
                       expandedInherent[card.seat] &&
                       (card.inherent.items || []).length
                     "
-                    class="mt-1 space-y-0.5 border-t border-violet-500/20 pt-1"
+                    class="mt-1 space-y-0.5 border-t border-info/20 pt-1"
                   >
                     <li
                       v-for="(it, ii) in card.inherent.items"
                       :key="ii"
-                      class="text-[10px] text-violet-100/85"
+                      class="text-[10px] text-fog-100/85"
                     >
                       {{ inherentItemLabel(it) }}
                     </li>
                     <li
                       v-if="(card.inherent.fan_count || 0) > 0"
-                      class="pt-0.5 text-[10px] font-semibold text-amber-200/90"
+                      class="pt-0.5 text-[10px] font-semibold text-gilt-200/90"
                     >
                       加番后结算：{{ card.inherent.base_hu ?? 0 }} × 2^{{
                         card.inherent.fan_count
@@ -817,14 +817,14 @@ function settlementReason(card) {
                     <span
                       v-for="(it, ii) in card.inherent.items.slice(0, 4)"
                       :key="ii"
-                      class="rounded bg-violet-900/50 px-1 py-0.5 text-[9px] text-violet-100/90"
+                      class="rounded bg-info/50 px-1 py-0.5 text-[9px] text-fog-100/90"
                     >
                       {{ inherentItemLabel(it).replace(/\s*\(\+\d+胡\)/, '') }}
                     </span>
                   </div>
                   <p
                     v-else-if="!(card.inherent.items || []).length"
-                    class="mt-0.5 text-[9px] text-violet-300/60"
+                    class="mt-0.5 text-[9px] text-fog-300/60"
                   >
                     无确定暗刻 / 役牌雀头 / 高分副露
                   </p>
@@ -833,24 +833,24 @@ function settlementReason(card) {
 
               <!-- 本盘收支 -->
               <div
-                class="mt-auto border-t border-teal-800/40 pt-2 text-right tabular-nums"
+                class="mt-auto border-t border-line/40 pt-2 text-right tabular-nums"
               >
                 <p
                   class="text-sm font-bold"
                   :class="
                     card.net > 0
-                      ? 'text-amber-200'
+                      ? 'text-gilt-200'
                       : card.net < 0
-                        ? 'text-rose-300'
-                        : 'text-teal-300/80'
+                        ? 'text-danger'
+                        : 'text-fog-300/80'
                   "
                 >
                   本盘 {{ card.net >= 0 ? '+' : '' }}{{ card.net }}
-                  <span v-if="card.paymentCapped" class="block text-[10px] text-amber-300">
+                  <span v-if="card.paymentCapped" class="block text-[10px] text-gilt-300">
                     和牌赔付已封顶 ({{ card.paymentCap }})
                   </span>
                 </p>
-                <p class="text-[10px] text-teal-400/70">
+                <p class="text-[10px] text-fog-400/70">
                   累计 {{ card.total >= 0 ? '+' : '' }}{{ card.total }}
                 </p>
               </div>
@@ -860,28 +860,28 @@ function settlementReason(card) {
 
         <!-- 支付流水 -->
         <section v-if="payoutTransfers.length" class="mb-4">
-          <h3 class="mb-2 text-sm font-semibold text-amber-100">支付明细</h3>
+          <h3 class="mb-2 text-sm font-semibold text-gilt-200">支付明细</h3>
           <ul
-            class="max-h-28 space-y-1 overflow-y-auto text-[11px] text-teal-200/85"
+            class="max-h-28 space-y-1 overflow-y-auto text-[11px] text-fog-300/85"
           >
             <li
               v-for="(t, i) in payoutTransfers"
               :key="i"
-              class="rounded-lg border border-teal-800/40 bg-teal-950/40 px-2 py-1"
+              class="rounded-lg border border-line/40 bg-ink-800/40 px-2 py-1"
             >
               {{ windLabel(t.from) }} → {{ windLabel(t.to) }}：{{ t.amount }}
-              <span v-if="t.capped" class="text-amber-300"> · 和牌赔付已封顶 ({{ info.payments?.payment_cap ?? 100 }})，原应付 {{ t.raw_amount }}</span>
-              <span class="text-teal-500/80">（{{ t.note }}）</span>
+              <span v-if="t.capped" class="text-gilt-300"> · 和牌赔付已封顶 ({{ info.payments?.payment_cap ?? 100 }})，原应付 {{ t.raw_amount }}</span>
+              <span class="text-fog-600/80">（{{ t.note }}）</span>
             </li>
           </ul>
         </section>
 
         <section v-if="mutualTransfers.length" class="mb-4" aria-label="固有胡头互结明细">
-          <h3 class="mb-2 text-sm font-semibold text-amber-100">未胡家固有胡头互结（独立结算）</h3>
-          <ul class="max-h-32 space-y-1 overflow-y-auto text-[11px] text-teal-200/85">
-            <li v-for="(t,i) in mutualTransfers" :key="`mutual-${i}`" class="rounded-lg border border-violet-700/40 bg-violet-950/25 px-2 py-1">
+          <h3 class="mb-2 text-sm font-semibold text-gilt-200">未胡家固有胡头互结（独立结算）</h3>
+          <ul class="max-h-32 space-y-1 overflow-y-auto text-[11px] text-fog-300/85">
+            <li v-for="(t,i) in mutualTransfers" :key="`mutual-${i}`" class="rounded-lg border border-info/40 bg-info/25 px-2 py-1">
               {{ windLabel(t.from) }} → {{ windLabel(t.to) }}：{{ t.amount }}
-              <span class="text-teal-400/80">（{{ t.note }}）</span>
+              <span class="text-fog-400/80">（{{ t.note }}）</span>
             </li>
           </ul>
         </section>
@@ -890,18 +890,18 @@ function settlementReason(card) {
 
       <footer
         v-if="!pvp"
-        class="shrink-0 space-y-2 border-t border-teal-800/55 px-4 py-4 sm:px-5"
+        class="shrink-0 space-y-2 border-t border-line/55 px-4 py-4 sm:px-5"
       >
         <button
           type="button"
-          class="w-full rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 px-4 py-3.5 text-base font-black text-amber-950 shadow-lg transition hover:brightness-105"
+          class="w-full rounded-xl bg-gradient-to-r from-gilt-500 to-gilt-400 px-4 py-3.5 text-base font-black text-fg-on-accent shadow-lg transition hover:brightness-105"
           @click="onNextRound"
         >
           {{ isRoundOver ? '查看本圈总结' : '开始下一局' }}
         </button>
         <button
           type="button"
-          class="w-full rounded-xl border border-teal-500/50 bg-teal-950/70 px-4 py-2.5 text-sm font-semibold text-teal-100 transition hover:border-teal-300/70 hover:bg-teal-900/80"
+          class="w-full rounded-xl border border-accent-line/50 bg-ink-800/70 px-4 py-2.5 text-sm font-semibold text-fog-100 transition hover:border-accent-line/70 hover:bg-ink-700/80"
           @click="onToggleHistory"
         >
           {{ showHistory ? '收起复盘' : '查看复盘历史' }}
@@ -913,63 +913,63 @@ function settlementReason(card) {
 
 <style scoped>
 .landscape-settlement { display:none; }
-.landscape-scoring-groups { display:flex; flex-wrap:wrap; gap:3px 10px; font-size:11px; color:#d1fae5; }
+.landscape-scoring-groups { display:flex; flex-wrap:wrap; gap:3px 10px; font-size:11px; color:rgb(var(--fog-300)); }
 .scoring-group { display:flex; flex-direction:column; align-items:center; gap:3px; }
 .scoring-group small { font-size:10px; line-height:1.1; white-space:nowrap; }
-.next-round-note { font-size:11px; color:#a6cdb5; }
+.next-round-note { font-size:11px; color:rgb(var(--fog-400)); }
 .landscape-settlement-next:disabled { opacity:.65; cursor:default; }
-.settlement-leave { border:1px solid #5eead477; color:#d1fae5; }
+.settlement-leave { border:1px solid rgb(var(--line) / .34); color:rgb(var(--fog-300)); }
 /* The outer game stage is always 1280×720, regardless of physical orientation. */
 .game-over-overlay { padding:16px; }
 .game-over-panel { width:1080px; max-width:none; height:560px; max-height:none; overflow:hidden; }
   .game-over-panel > header, .game-over-panel > footer,
   .game-over-panel > div:not(.landscape-settlement) { display:none; }
-  .landscape-settlement { display:flex; flex-direction:row; gap:20px; width:100%; height:100%; min-height:0; padding:20px; color:#fef3c7; }
+  .landscape-settlement { display:flex; flex-direction:row; gap:20px; width:100%; height:100%; min-height:0; padding:20px; color:rgb(var(--gilt-200)); }
   .landscape-settlement-summary { display:flex; flex:0 0 42%; flex-direction:column; min-width:0; min-height:0; }
-  .landscape-settlement-topline { display:flex; align-items:center; justify-content:space-between; gap:8px; color:#fbbf24; font-size:13px; font-weight:800; letter-spacing:.12em; }
-  .landscape-settlement-topline button { flex:none; border:1px solid #fbbf2470; border-radius:7px; padding:3px 7px; color:#fde68a; letter-spacing:0; }
-  .landscape-settlement-summary h2 { margin-top:10px; color:#fff7e1; font-size:27px; font-weight:900; line-height:1.2; }
-  .landscape-settlement-score { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 9px; margin-top:10px; color:#fde68a; font-size:15px; line-height:1.3; }
+  .landscape-settlement-topline { display:flex; align-items:center; justify-content:space-between; gap:8px; color:rgb(var(--gilt-500)); font-size:13px; font-weight:800; letter-spacing:.12em; }
+  .landscape-settlement-topline button { flex:none; border:1px solid rgb(var(--accent-line) / .45); border-radius:7px; padding:3px 7px; color:rgb(var(--gilt-300)); letter-spacing:0; }
+  .landscape-settlement-summary h2 { margin-top:10px; color:rgb(var(--paper)); font-size:27px; font-weight:900; line-height:1.2; }
+  .landscape-settlement-score { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 9px; margin-top:10px; color:rgb(var(--gilt-300)); font-size:15px; line-height:1.3; }
   .landscape-settlement-score strong { font-size:25px; }
-  .landscape-settlement-note { margin-top:5px; color:#d1fae5; font-size:13px; }
-  .landscape-settlement-id { display:flex; align-items:center; gap:7px; margin-top:16px; color:#fef3c7; font-size:14px; font-weight:700; white-space:nowrap; }
-  .landscape-settlement-id button { border:1px solid #fbbf2470; border-radius:6px; padding:2px 6px; color:#fde68a; font-size:10px; }
-  .landscape-settlement-copy { margin-top:3px; color:#86efac; font-size:10px; }
+  .landscape-settlement-note { margin-top:5px; color:rgb(var(--fog-300)); font-size:13px; }
+  .landscape-settlement-id { display:flex; align-items:center; gap:7px; margin-top:16px; color:rgb(var(--gilt-200)); font-size:14px; font-weight:700; white-space:nowrap; }
+  .landscape-settlement-id button { border:1px solid rgb(var(--accent-line) / .45); border-radius:6px; padding:2px 6px; color:rgb(var(--gilt-300)); font-size:10px; }
+  .landscape-settlement-copy { margin-top:3px; color:rgb(var(--ok)); font-size:10px; }
   .landscape-settlement-actions { display:grid; gap:9px; margin-top:auto; }
   .landscape-settlement-actions button { min-height:48px; border-radius:9px; padding:9px 12px; font-size:15px; font-weight:800; line-height:1.2; cursor:pointer; }
-  .landscape-settlement-next { background:#fbbf24; color:#422006; }
-  .landscape-settlement-history-button { border:1px solid #5eead477; color:#d1fae5; }
-  .landscape-settlement-details { display:flex; flex:1 1 0; flex-direction:column; min-width:0; min-height:0; border-left:1px solid #fbbf2440; padding-left:20px; }
-  .landscape-settlement-details h3 { flex:none; margin:0 0 12px; color:#fef3c7; font-size:18px; font-weight:800; }
+  .landscape-settlement-next { background:rgb(var(--gilt-500)); color:rgb(var(--fg-on-accent)); }
+  .landscape-settlement-history-button { border:1px solid rgb(var(--line) / .34); color:rgb(var(--fog-300)); }
+  .landscape-settlement-details { display:flex; flex:1 1 0; flex-direction:column; min-width:0; min-height:0; border-left:1px solid rgb(var(--accent-line) / .45); padding-left:20px; }
+  .landscape-settlement-details h3 { flex:none; margin:0 0 12px; color:rgb(var(--gilt-200)); font-size:18px; font-weight:800; }
   .landscape-settlement-seats { display:grid; grid-template-rows:repeat(3,minmax(0,1fr)); gap:9px; flex:1; min-height:0; }
   .landscape-settlement-seats:has(>article:nth-child(4)) { grid-template-rows:repeat(4,minmax(0,1fr)); }
-  .landscape-settlement-seat { display:flex; flex-direction:column; justify-content:center; gap:5px; min-width:0; min-height:0; border:1px solid #28695b; border-radius:9px; padding:9px 12px; background:#063a34; overflow:hidden; }
-  .landscape-settlement-seat.is-winner { border-color:#fbbf24a0; background:#49350d; }
+  .landscape-settlement-seat { display:flex; flex-direction:column; justify-content:center; gap:5px; min-width:0; min-height:0; border:1px solid rgb(var(--line) / .16); border-radius:9px; padding:9px 12px; background:rgb(var(--ink-800)); overflow:hidden; }
+  .landscape-settlement-seat.is-winner { border-color:rgb(var(--accent-line) / .45); background:rgb(var(--ink-800)); }
   .landscape-settlement-seat-main { display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:15px; line-height:1.25; }
   .landscape-settlement-seat-main strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .landscape-settlement-seat-main b { flex:none; color:#cbd5d1; font-size:19px; }
-  .landscape-settlement-seat-main b.positive { color:#86efac; }
-  .landscape-settlement-seat-main b.negative { color:#fda4af; }
-  .landscape-settlement-seat p { overflow:hidden; margin-top:3px; color:#cbd5d1; font-size:13px; line-height:1.3; text-overflow:ellipsis; white-space:nowrap; }
-  .landscape-winner-hand { min-height:0; margin-top:12px; border-top:1px solid #fbbf243b; padding-top:9px; overflow:auto; }
+  .landscape-settlement-seat-main b { flex:none; color:rgb(var(--fog-300)); font-size:19px; }
+  .landscape-settlement-seat-main b.positive { color:rgb(var(--ok)); }
+  .landscape-settlement-seat-main b.negative { color:rgb(var(--danger)); }
+  .landscape-settlement-seat p { overflow:hidden; margin-top:3px; color:rgb(var(--fog-300)); font-size:13px; line-height:1.3; text-overflow:ellipsis; white-space:nowrap; }
+  .landscape-winner-hand { min-height:0; margin-top:12px; border-top:1px solid rgb(var(--accent-line) / .45); padding-top:9px; overflow:auto; }
   .landscape-winner-hand > p { display:flex; justify-content:space-between; gap:5px; font-size:10px; font-weight:700; }
   .landscape-winner-groups, .landscape-seat-tiles { display:flex; flex-wrap:wrap; align-items:center; gap:2px; min-width:0; }
   .landscape-winner-groups { margin-top:5px; }
-  .landscape-winner-group, .landscape-seat-meld { display:inline-flex; align-items:flex-end; gap:1px; flex:none; border:1px solid #fbbf2455; border-radius:4px; padding:1px; }
-  .settlement-mini-tile { display:inline-flex; flex:none; align-items:center; justify-content:center; --tw:18px; --th:24px; width:var(--tw); height:var(--th); margin-bottom:0; overflow:hidden; border:1px solid #d4cbb8; border-radius:3px; background:#fffdf0; box-shadow:1px 2px 0 #b2cbb5; font-size:10px; font-weight:800; line-height:1; }
+  .landscape-winner-group, .landscape-seat-meld { display:inline-flex; align-items:flex-end; gap:1px; flex:none; border:1px solid rgb(var(--accent-line) / .45); border-radius:4px; padding:1px; }
+  .settlement-mini-tile { display:inline-flex; flex:none; align-items:center; justify-content:center; --tw:18px; --th:24px; width:var(--tw); height:var(--th); margin-bottom:0; overflow:hidden; border:1px solid rgb(var(--tile-edge)); border-radius:3px; background:rgb(var(--paper)); color:rgb(var(--tile-ink)); box-shadow:1px 2px 0 rgb(var(--tile-shadow)); font-size:10px; font-weight:800; line-height:1; }
   .landscape-winner-group .settlement-mini-tile { --tw:28px; --th:38px; width:var(--tw); height:var(--th); font-size:15px; }
   .landscape-winner-group .settlement-mini-tile.sideways { width:var(--th); height:var(--tw); }
-  .settlement-mini-tile.is-winning-tile { position:relative; overflow:visible; outline:2px solid #fbbf24; outline-offset:1px; }
-  .settlement-mini-tile.is-winning-tile::after { content:'胡'; position:absolute; top:-9px; right:-7px; z-index:2; border:1px solid #fcd34d; border-radius:4px; padding:1px 2px; background:linear-gradient(135deg,#be123c,#7f1d1d); color:#fff7d6; font-size:8px; line-height:1; }
-  .landscape-winner-breakdown, .landscape-seat-breakdown { display:flex; flex-wrap:wrap; gap:2px 6px; min-width:0; color:#d1fae5; font-size:9px; line-height:1.15; }
+  .settlement-mini-tile.is-winning-tile { position:relative; overflow:visible; outline:2px solid rgb(var(--gilt-500)); outline-offset:1px; }
+  .settlement-mini-tile.is-winning-tile::after { content:'胡'; position:absolute; top:-9px; right:-7px; z-index:2; border:1px solid rgb(var(--gilt-400)); border-radius:4px; padding:1px 2px; background:rgb(var(--cinnabar-600)); color:rgb(var(--paper-2)); font-size:8px; line-height:1; }
+  .landscape-winner-breakdown, .landscape-seat-breakdown { display:flex; flex-wrap:wrap; gap:2px 6px; min-width:0; color:rgb(var(--fog-300)); font-size:9px; line-height:1.15; }
   .landscape-winner-breakdown { margin-top:9px; gap:5px 9px; font-size:13px; line-height:1.3; }
-  .landscape-winner-breakdown strong { color:#fde68a; }
+  .landscape-winner-breakdown strong { color:rgb(var(--gilt-300)); }
   .landscape-seat-tiles { margin-top:3px; }
-  .landscape-seat-meld { border-color:#5eead477; }
-  .landscape-seat-breakdown { margin-top:4px; color:#c4b5fd; font-size:13px; line-height:1.2; }
+  .landscape-seat-meld { border-color:rgb(var(--line) / .34); }
+  .landscape-seat-breakdown { margin-top:4px; color:rgb(var(--fog-400)); font-size:13px; line-height:1.2; }
   .landscape-settlement-history { display:grid; align-content:start; gap:5px; overflow:hidden; font-size:11px; line-height:1.2; }
   .landscape-settlement-history p { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .landscape-settlement-history-pages { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:3px; color:#fde68a; }
-  .landscape-settlement-history-pages button { border:1px solid #5eead477; border-radius:5px; padding:3px 7px; color:#d1fae5; }
+  .landscape-settlement-history-pages { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:3px; color:rgb(var(--gilt-300)); }
+  .landscape-settlement-history-pages button { border:1px solid rgb(var(--line) / .34); border-radius:5px; padding:3px 7px; color:rgb(var(--fog-300)); }
   .landscape-settlement-history-pages button:disabled { opacity:.4; }
 </style>

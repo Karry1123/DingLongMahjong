@@ -1,0 +1,31 @@
+@layer components {
+  .ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--control-min-height); padding: 10px 20px; border: 1px solid transparent; border-radius: var(--r-md); font-weight: 500; cursor: pointer; transition: background-color var(--motion-fast), opacity var(--motion-fast); }
+  .ui-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .ui-btn--primary { background: rgb(var(--btn-primary-bg)); color: rgb(var(--btn-primary-fg)); }
+  .ui-btn--primary:hover:not(:disabled) { background: rgb(var(--accent-hover)); }
+  .ui-btn--secondary { background: rgb(var(--bg-interactive)); color: rgb(var(--fg)); border-color: rgb(var(--line) / .16); }
+  .ui-btn--ghost { background: transparent; color: rgb(var(--accent)); border-color: rgb(var(--accent-line) / .45); }
+  .ui-btn--danger { background: rgb(var(--danger)); color: rgb(var(--fg-on-accent)); }
+  .ui-btn--action { background: rgb(var(--btn-action-bg)); color: rgb(var(--btn-action-fg)); border-color: rgb(var(--btn-action-edge)); border-bottom: 3px solid rgb(var(--gilt-700)); font-family: var(--font-display); font-size: var(--size-action); letter-spacing: var(--tracking-action); }
+  .ui-btn--action.is-hu { background: rgb(var(--btn-action-fg)); color: rgb(var(--paper)); }
+  .ui-btn--action.is-pass { background: rgb(var(--bg-interactive)); color: rgb(var(--fg)); border: 1px solid rgb(var(--line) / .16); }
+  .ui-card { background: rgb(var(--bg-raised)); border: 1px solid rgb(var(--line) / .16); border-radius: var(--r-lg); padding: 20px; }
+  .ui-card--gilt { background: linear-gradient(135deg, rgb(var(--accent-soft) / .14), transparent), rgb(var(--bg-raised)); }
+  .ui-modal-backdrop { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; background: rgb(var(--bg-overlay) / .78); backdrop-filter: blur(8px); }
+  .ui-modal { width: min(100%, 480px); max-height: 90dvh; overflow: auto; background: rgb(var(--bg-raised)); color: rgb(var(--fg)); border: 1px solid rgb(var(--accent-line) / .45); border-radius: var(--r-xl); box-shadow: var(--sh-2), var(--sh-glow); }
+  .ui-modal__head { padding: 20px 24px 0; font-family: var(--font-display); }
+  .ui-modal__head > .ui-huiwen { margin-top: 16px; }
+  .ui-modal__body { padding: 24px; }
+  .ui-modal__foot { display: flex; justify-content: flex-end; gap: 12px; padding: 0 24px 24px; }
+  .ui-pill { display: inline-flex; align-items: center; padding: 3px 10px; border: 1px solid rgb(var(--line) / .16); border-radius: var(--r-pill); background: rgb(var(--bg-sunken) / .6); color: rgb(var(--fg-muted)); font-size: var(--size-caption); }
+  .ui-pill--ok { color: rgb(var(--ok)); border-color: rgb(var(--ok)); }
+  .ui-pill--warn { color: rgb(var(--warn)); border-color: rgb(var(--warn)); }
+  .ui-pill--danger { color: rgb(var(--danger)); border-color: rgb(var(--danger)); }
+  .ui-wind { display: inline-grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgb(var(--accent)); border-radius: var(--r-xs); color: rgb(var(--accent)); font-family: var(--font-display); }
+  .ui-wind.is-dealer { background: rgb(var(--cinnabar-600)); color: rgb(var(--paper)); }
+  .ui-clock { --value: 1; --clock-color: var(--clock-run); position: relative; isolation: isolate; display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; color: rgb(var(--fg)); font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+  .ui-clock::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: conic-gradient(rgb(var(--clock-color)) calc(clamp(0, var(--value), 1) * 1turn), rgb(var(--clock-track) / .08) 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), currentColor calc(100% - 2px)); pointer-events: none; }
+  .ui-clock.is-urgent { --clock-color: var(--clock-urgent); }
+  .ui-clock.is-bank { --clock-color: var(--clock-bank); }
+  .ui-toast { background: rgb(var(--ink-800)); color: rgb(var(--fg)); border-left: 3px solid rgb(var(--accent)); border-radius: var(--r-sm); padding: 12px 16px; }
+}

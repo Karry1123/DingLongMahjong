@@ -25,14 +25,14 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
 </script>
 <template>
   <section class="pve-table" :class="{ 'has-timers': Object.keys(timeBanks).length > 0 }" aria-label="四方牌桌">
-    <header class="flex flex-wrap justify-between gap-2 text-sm text-teal-100">
+    <header class="flex flex-wrap justify-between gap-2 text-sm text-fog-100">
       <span>第 {{ roundCount }} 圈 · 庄家 {{ windLabel(dealerSeat) }}风</span>
-      <span class="text-amber-200">{{ tableWaiting ? '等待玩家决策' : `当前 ${windLabel(currentTurnSeat)}风行动` }}</span>
+      <span class="text-gilt-300">{{ tableWaiting ? '等待玩家决策' : `当前 ${windLabel(currentTurnSeat)}风行动` }}</span>
     </header>
     <div class="table-compass">
       <article v-for="player in seats" :key="player.seat" :data-seat="player.seat" :data-position="player.position" :data-wind="player.seat" class="opponent-seat round-player" :class="[player.position, { active: !tableWaiting && player.seat === currentTurnSeat }]">
-        <header class="seat-header flex justify-between gap-2 text-sm text-teal-50">
-          <b class="player-caption">{{ player.nickname }} · <template v-if="showRoles">{{ player.role }} · </template>{{ windLabel(player.seat) }}风 <small v-if="player.isHost" class="host-badge">房主</small> <span v-if="player.seat === dealerSeat" class="text-amber-300">庄</span></b>
+        <header class="seat-header flex justify-between gap-2 text-sm text-fog-100">
+          <b class="player-caption">{{ player.nickname }} · <template v-if="showRoles">{{ player.role }} · </template>{{ windLabel(player.seat) }}风 <small v-if="player.isHost" class="host-badge">房主</small> <span v-if="player.seat === dealerSeat" class="text-gilt-300">庄</span></b>
           <SeatClock v-if="Object.hasOwn(timeBanks,player.seat) || clocks[player.seat]" :wind="player.seat" :clock="clocks[player.seat]" :bank-ms="timeBanks[player.seat] ?? 0" :private-bank="timeBanks[player.seat] == null" :server-offset="serverOffset" />
           <span v-if="!tableWaiting && player.seat === thinkingSeat" class="thinking-indicator" role="status">思考中…</span>
           <span>{{ cumulativeScores[player.seat] || 0 }} 分</span>
@@ -56,23 +56,23 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
   </section>
 </template>
 <style scoped>
-.pve-table { position:relative; padding:0; border:0; border-radius:0; background:radial-gradient(ellipse at center,#17604c99,#052e2c 85%); box-shadow:none; }
+.pve-table { position:relative; padding:0; border:0; border-radius:0; background:radial-gradient(ellipse 70% 60% at 50% 45%, rgb(var(--table-felt)), rgb(var(--felt-600)) 45%, rgb(var(--table-felt-deep))); box-shadow:none; }
 .table-compass { position:relative; width:100%; height:100%; margin:0; }
 .opponent-seat { position:absolute; width:36%; height:260px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
-.opponent-seat.active .seat-header { color:#fde68a; text-shadow:0 0 12px #fbbf2466; }
+.opponent-seat.active .seat-header { color:rgb(var(--highlight)); text-shadow:0 0 12px rgb(var(--highlight) / .4); }
 .top { top:4px; left:50%; width:760px; height:190px; transform:translateX(-50%); }
 .left { top:50%; left:0; transform:translateY(-50%); }
 .right { top:50%; right:0; transform:translateY(-50%); }
 .seat-header { height:18px; margin:0; font-size:12px; }
 .player-caption { white-space:nowrap; }
-.host-badge { font:8px sans-serif; padding:1px 3px; border:1px solid #d4af5866; border-radius:3px; color:#e9cc89; }
-.player-clock { color:#f5d68b; white-space:nowrap; font-size:9px; font-variant-numeric:tabular-nums; }
+.host-badge { font:8px sans-serif; padding:1px 3px; border:1px solid rgb(var(--accent-line) / .4); border-radius:3px; color:rgb(var(--gilt-300)); }
+.player-clock { color:rgb(var(--gilt-200)); white-space:nowrap; font-size:9px; font-variant-numeric:tabular-nums; }
 .has-timers .seat-header { height:36px; align-items:center; gap:6px; }
 .has-timers .top > :deep(.discard-river) { top:100px; }
 .has-timers .left .seat-header,.has-timers .right .seat-header { top:-42px; width:300px; }
 .has-timers .seat-header > b { min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .has-timers .seat-header > span:last-child { white-space:nowrap; }
-.thinking-indicator { margin-left:auto; color:#fde68a; font-size:12px; white-space:nowrap; animation:thinking-pulse 1s ease-in-out infinite alternate; }
+.thinking-indicator { margin-left:auto; color:rgb(var(--highlight)); font-size:12px; white-space:nowrap; animation:thinking-pulse 1s ease-in-out infinite alternate; }
 @keyframes thinking-pulse { from { opacity:.45; } to { opacity:1; } }
 .seat-tiles { display:flex; align-items:flex-start; gap:8px; }
 .concealed-hand { display:flex; flex-wrap:nowrap; gap:2px; }
@@ -94,14 +94,14 @@ const seats = computed(() => relativeOpponents(props.seatWind).map(({ seat_wind,
 .left > :deep(.discard-river) { top:0; right:32px; grid-template-columns:repeat(4,31.74px); }
 .right > :deep(.discard-river) { top:0; left:32px; grid-template-columns:repeat(4,31.74px); }
 .table-center { position:absolute; z-index:2; top:55%; left:50%; transform:translate(-50%,-50%); }
-.center-compass-hud { display:flex; align-items:center; justify-content:center; gap:6px; padding:7px 10px; border:1px solid #d4af5888; border-radius:13px; background:#043a32ee; color:#fef3c7; white-space:nowrap; box-shadow:0 10px 24px #001b1755; }
-.compass-title { font-size:11px; font-weight:800; color:#fbbf24; }
+.center-compass-hud { display:flex; align-items:center; justify-content:center; gap:6px; padding:7px 10px; border:1px solid rgb(var(--line) / .16); border-radius:var(--r-md); background:rgb(var(--ink-950) / .55); color:rgb(var(--fog-100)); white-space:nowrap; box-shadow:0 10px 24px rgb(var(--ink-950) / .35); }
+.compass-title { font-size:11px; font-weight:800; color:rgb(var(--highlight)); }
 .compass-count { display:flex; flex-direction:column; align-items:center; font-size:10px; line-height:1.1; }
 .compass-count strong { font-size:16px; }
-.compass-count small { font-size:8px; color:#b7d8cc; }
+.compass-count small { font-size:8px; color:rgb(var(--fog-300)); }
 .center-compass-hud :deep(.mahjong-tile) { --tw:25px; --th:calc(var(--tw)*4/3); margin:0; }
 .self-river { position:absolute; top:calc(50% + 72px); left:50%; transform:translateX(-50%); }
 .self-river :deep(.discard-river) { display:grid; grid-template-columns:repeat(9,31.74px); gap:3px; min-height:0; }
 
-.tile-back { width:14px; height:18px; border:1px solid #7ab5a6; border-radius:3px; background:linear-gradient(130deg,#368a75,#115643); box-shadow:0 2px 0 #aec7b7; }
+.tile-back { width:14px; height:18px; border:1px solid rgb(var(--tile-back-edge)); border-radius:3px; background:linear-gradient(130deg,rgb(var(--tile-back)),rgb(var(--tile-back-2))); box-shadow:0 2px 0 rgb(var(--tile-shadow)), inset 0 0 0 1px rgb(var(--gilt-300) / .35); }
 </style>

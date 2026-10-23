@@ -50,17 +50,17 @@ onUnmounted(() => {
   </div>
 </template>
 <style scoped>
-.god-opening { position:absolute; inset:0; z-index:2000; isolation:isolate; overflow:hidden; color:#fff6d5; }
-.god-opening-mask { position:absolute; inset:0; background:#001c19dc; backdrop-filter:blur(5px); transition:opacity .6s ease-in-out; }
-.god-opening-halo { position:absolute; left:50%; top:39%; width:400px; height:400px; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle,#f6ce6655,transparent 66%); animation:god-glow 1.5s ease-in-out infinite alternate; transition:opacity .6s ease-in-out; }
-.god-opening-flyer { position:absolute; left:50%; top:37%; width:140px; height:186.667px; transform:translate(-50%,-50%); transition:all .6s ease-in-out; filter:drop-shadow(0 0 22px #fbbf2480); }
+.god-opening { position:absolute; inset:0; z-index:2000; isolation:isolate; overflow:hidden; color:rgb(var(--ivory-50)); }
+.god-opening-mask { position:absolute; inset:0; background:rgb(var(--ink-950) / .86); backdrop-filter:blur(5px); transition:opacity .6s ease-in-out; }
+.god-opening-halo { position:absolute; left:50%; top:39%; width:400px; height:400px; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle,rgb(var(--gilt-300) / .35),transparent 66%); animation:god-glow 1.5s ease-in-out infinite alternate; transition:opacity .6s ease-in-out; }
+.god-opening-flyer { position:absolute; left:50%; top:37%; width:140px; height:186.667px; transform:translate(-50%,-50%); transition:all .6s ease-in-out; filter:drop-shadow(0 0 22px rgb(var(--gilt-500) / .5)); }
 .god-opening-flyer :deep(.mahjong-tile) { --tw:140px; --th:186.667px; width:100%; height:100%; margin:0; }
 .god-opening-copy { position:absolute; top:54%; left:50%; width:620px; max-width:90%; transform:translateX(-50%); text-align:center; transition:opacity .6s ease-in-out; }
-.god-opening-copy > p:first-child { color:#fbbf24; font-size:13px; letter-spacing:.3em; }
+.god-opening-copy > p:first-child { color:rgb(var(--gilt-500)); font-size:13px; letter-spacing:.3em; }
 .god-opening-copy h2 { margin:8px 0; font-size:32px; font-weight:800; letter-spacing:.12em; }
-.god-opening-copy strong { display:block; font-size:20px; color:#fde68a; }
-.god-opening-rule { margin:12px auto; max-width:520px; font-size:16px; line-height:1.6; color:#d5e8de; }
-.god-opening-copy small { font-size:12px; color:#b8cbbf; }
+.god-opening-copy strong { display:block; font-size:20px; color:rgb(var(--gilt-200)); }
+.god-opening-rule { margin:12px auto; max-width:520px; font-size:16px; line-height:1.6; color:rgb(var(--fog-300)); }
+.god-opening-copy small { font-size:12px; color:rgb(var(--fog-400)); }
 .god-opening-flight .god-opening-mask, .god-opening-flight .god-opening-copy, .god-opening-flight .god-opening-halo { opacity:0; }
 .god-opening-flight .god-opening-flyer { filter:none; }
 @keyframes god-glow { to { opacity:.55; } }

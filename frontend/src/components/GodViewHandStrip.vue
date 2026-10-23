@@ -51,16 +51,16 @@ function tileClass(item) {
     tileSuitClass(code),
     'relative rounded border px-1 py-1 text-[10px] font-medium transition duration-150 sm:text-[11px]',
     props.active
-      ? 'cursor-pointer border-amber-400/60 bg-emerald-900/70 hover:bg-amber-500/25'
-      : 'border-teal-800/40 bg-teal-950/50',
-    joker ? 'ring-2 ring-fuchsia-400/65 cursor-grab active:cursor-grabbing' : '',
-    drawn ? 'ring-2 ring-sky-400/55 ml-1' : '',
-    proxy && !joker ? 'outline outline-1 outline-violet-300/50' : '',
+      ? 'cursor-pointer border-accent-line/45 bg-ink-800/70 hover:bg-gilt-500/25'
+      : 'border-accent-line/[.16] bg-ink-950/55',
+    joker ? 'ring-2 ring-highlight/70 cursor-grab active:cursor-grabbing' : '',
+    drawn ? 'ring-2 ring-info/55 ml-1' : '',
+    proxy && !joker ? 'outline outline-1 outline-info/50' : '',
     code === props.bestTile && props.active
-      ? 'border-amber-300 bg-amber-500/30 ring-2 ring-amber-300'
+      ? 'border-highlight bg-highlight/30 ring-2 ring-highlight'
       : '',
     dropHover.value === item.index
-      ? 'ring-2 ring-lime-300/80 scale-105'
+      ? 'ring-2 ring-ok/80 scale-105'
       : '',
   ]
 }
@@ -144,7 +144,7 @@ const wrapClass = computed(() =>
     <template v-for="item in items" :key="`${seat}-${item.uid}`">
       <span
         v-if="drawnIndex >= 0 && item.index === drawnIndex"
-        class="mx-0.5 hidden h-6 w-px self-center border-l border-dashed border-sky-400/45 sm:inline-block"
+        class="mx-0.5 hidden h-6 w-px self-center border-l border-dashed border-info/45 sm:inline-block"
         aria-hidden="true"
       />
       <div class="relative inline-flex flex-col items-center">
@@ -155,7 +155,7 @@ const wrapClass = computed(() =>
         >
           <button
             type="button"
-            class="rounded bg-fuchsia-800/80 px-1 text-[9px] leading-none text-fuchsia-50 hover:bg-fuchsia-600 disabled:opacity-30"
+            class="rounded bg-info/80 px-1 text-[9px] leading-none text-ink-950 hover:bg-info disabled:opacity-30"
             :disabled="item.index <= 0"
             title="左移「得」"
             @click="nudge(item, -1, $event)"
@@ -164,7 +164,7 @@ const wrapClass = computed(() =>
           </button>
           <button
             type="button"
-            class="rounded bg-fuchsia-800/80 px-1 text-[9px] leading-none text-fuchsia-50 hover:bg-fuchsia-600 disabled:opacity-30"
+            class="rounded bg-info/80 px-1 text-[9px] leading-none text-ink-950 hover:bg-info disabled:opacity-30"
             :disabled="item.index >= tiles.length - 1"
             title="右移「得」"
             @click="nudge(item, 1, $event)"
@@ -186,7 +186,7 @@ const wrapClass = computed(() =>
         >
           <span
             v-if="isJoker(item.code)"
-            class="absolute -top-1.5 left-1/2 -translate-x-1/2 rounded bg-fuchsia-500 px-0.5 text-[8px] font-bold text-white"
+            class="absolute -top-1.5 left-1/2 -translate-x-1/2 rounded bg-highlight px-0.5 text-[8px] font-bold text-bronze-900"
             >得</span
           >
           <MahjongTile :code="item.code" style="--tw:26px; --th:calc(var(--tw)*4/3); margin-bottom:0" />
@@ -195,7 +195,7 @@ const wrapClass = computed(() =>
     </template>
     <span
       v-if="!tiles.length"
-      class="text-[10px] text-teal-500/70"
+      class="text-[10px] text-fog-500/70"
       >无暗手</span
     >
   </div>

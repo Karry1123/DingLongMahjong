@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Design-system color lint
+        run: npm run lint:colors
+
       - name: Read app version
         id: version
         run: |

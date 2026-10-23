@@ -37,10 +37,10 @@ createApp({
       melds: shownMelds,
       discards: river,
     }))
-    return h('div', { class: 'pve-portrait-shell min-h-screen bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 px-4 py-8' }, [
+    return h('div', { class: 'pve-portrait-shell min-h-screen bg-gradient-to-br from-ink-900 via-ink-800 to-ink-900 px-4 py-8' }, [
       h('div', { class: 'pve-session-view' }, [
         h('main', { class: 'pve-game-main mx-auto flex max-w-7xl flex-col gap-6', 'aria-label': '极端流局布局沙盒', 'data-turn': n }, [
-          h('section', { class: 'rounded-2xl border border-amber-400/40 bg-teal-950 p-4 text-amber-100', 'aria-label': '轮次状态' }, [
+          h('section', { class: 'rounded-2xl border border-accent-line/45 bg-ink-900 p-4 text-gilt-200', 'aria-label': '轮次状态' }, [
             h('div', { class: 'flex flex-wrap items-center justify-between gap-2' }, [
               h('span', `第 ${n} 巡 · 庄家 自家`),
               h('span', '累计积分：自家 0 · 下家 0 · 对家 0 · 上家 0'),
@@ -52,13 +52,13 @@ createApp({
             default: () => [
               h(HandBar, { class: 'pve-self-hand', modelValue: fullHand, capacity: 14, wallDriven: true, discardMode: true, dealerTile: '8s' }),
               h(MeldBar, { modelValue: shownMelds, readOnly: true, compact: true, dealerTile: '8s' }),
-              h('div', { class: 'rounded-xl border border-teal-700/40 p-2.5', 'aria-label': '自家牌河' }, [
+              h('div', { class: 'rounded-xl border border-ink-700/40 p-2.5', 'aria-label': '自家牌河' }, [
                 h('p', '自家牌河'),
                 h(DiscardRiver, { tiles: river, compact: true, layout: 'self' }),
               ]),
             ],
             recommendation: () => n === 0
-              ? h('section', { class: 'pve-ev-placeholder rounded-xl border border-amber-400/40 bg-teal-950', 'aria-label': '等待切牌推荐' }, '等待切牌推荐')
+              ? h('section', { class: 'pve-ev-placeholder rounded-xl border border-accent-line/45 bg-ink-900', 'aria-label': '等待切牌推荐' }, '等待切牌推荐')
               : h(ResultCard, { bestTile: 'N', candidates: candidates.slice(0, 1 + n % 3), loading: n % 5 === 0, compact: true, interactive: true, seatWind: 'E' }),
           }),
         ]),

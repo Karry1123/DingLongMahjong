@@ -150,22 +150,22 @@ function tilesForMode(group) {
 
 <template>
   <section
-    class="w-full max-w-2xl rounded-2xl border border-teal-700/40 bg-teal-950/50 shadow-xl backdrop-blur-sm"
+    class="w-full max-w-2xl rounded-md border border-line/[.16] bg-ink-950/55 shadow-xl backdrop-blur-sm"
     :class="compact ? 'compact-melds p-2.5 sm:p-3' : 'p-5 sm:p-6'"
   >
     <div class="flex flex-wrap items-center justify-between gap-2" :class="compact ? 'mb-1' : 'mb-4'">
       <div>
-        <h2 class="font-semibold tracking-wide text-amber-50" :class="compact ? 'text-sm' : 'text-lg'">
+        <h2 class="font-semibold tracking-wide text-fog-100" :class="compact ? 'text-sm' : 'text-lg'">
           副露（{{ melds.length }}/{{ MAX_MELDS }}）
         </h2>
-        <p v-if="!readOnly" class="mt-0.5 text-xs text-teal-300/70">
+        <p v-if="!readOnly" class="mt-0.5 text-xs text-fog-400/80">
           每组占 3 个牌位；删除后暗手容量自动回升
         </p>
       </div>
       <button
         v-if="!readOnly"
         type="button"
-        class="rounded-lg border border-teal-600/40 px-3 py-1 text-xs text-teal-100 transition hover:border-rose-400/50 hover:text-rose-100 disabled:opacity-40"
+        class="rounded-lg border border-accent-line/30 px-3 py-1 text-xs text-fog-100 transition hover:border-danger/50 hover:text-danger disabled:opacity-40"
         :disabled="melds.length === 0"
         @click="clearMelds"
       >
@@ -187,27 +187,27 @@ function tilesForMode(group) {
         type="button"
         role="listitem"
         :aria-label="`${MELD_TYPE_LABEL[m.meld_type] || m.meld_type}牌组 ${i + 1}`"
-        class="flex w-full items-center gap-3 rounded-xl border border-teal-700/45 bg-emerald-950/40 text-left transition hover:border-rose-400/45 hover:bg-rose-950/20"
+        class="flex w-full items-center gap-3 rounded-xl border border-accent-line/[.16] bg-ink-900/40 text-left transition hover:border-danger/45 hover:bg-danger/[.16]"
         :class="compact ? 'px-2 py-1' : 'px-3 py-2.5'"
         :title="readOnly ? undefined : `删除此组${MELD_TYPE_LABEL[m.meld_type] || m.meld_type}`"
         @click="removeMeld(i)"
       >
         <span
-          class="shrink-0 rounded-md bg-teal-800/60 px-2 py-0.5 text-xs font-medium text-amber-100"
+          class="shrink-0 rounded-md bg-ink-700/60 px-2 py-0.5 text-xs font-medium text-fog-100"
         >
           {{ MELD_TYPE_LABEL[m.meld_type] || m.meld_type }}
         </span>
         <MeldTiles :meld="m" :dealer-tile="dealerTile" />
-        <span v-if="!readOnly" class="shrink-0 text-xs text-teal-400/80">删除</span>
+        <span v-if="!readOnly" class="shrink-0 text-xs text-fog-400/80">删除</span>
       </component>
     </div>
-    <p v-else class="text-teal-400/70" :class="compact ? 'text-xs' : 'mb-4 text-sm'">
+    <p v-else class="text-fog-500/80" :class="compact ? 'text-xs' : 'mb-4 text-sm'">
       {{ readOnly ? '尚未声明副露' : '尚未录入副露' }}
     </p>
 
     <!-- 添加操作 -->
     <div v-if="!readOnly" class="mb-3">
-      <p class="mb-2 text-sm text-teal-200/90">添加副露</p>
+      <p class="mb-2 text-sm text-fog-300">添加副露</p>
       <div class="flex flex-wrap gap-2">
         <button
           v-for="mode in MELD_MODES"
@@ -216,10 +216,10 @@ function tilesForMode(group) {
           class="rounded-lg px-3 py-1.5 text-sm font-medium transition"
           :class="
             atMeldCap
-              ? 'cursor-not-allowed bg-slate-800/50 text-slate-500'
+              ? 'cursor-not-allowed bg-ink-800/50 text-fog-600'
               : addMode === mode.type
-                ? 'bg-amber-500 text-emerald-950 shadow'
-                : 'border border-teal-600/50 text-teal-100 hover:border-amber-400/50 hover:text-amber-50'
+                ? 'bg-gilt-500 text-bronze-900 shadow'
+                : 'border border-accent-line/30 text-fog-100 hover:border-accent-line/45 hover:text-gilt-200'
           "
           :disabled="atMeldCap"
           @click="selectMode(mode.type)"
@@ -227,10 +227,10 @@ function tilesForMode(group) {
           {{ mode.label }}
         </button>
       </div>
-      <p v-if="atMeldCap" class="mt-2 text-xs text-amber-200/80">
+      <p v-if="atMeldCap" class="mt-2 text-xs text-gilt-300/80">
         已达 4 组上限
       </p>
-      <p v-else-if="addMode" class="mt-2 text-xs text-teal-300/75">
+      <p v-else-if="addMode" class="mt-2 text-xs text-fog-400/80">
         <template v-if="addMode === 'chi'">
           选择起始序数牌（如 2 条 → 2–3–4 条）
         </template>
@@ -244,10 +244,10 @@ function tilesForMode(group) {
     </div>
 
     <!-- 选牌键盘（添加模式时展开） -->
-    <div v-if="!readOnly && addMode && !atMeldCap" class="space-y-3 border-t border-teal-800/40 pt-3">
+    <div v-if="!readOnly && addMode && !atMeldCap" class="space-y-3 border-t border-accent-line/[.16] pt-3">
       <div v-for="group in TILE_GROUPS" :key="group.key">
         <template v-if="tilesForMode(group).length">
-          <p class="mb-1.5 text-[10px] font-medium tracking-wider text-teal-400/70">
+          <p class="mb-1.5 text-[10px] font-medium tracking-wider text-fog-500/80">
             {{ group.label }}
           </p>
           <div class="grid grid-cols-5 gap-1.5 sm:grid-cols-9">
@@ -258,8 +258,8 @@ function tilesForMode(group) {
               class="rounded-lg border px-1 py-2 text-xs font-medium transition"
               :class="
                 canAddWith(addMode, code)
-                  ? 'border-teal-600/45 bg-emerald-900/55 text-amber-50 hover:border-amber-400/60'
-                  : 'cursor-not-allowed border-slate-700/40 bg-slate-900/40 text-slate-600'
+                  ? 'border-accent-line/30 bg-ink-800/55 text-fog-100 hover:border-accent-line/45'
+                  : 'cursor-not-allowed border-fog-600/40 bg-ink-900/40 text-fog-600'
               "
               :disabled="!canAddWith(addMode, code)"
               :aria-label="`以 ${tileLabel(code)} 添加${MELD_TYPE_LABEL[addMode]}`"

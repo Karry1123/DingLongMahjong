@@ -14,7 +14,7 @@ const result = computed(() => huResultLabel(props.info))
 <style scoped>
 .self-win-actions { display:flex; justify-content:center; align-items:center; gap:8px; }
 .self-win-actions button { min-height:44px; padding:8px 14px; border-radius:10px; white-space:nowrap; font-size:16px; font-weight:700; cursor:pointer; }
-.self-win-button { background:#fbbf24; color:#422006; border:1px solid #fde68a; }
-.self-win-pass { background:#063b32; color:#d1fae5; border:1px solid #5eead477; }
+.self-win-button { background:rgb(var(--paper)); color:rgb(var(--cinnabar-600)); border:1px solid rgb(var(--paper-edge)); }
+.self-win-pass { background:rgb(var(--ink-800)); color:rgb(var(--fog-300)); border:1px solid rgb(var(--line) / .34); }
 .self-win-actions button:disabled { cursor:default; opacity:.5; }
 </style>

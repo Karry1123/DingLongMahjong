@@ -849,15 +849,17 @@ const turnStatus = computed(() => {
 const statusBarToneClass = computed(() => {
   const t = turnStatus.value.tone
   if (t === 'rose') {
-    return 'border-rose-500/50 bg-rose-950/45 shadow-rose-950/30'
+    return 'border-danger/50 bg-danger/[.16] shadow-ink-950/30'
   }
   if (t === 'emerald') {
-    return 'border-emerald-500/50 bg-emerald-950/50 shadow-emerald-950/25'
+    return isSetup.value
+      ? 'border-ok/50 bg-ok/[.16] shadow-ink-950/25'
+      : 'border-highlight/50 bg-highlight/[.16] shadow-ink-950/25'
   }
   if (t === 'amber') {
-    return 'border-amber-500/45 bg-amber-950/40 shadow-amber-950/25'
+    return 'border-gilt-500/45 bg-ink-800/40 shadow-ink-950/25'
   }
-  return 'border-teal-700/40 bg-teal-950/45'
+  return 'border-line/40 bg-ink-950/45'
 })
 
 /** 自家手牌区是否处于行动聚焦 */
@@ -1460,24 +1462,24 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
       <section class="pvp-dissolved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="room-dissolved-title"><h2 id="room-dissolved-title">房间已解散</h2><p>{{ dissolvedMessage }}</p><button type="button" data-dismiss-room @click="dissolvedMessage = ''">返回主页</button></section>
     </div>
     <section v-if="!activeUiMode" :inert="!!dissolvedMessage || undefined" class="home-screen mx-auto flex min-h-[75vh] max-w-5xl flex-col items-center justify-center text-center">
-      <button class="text-amber-100" @click="router.push('/home')">← 返回首页</button><button class="text-amber-100" @click="openPveConfig">开始人机练习</button>
-      <p v-if="pveStartLoading" class="mt-5 text-sm text-teal-100" role="status">正在连接云端计算引擎并初始化对局…</p>
-      <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
-      <p v-if="errorMsg" class="mt-5 text-sm text-rose-200">{{ errorMsg }}</p>
+      <button class="text-gilt-200" @click="router.push('/home')">← 返回首页</button><button class="text-gilt-200" @click="openPveConfig">开始人机练习</button>
+      <p v-if="pveStartLoading" class="mt-5 text-sm text-fog-300" role="status">正在连接云端计算引擎并初始化对局…</p>
+      <p v-if="cloudWakeMessage" class="mt-2 text-sm text-gilt-300" role="status">{{ cloudWakeMessage }}</p>
+      <p v-if="errorMsg" class="mt-5 text-sm text-danger">{{ errorMsg }}</p>
       <PveStartDialog v-if="pveConfigOpen" v-model:enableEV="enableEV" :busy="pveStartLoading" @close="pveConfigOpen = false; router.push('/home')" @start="choosePveMode" />
     </section>
 
     <div v-else :class="gameMode === 'PVE' ? 'pve-session-view' : ''">
     <header class="mb-8 text-center">
       <h1
-        class="text-3xl font-semibold tracking-wide text-amber-50 sm:text-4xl"
+        class="text-3xl font-semibold tracking-wide text-gilt-200 sm:text-4xl"
       >
         顶龙麻将
       </h1>
-      <p class="mt-2 text-sm text-teal-200/75">
+      <p class="mt-2 text-sm text-fog-400/75">
         {{ gameMode === 'PVE' ? '牌墙自动发牌 · 三家 AI 自主决策 · 实时 EV 辅助切牌' : '先录入起手（庄 14 / 闲 13）→ 开始对局 → 按串行时序推演' }}
       </p>
-      <p v-if="cloudWakeMessage" class="mt-2 text-sm text-amber-200" role="status">{{ cloudWakeMessage }}</p>
+      <p v-if="cloudWakeMessage" class="mt-2 text-sm text-gilt-300" role="status">{{ cloudWakeMessage }}</p>
     </header>
 
     <main class="mx-auto flex flex-col gap-6" :inert="pveOpening || undefined" :class="gameMode === 'PVE' ? ['pve-game-main', 'max-w-7xl pb-24'] : 'max-w-6xl pb-16'">
@@ -1488,21 +1490,21 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
         aria-live="polite"
         aria-label="轮次状态"
       >
-        <div v-if="gameMode === 'PVE'" class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/20 bg-black/15 px-3 py-2 text-xs text-amber-100">
+        <div v-if="gameMode === 'PVE'" class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gilt-300/20 bg-ink-950/15 px-3 py-2 text-xs text-gilt-200">
           <span>第 {{ roundCount }} 圈 · 当前庄家：{{ pvePlayerRoleById[dealerPlayerId] }} · 东风</span>
           <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <b class="text-amber-100">累计积分：</b>
-            <span v-for="(row, index) in pveLeaderboard" :key="row.role" class="whitespace-nowrap" :class="row.score > 0 ? 'text-emerald-300' : row.score < 0 ? 'text-rose-300' : 'text-amber-100/80'">
+            <b class="text-gilt-200">累计积分：</b>
+            <span v-for="(row, index) in pveLeaderboard" :key="row.role" class="whitespace-nowrap" :class="row.score > 0 ? 'text-ok' : row.score < 0 ? 'text-danger' : 'text-gilt-200/80'">
               {{ index ? '· ' : '' }}{{ row.role }} {{ signedScore(row.score) }}
             </span>
           </span>
           <div class="flex items-center gap-2" aria-label="对局音效设置">
-            <button type="button" class="rounded-lg border border-amber-300/30 px-2 py-1" :aria-label="soundMuted ? '开启音效' : '静音'" :aria-pressed="soundMuted" @click="soundMuted = !soundMuted; if (!soundMuted) soundEngine.unlock()">{{ soundMuted ? '🔇 静音' : '🔊 音效' }}</button>
-            <label class="flex items-center gap-1 whitespace-nowrap">音量 <input v-model.number="soundVolume" type="range" min="0" max="100" step="5" class="w-20 accent-amber-300" aria-label="音效音量" /></label>
+            <button type="button" class="rounded-lg border border-gilt-300/30 px-2 py-1" :aria-label="soundMuted ? '开启音效' : '静音'" :aria-pressed="soundMuted" @click="soundMuted = !soundMuted; if (!soundMuted) soundEngine.unlock()">{{ soundMuted ? '🔇 静音' : '🔊 音效' }}</button>
+            <label class="flex items-center gap-1 whitespace-nowrap">音量 <input v-model.number="soundVolume" type="range" min="0" max="100" step="5" class="w-20 accent-gilt-300" aria-label="音效音量" /></label>
           </div>
           <div class="flex shrink-0 items-center gap-2">
-            <button type="button" class="rounded-full border border-amber-300/40 px-3 py-1 text-amber-100 hover:border-amber-300 hover:bg-amber-300/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45" :disabled="!fullscreenAvailable" :title="fullscreenAvailable ? '' : '当前浏览器不支持网页全屏'" :aria-pressed="isFullscreen" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '⛶ 全屏' }}</button>
-            <button type="button" class="rounded-lg border border-slate-500/50 px-2 py-1 text-slate-200" @click="returnHome">离开本局</button>
+            <button type="button" class="rounded-full border border-gilt-300/40 px-3 py-1 text-gilt-200 hover:border-gilt-300 hover:bg-gilt-300/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45" :disabled="!fullscreenAvailable" :title="fullscreenAvailable ? '' : '当前浏览器不支持网页全屏'" :aria-pressed="isFullscreen" @click="toggleFullscreen">{{ isFullscreen ? '退出全屏' : '⛶ 全屏' }}</button>
+            <button type="button" class="rounded-lg border border-line/50 px-2 py-1 text-fog-300" @click="returnHome">离开本局</button>
           </div>
           <span v-if="fullscreenError" class="sr-only" role="alert">{{ fullscreenError }}</span>
         </div>
@@ -1510,20 +1512,20 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
           <div class="min-w-0 flex-1">
             <div class="mb-1.5 flex flex-wrap items-center gap-2">
               <span
-                class="rounded-md bg-black/25 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-amber-100/95"
+                class="rounded-md bg-ink-950/25 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-gilt-200/95"
               >
                 <template v-if="isSetup">准备中</template>
                 <template v-else>第 {{ turnCount }} 巡</template>
               </span>
               <span
                 v-if="isPlaying"
-                class="rounded-md bg-black/20 px-2 py-0.5 text-[11px] tabular-nums text-teal-100/80"
+                class="rounded-md bg-ink-950/20 px-2 py-0.5 text-[11px] tabular-nums text-fog-300/80"
               >
                 本巡第 {{ handInRound }} 手 · 累计 {{ totalDiscardCount }} 张
               </span>
               <span
                 v-if="isPlaying"
-                class="rounded-md bg-teal-900/50 px-2 py-0.5 text-[11px] text-teal-200/85"
+                class="rounded-md bg-ink-900/50 px-2 py-0.5 text-[11px] text-fog-400/85"
               >
                 权={{ currentTurnSeat }}
               </span>
@@ -1531,24 +1533,24 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
                 class="rounded-md px-2 py-0.5 text-[11px] font-medium"
                 :class="
                   isSetup
-                    ? 'bg-sky-900/50 text-sky-100/90'
-                    : 'bg-emerald-900/50 text-emerald-100/90'
+                    ? 'bg-ink-800/50 text-info/90'
+                    : 'bg-ink-900/50 text-fog-300/90'
                 "
               >
                 {{ gameState }}
               </span>
             </div>
-            <p class="text-base font-semibold leading-snug text-amber-50 sm:text-lg">
+            <p class="text-base font-semibold leading-snug text-gilt-200 sm:text-lg">
               <span class="mr-1.5" aria-hidden="true">{{
                 turnStatus.emoji
               }}</span>
               {{ turnStatus.headline }}
             </p>
-            <p class="mt-1 text-xs leading-relaxed text-teal-200/75">
+            <p class="mt-1 text-xs leading-relaxed text-fog-400/75">
               {{ turnStatus.detail }}
             </p>
           </div>
-          <p class="shrink-0 text-[11px] text-teal-300/65">
+          <p class="shrink-0 text-[11px] text-fog-400/65">
             已推演 {{ historyDepth }} 步
           </p>
         </div>
@@ -1557,7 +1559,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
           <button
             v-if="isSetup"
             type="button"
-            class="rounded-xl border-2 border-emerald-400/70 bg-emerald-500/20 px-4 py-2 text-sm font-bold text-emerald-50 shadow-md transition hover:bg-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-40"
+            class="rounded-xl border-2 border-ok/70 bg-ink-700/20 px-4 py-2 text-sm font-bold text-fog-300 shadow-md transition hover:bg-ink-700/30 disabled:cursor-not-allowed disabled:opacity-40"
             :disabled="loading || isPlaying"
             title="洗牌发牌：四家暗手明牌 + 牌墙（上帝视角）"
             @click="onAutoDeal"
@@ -1570,8 +1572,8 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
             class="rounded-xl px-4 py-2 text-sm font-bold shadow-md transition disabled:cursor-not-allowed disabled:opacity-40"
             :class="
               canStartPlaying
-                ? 'border-2 border-amber-300 bg-amber-500 text-emerald-950 hover:bg-amber-400'
-                : 'border border-teal-600/40 bg-teal-900/40 text-teal-400/70'
+                ? 'border-2 border-gilt-300 bg-gilt-500 text-fg-on-accent hover:bg-gilt-400'
+                : 'border border-line/40 bg-ink-900/40 text-fog-600/70'
             "
             :disabled="!canStartPlaying || loading"
             @click="onConfirmStart"
@@ -1580,7 +1582,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
           </button>
           <button
             type="button"
-            class="rounded-xl border-2 border-amber-400/70 bg-amber-500/15 px-4 py-2 text-sm font-bold text-amber-100 shadow-md shadow-amber-950/30 transition hover:bg-amber-400/25 disabled:cursor-not-allowed disabled:opacity-40"
+            class="rounded-xl border-2 border-gilt-400/70 bg-gilt-500/15 px-4 py-2 text-sm font-bold text-gilt-200 shadow-md shadow-gilt-700/30 transition hover:bg-gilt-400/25 disabled:cursor-not-allowed disabled:opacity-40"
             :disabled="!canUndo || loading || isSetup"
             title="回退上一手打牌，恢复行动权"
             @click="onUndo"
@@ -1589,20 +1591,20 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
           </button>
           <button
             type="button"
-            class="rounded-xl border border-rose-500/40 px-3 py-2 text-xs text-rose-100 hover:bg-rose-900/30 disabled:opacity-40"
+            class="rounded-xl border border-danger/40 px-3 py-2 text-xs text-danger hover:bg-danger/[.16] disabled:opacity-40"
             :disabled="resetInProgress"
             @click="onReset()"
           >
             {{ resetInProgress ? '重新发牌中…' : '重开本局（保留计分）' }}
           </button>
-          <button type="button" class="rounded-xl border border-slate-500/40 px-3 py-2 text-xs text-slate-200 disabled:opacity-40"
+          <button type="button" class="rounded-xl border border-line/40 px-3 py-2 text-xs text-fog-300 disabled:opacity-40"
             :disabled="resetInProgress" @click="onReset(true)">
             全部重置（清空历史计分）
           </button>
           <button
             v-if="isPlaying"
             type="button"
-            class="rounded-xl border border-slate-400/40 bg-slate-900/40 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800/50 disabled:opacity-40"
+            class="rounded-xl border border-line/40 bg-ink-800/40 px-3 py-2 text-xs font-semibold text-fog-300 hover:bg-ink-800/50 disabled:opacity-40"
             :disabled="loading"
             title="荒牌流局：下局下庄"
             @click="onDeclareDraw"
@@ -1612,7 +1614,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
           <button
             v-if="isPlaying"
             type="button"
-            class="rounded-xl border border-amber-500/45 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-500/20 disabled:opacity-40"
+            class="rounded-xl border border-gilt-500/45 bg-gilt-500/10 px-3 py-2 text-xs font-semibold text-gilt-200 hover:bg-gilt-500/20 disabled:opacity-40"
             :disabled="!canStartDiscardTurn"
             @click="onStartSelfDiscard"
           >
@@ -1620,9 +1622,9 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
           </button>
         </div>
 
-        <p class="mt-3 text-[10px] text-teal-400/60">
+        <p class="mt-3 text-[10px] text-fog-600/60">
           阶段 {{ phaseLabel }}
-          <span v-if="isPlaying" class="text-teal-500/50"
+          <span v-if="isPlaying" class="text-fog-600/50"
             >({{ currentPhase }})</span
           >
         </p>
@@ -1738,8 +1740,8 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
       </div>
 
       <PlayerWorkbench :pve="gameMode === 'PVE'" :show-recommendation="gameMode !== 'PVE' || canSelfWin || enableEV || decisionDockPhase === 'call'">
-      <template #heading><header v-if="gameMode === 'PVE'" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/30 bg-teal-950 px-4 py-3 text-amber-50 lg:col-span-2" aria-label="自家信息">
-        <b>自家 · {{ windLabel(seatWind) }}风 <span v-if="seatWind === dealerSeat" class="text-amber-300">庄家</span></b>
+      <template #heading><header v-if="gameMode === 'PVE'" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gilt-400/30 bg-ink-950 px-4 py-3 text-gilt-200 lg:col-span-2" aria-label="自家信息">
+        <b>自家 · {{ windLabel(seatWind) }}风 <span v-if="seatWind === dealerSeat" class="text-gilt-300">庄家</span></b>
         <span>累计 {{ cumulativeScores[seatWind] || 0 }} 分</span>
       </header></template>
       <!-- SETUP：点击移除；PLAYING：仅自家行动权可切 -->
@@ -1823,7 +1825,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
           v-for="(g, gi) in selfGangCandidates"
           :key="`${g.action_type}-${g.tile}-${gi}`"
           type="button"
-          class="inline-flex items-center gap-2 rounded-xl border border-violet-400/55 bg-violet-950/75 px-3.5 py-2.5 text-sm font-semibold text-violet-50 shadow-md transition hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-900/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+          class="inline-flex items-center gap-2 rounded-xl border border-accent-line/45 bg-ink-800/75 px-3.5 py-2.5 text-sm font-semibold text-gilt-300 shadow-md transition hover:-translate-y-0.5 hover:border-gilt-300 hover:bg-ink-700/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           @click="onDeclareSelfKong(g)"
         >
           <span>
@@ -1831,10 +1833,10 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
               tileLabel(g.tile)
             }}
           </span>
-          <span class="rounded-md bg-violet-500/30 px-1.5 py-0.5 text-[11px] font-bold text-amber-100">
+          <span class="rounded-md bg-ink-800/30 px-1.5 py-0.5 text-[11px] font-bold text-gilt-200">
             预估胡头 +{{ g.est_hu_bonus }}
           </span>
-          <span class="text-[11px] font-medium text-violet-200/80">
+          <span class="text-[11px] font-medium text-info/80">
             EV {{ Number(g.ev_score) >= 0 ? '+' : '' }}{{ Number(g.ev_score).toFixed(1) }}
           </span>
         </button>
@@ -1912,7 +1914,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
         :disabled="!tilePickerEnabled || loading || gameMode === 'PVE'"
         :class="[
           isSetup || canSelfDraw
-            ? 'ring-2 ring-emerald-500/80 shadow-lg'
+            ? 'ring-2 ring-ok/80 shadow-lg'
             : 'pointer-events-none opacity-75',
         ]"
         @update:model-value="onTilePickerUpdate"
@@ -1920,17 +1922,17 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
 
       <section
         v-if="gameMode !== 'PVE'"
-        class="flex flex-col gap-3 rounded-2xl border border-teal-700/40 bg-teal-950/40 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+        class="flex flex-col gap-3 rounded-2xl border border-line/40 bg-ink-950/40 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
       >
         <button
           type="button"
-          class="rounded-xl border border-teal-600/50 px-4 py-2.5 text-sm font-medium text-teal-100 transition hover:border-rose-400/50 hover:bg-rose-500/10 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
+          class="rounded-xl border border-line/50 px-4 py-2.5 text-sm font-medium text-fog-300 transition hover:border-danger/50 hover:bg-cinnabar-600/10 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
           :disabled="!hasHand || loading || isPlaying"
           @click="clearHand"
         >
           清空重选
         </button>
-        <p class="text-center text-xs text-teal-300/70 sm:text-right">
+        <p class="text-center text-xs text-fog-400/70 sm:text-right">
           暗手 {{ handCount }}/{{ handCapacity }}
           <template v-if="isSetup">
             · 起手目标 {{ targetInitialCount }}（{{
@@ -1943,7 +1945,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
 
       <p
         v-if="errorMsg"
-        class="rounded-xl border border-rose-500/40 bg-rose-950/40 px-4 py-3 text-center text-sm text-rose-200"
+        class="rounded-xl border border-danger/40 bg-ink-950/40 px-4 py-3 text-center text-sm text-danger"
         role="alert"
       >
         {{ errorMsg }}
@@ -1952,14 +1954,14 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
 
       <div
         v-if="stepLoading && gameMode !== 'PVE'"
-        class="flex flex-col items-center gap-3 rounded-2xl border border-teal-700/30 bg-teal-950/30 px-6 py-10"
+        class="flex flex-col items-center gap-3 rounded-2xl border border-line/30 bg-ink-950/30 px-6 py-10"
         aria-live="polite"
         aria-busy="true"
       >
         <div
-          class="h-10 w-10 animate-spin rounded-full border-2 border-amber-400/30 border-t-amber-400"
+          class="h-10 w-10 animate-spin rounded-full border-2 border-gilt-400/30 border-t-gilt-400"
         />
-        <p class="text-sm text-teal-100/90">牌局推进中…</p>
+        <p class="text-sm text-fog-300/90">牌局推进中…</p>
       </div>
 
       <!-- 自家切牌：自动展示净 EV 排序，点击确认切出 -->
@@ -1982,18 +1984,18 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
     />
     <PvECircleSummary v-if="gameMode === 'PVE' && showRoundSummaryModal" :round-count="roundCount" :scores="cumulativeScores" :seat-wind="seatWind" @back="onReturnToSettlement" @continue="onContinuePveCircle" @exit="onExitPve()" />
     </div>
-    <footer class="app-version-footer mt-4 text-center text-xs text-teal-200/55" aria-label="当前版本">{{ appVersion }}</footer>
+    <footer class="app-version-footer mt-4 text-center text-xs text-fog-400/55" aria-label="当前版本">{{ appVersion }}</footer>
   </TableShell>
 </template>
 
 <style>
-.pvp-dissolved-overlay { position:fixed; inset:0; z-index:160; display:grid; place-items:center; padding:20px; background:#001b17c9; backdrop-filter:blur(5px); }.pvp-dissolved-dialog { width:min(100%,420px); padding:28px; border:1px solid #d5b16a80; border-radius:20px; background:#123e32; color:#f4e1b0; text-align:center; }.pvp-dissolved-dialog h2 { font-size:22px; }.pvp-dissolved-dialog p { margin:18px 0; overflow-wrap:anywhere; }.pvp-dissolved-dialog button { padding:10px 20px; border-radius:10px; background:#d5b875; color:#173f30; }
+.pvp-dissolved-overlay { position:fixed; inset:0; z-index:160; display:grid; place-items:center; padding:20px; background:rgb(var(--ink-950) / 0.7882); backdrop-filter:blur(5px); }.pvp-dissolved-dialog { width:min(100%,420px); padding:28px; border:1px solid rgb(var(--accent-line) / 0.502); border-radius:20px; background:rgb(var(--ink-800)); color:rgb(var(--gilt-200)); text-align:center; }.pvp-dissolved-dialog h2 { font-size:22px; }.pvp-dissolved-dialog p { margin:18px 0; overflow-wrap:anywhere; }.pvp-dissolved-dialog button { padding:10px 20px; border-radius:10px; background:rgb(var(--accent)); color:rgb(var(--fg-on-accent)); }
 .viewport-wrapper:has(.god-opening) [data-god-slot] .mahjong-tile { opacity:0; }
-.viewport-wrapper { position:fixed; top:0; left:0; z-index:20; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:#06221d; box-sizing:border-box; padding:env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+.viewport-wrapper { position:fixed; top:0; left:0; z-index:20; width:100vw; height:100vh; height:100dvh; overflow:hidden; background:rgb(var(--ink-900)); box-sizing:border-box; padding:env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 .viewport-wrapper > .game-stage { box-sizing:border-box; position:absolute; top:50%; left:50%; width:1280px !important; height:720px !important; min-height:0 !important; overflow:auto; padding:24px 32px !important; transform-origin:center center; }
 .viewport-wrapper > .game-stage.is-home-stage { overflow:hidden; padding:36px 64px !important; }
 .viewport-wrapper .home-screen { width:100%; max-width:1080px; min-height:100%; }
-.viewport-wrapper > .game-stage.is-entry-stage { padding:20px 32px !important; overflow:hidden; display:flex; flex-direction:column; background:radial-gradient(ellipse at 20% 0%,#24574766,transparent 60%),linear-gradient(145deg,#0a3028,#06221e); }
+.viewport-wrapper > .game-stage.is-entry-stage { padding:20px 32px !important; overflow:hidden; display:flex; flex-direction:column; background:radial-gradient(ellipse 70% 60% at 50% 45%, rgb(var(--table-felt)), rgb(var(--felt-600)) 45%, rgb(var(--table-felt-deep))); }
 .viewport-wrapper > .game-stage.is-entry-stage:has(.god-opening) { overflow:hidden; }
 .viewport-wrapper .is-entry-stage .home-screen { flex:1; min-height:0 !important; }
 .is-entry-stage > .app-version-footer { flex-shrink:0; padding-top:0; margin-top:8px; }
@@ -2013,14 +2015,14 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] > :not(:first-child) { display:none; }
 .viewport-wrapper.is-stage-active .pve-game-main > [aria-label="轮次状态"] > :first-child { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; height:100%; margin:0; padding:0 4px; font-size:13px; }
 .viewport-wrapper.is-stage-active .pve-game-main > .pve-table { grid-row:2; width:100%; height:100%; min-height:0; padding:0; overflow:visible; border:0; border-radius:0; }
-.viewport-wrapper.is-stage-active .pve-game-main > p[role="alert"] { position:absolute; z-index:110; right:12px; bottom:104px; max-width:420px; margin:0; padding:8px 12px; font-size:12px; box-shadow:0 8px 24px #001b1770; }
+.viewport-wrapper.is-stage-active .pve-game-main > p[role="alert"] { position:absolute; z-index:110; right:12px; bottom:104px; max-width:420px; margin:0; padding:8px 12px; font-size:12px; box-shadow:0 8px 24px rgb(var(--ink-950) / 0.4392); }
 .viewport-wrapper.is-stage-active .pve-game-main:has(> p[role="alert"]) > .pve-situation-hud { display:none; }
 .viewport-wrapper.is-stage-active .pve-game-main > .pve-workbench { display:contents !important; }
 .viewport-wrapper.is-stage-active .pve-workbench > .pve-self-controls { grid-row:3; height:100%; min-height:0; position:relative; overflow:visible; margin:0; }
 .viewport-wrapper.is-stage-active .pve-self-controls > * { min-height:0; margin:0 !important; }
 .viewport-wrapper.is-stage-active .pve-self-controls > .pve-self-hand { position:absolute; bottom:0; left:0; width:100%; height:94px; padding:4px 8px; overflow:hidden; }
 .viewport-wrapper.is-stage-active .pve-self-clock { position:absolute; z-index:14; left:12px; bottom:30px; min-width:110px; }
-.viewport-wrapper.is-stage-active .pve-self-time-label { position:absolute; z-index:14; left:12px; bottom:5px; color:#dfd0a1; font-size:11px; }
+.viewport-wrapper.is-stage-active .pve-self-time-label { position:absolute; z-index:14; left:12px; bottom:5px; color:rgb(var(--gilt-300)); font-size:11px; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child { position:absolute; z-index:2; top:5px; right:8px; width:max-content; max-width:250px; display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin:0; text-align:right; pointer-events:none; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child h2 { font-size:12px; line-height:1; }
 .viewport-wrapper.is-stage-active .pve-self-hand > :first-child .pve-hand-caption { font-size:10px; line-height:1.2; white-space:nowrap; }
@@ -2057,8 +2059,8 @@ html.game-fullscreen-scroll-lock, body.game-fullscreen-scroll-lock { width:100%;
 .viewport-wrapper.is-stage-active .pve-discard-hud .hud-drawer { width:100%; max-height:210px; }
 .game-status-hint { display:flex; align-items:center; height:32px; box-sizing:border-box; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .game-status-hint > span { display:block; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-.viewport-wrapper.is-stage-active .pve-situation-hud { position:absolute; z-index:32; right:18px; bottom:101px; max-width:min(360px, calc(100% - 36px)); padding:0 12px; border:1px solid #d4af5870; border-radius:999px; background:#063b32e8; color:#fde68a; font-size:13px; font-weight:600; line-height:1.3; text-align:right; box-shadow:0 4px 12px #001b1740; pointer-events:none; }
-.viewport-wrapper.is-stage-active .pve-situation-hud.risk-high { border-color:#fb718580; color:#ffe4e6; }
+.viewport-wrapper.is-stage-active .pve-situation-hud { position:absolute; z-index:32; right:18px; bottom:101px; max-width:min(360px, calc(100% - 36px)); padding:0 12px; border:1px solid rgb(var(--accent-line) / 0.4392); border-radius:999px; background:rgb(var(--ink-950) / .55); color:rgb(var(--gilt-300)); font-size:13px; font-weight:600; line-height:1.3; text-align:right; box-shadow:0 4px 12px rgb(var(--ink-950) / 0.251); pointer-events:none; }
+.viewport-wrapper.is-stage-active .pve-situation-hud.risk-high { border-color:rgb(var(--danger) / 0.502); color:rgb(var(--danger)); }
 .situation-hint-enter-active, .situation-hint-leave-active { transition:opacity .12s ease; }
 .situation-hint-enter-from, .situation-hint-leave-to { opacity:0; }
 @media(prefers-reduced-motion:reduce) { .situation-hint-enter-active, .situation-hint-leave-active { transition:none; } }

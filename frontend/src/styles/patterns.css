@@ -1,0 +1,13 @@
+/* Decorative pseudo-elements never intercept input. Section 4 sets motif opacity. */
+.ui-huiwen { position: relative; height: 12px; }
+.ui-huiwen::before { content: ''; position: absolute; inset: 0; background: url('../assets/patterns/huiwen.svg') repeat-x center / 32px 12px; opacity: .5; pointer-events: none; }
+.ui-huiwen-frame, .ui-yunwen, .ui-guijia, .ui-corner, .ui-ruyi { position: relative; }
+.ui-huiwen-frame::before { content: ''; position: absolute; inset: 0; border: 12px solid transparent; border-image: url('../assets/patterns/huiwen.svg') 12 round; opacity: .5; pointer-events: none; }
+.ui-yunwen::before { content: ''; position: absolute; inset: 0; background: url('../assets/patterns/yunwen.svg') no-repeat center / contain; opacity: .28; pointer-events: none; }
+.ui-guijia::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: url('../assets/patterns/guijia.svg') repeat 0 0 / 48px 28px; opacity: .08; pointer-events: none; }
+.ui-corner::before, .ui-corner::after { content: ''; position: absolute; width: 16px; height: 16px; border-color: rgb(var(--accent)); border-style: solid; pointer-events: none; }
+.ui-corner::before { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
+.ui-corner::after { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+.ui-seal { display: inline-grid; place-items: center; width: 42px; height: 42px; background: rgb(var(--seal-bg)); border: 1px solid rgb(var(--seal-edge)); outline: 1px solid rgb(var(--seal-edge) / .45); outline-offset: -4px; color: rgb(var(--seal-fg)); font-family: var(--font-display); font-size: 13px; font-weight: 600; line-height: 1; letter-spacing: .04em; white-space: nowrap; flex: none; border-radius: var(--r-xs); }
+.ui-ruyi { display: inline-block; width: 32px; height: 32px; }
+.ui-ruyi::before { content: ''; position: absolute; inset: 0; background: rgb(var(--highlight)); mask: url('../assets/patterns/ruyi.svg') no-repeat center / contain; pointer-events: none; }

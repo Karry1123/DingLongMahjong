@@ -30,7 +30,7 @@ async function listen(code) { await sound.unlock(); sound.playAction({ action:'D
   </main>
 </template>
 <style scoped>
-.design-preview { min-height:100vh; padding:32px clamp(16px,5vw,80px); background:#103f35; color:#f5edd8; font-family:serif; }
-h1 { font-size:40px; margin:8px 0 16px; } h2 { font-size:21px; margin:30px 0 16px; } p { max-width:850px; line-height:1.8; } a { color:#e5c986; text-decoration:underline; } .eyebrow { margin-top:28px; color:#cfb477; letter-spacing:3px; }
-label { display:flex; align-items:center; gap:20px; margin:24px 0; } .design-row { display:flex; flex-wrap:wrap; gap:18px; align-items:start; } figure { margin:0; text-align:center; } .draft-tile { display:block;  } figcaption { font-size:13px; margin-top:12px; color:#d6c9ac; } button { padding:10px 16px; border:1px solid #bca572; border-radius:8px; } button:hover { background:#25594a; } .reference { margin-top:40px; font-size:13px; }
+.design-preview { min-height:100vh; padding:32px clamp(16px,5vw,80px); background:rgb(var(--ink-900)); color:rgb(var(--fog-100)); font-family:serif; }
+h1 { font-size:40px; margin:8px 0 16px; } h2 { font-size:21px; margin:30px 0 16px; } p { max-width:850px; line-height:1.8; } a { color:rgb(var(--gilt-300)); text-decoration:underline; } .eyebrow { margin-top:28px; color:rgb(var(--gilt-400)); letter-spacing:3px; }
+label { display:flex; align-items:center; gap:20px; margin:24px 0; } .design-row { display:flex; flex-wrap:wrap; gap:18px; align-items:start; } figure { margin:0; text-align:center; } .draft-tile { display:block;  } figcaption { font-size:13px; margin-top:12px; color:rgb(var(--fog-300)); } button { padding:10px 16px; border:1px solid rgb(var(--accent-line)); border-radius:8px; } button:hover { background:rgb(var(--ink-700)); } .reference { margin-top:40px; font-size:13px; }
 </style>

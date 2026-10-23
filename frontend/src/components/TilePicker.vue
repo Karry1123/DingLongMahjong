@@ -84,17 +84,17 @@ function clearAll() {
 
 <template>
   <section
-    class="w-full max-w-2xl rounded-2xl border border-teal-700/40 bg-teal-950/50 p-5 sm:p-6 shadow-xl backdrop-blur-sm"
+    class="w-full max-w-2xl rounded-2xl border border-line/40 bg-ink-800/50 p-5 sm:p-6 shadow-xl backdrop-blur-sm"
   >
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-lg font-semibold tracking-wide text-amber-50">
+      <h2 class="text-lg font-semibold tracking-wide text-fog-100">
         选牌键盘
       </h2>
-      <div class="flex items-center gap-3 text-sm text-teal-200/80">
+      <div class="flex items-center gap-3 text-sm text-fog-300/80">
         <span>已选 {{ selected.length }}/{{ maxCount }} 张</span>
         <button
           type="button"
-          class="rounded-lg border border-teal-600/40 px-3 py-1 text-teal-100 transition hover:border-amber-400/50 hover:text-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
+          class="rounded-lg border border-line/40 px-3 py-1 text-fog-100 transition hover:border-accent-line/50 hover:text-gilt-200 disabled:cursor-not-allowed disabled:opacity-40"
           :disabled="selected.length === 0 || disabled"
           @click="clearAll"
         >
@@ -105,7 +105,7 @@ function clearAll() {
 
     <div class="space-y-5">
       <div v-for="group in TILE_GROUPS" :key="group.key">
-        <p class="mb-2 text-xs font-medium uppercase tracking-wider text-teal-300/70">
+        <p class="mb-2 text-xs font-medium uppercase tracking-wider text-fog-300/70">
           {{ group.label }}
         </p>
         <div class="grid grid-cols-5 gap-2 sm:grid-cols-9">
@@ -116,8 +116,8 @@ function clearAll() {
             class="relative flex flex-col items-center justify-center rounded-xl border px-1 py-2 text-sm font-medium transition"
             :class="
               isFull(code)
-                ? 'cursor-not-allowed border-slate-600/40 bg-slate-800/50 text-slate-500'
-                : 'border-teal-600/45 bg-emerald-900/55 text-amber-50 hover:border-amber-400/60 hover:bg-emerald-800/70 active:scale-95'
+                ? 'cursor-not-allowed border-line/40 bg-ink-800/50 text-fog-500'
+                : 'border-line/45 bg-ink-800/55 text-fog-100 hover:border-accent-line/60 hover:bg-ink-700/70 active:scale-95'
             "
             :disabled="isFull(code)"
             :aria-label="`${tileLabel(code)}，暗手 ${handCountOf(code)}，副露占用 ${occupiedOf(code)}`"
@@ -126,7 +126,7 @@ function clearAll() {
             <span><MahjongTile :code="code" style="--tw:26px; --th:calc(var(--tw)*4/3); margin-bottom:0" /></span>
             <span
               class="mt-0.5 text-[10px] tabular-nums"
-              :class="isFull(code) ? 'text-slate-500' : 'text-teal-300/70'"
+              :class="isFull(code) ? 'text-fog-500' : 'text-fog-300/70'"
             >
               余{{ roomLeft(code) }} · {{ handCountOf(code) + occupiedOf(code) }}/{{ MAX_PER_TILE }}
             </span>

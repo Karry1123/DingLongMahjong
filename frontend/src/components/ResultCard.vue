@@ -151,7 +151,7 @@ function strategyTag(item) {
       label: '绝对安牌',
       tip: '全场现物，零放铳风险（无包牌）',
       className:
-        'bg-emerald-950/90 text-emerald-200 ring-1 ring-emerald-400/50',
+        'bg-ok/[.16] text-ok ring-1 ring-ok/50',
     }
   }
   const attack = Number(item.attack_ev) || 0
@@ -169,7 +169,7 @@ function strategyTag(item) {
       key: 'attack',
       label: '极速进攻',
       tip: '进张/进攻期望突出，可暂时无视微小铳率',
-      className: 'bg-rose-950/90 text-rose-100 ring-1 ring-rose-400/45',
+      className: 'bg-danger/[.16] text-danger ring-1 ring-danger/45',
     }
   }
 
@@ -177,7 +177,7 @@ function strategyTag(item) {
     key: 'tactical',
     label: '战术避险',
     tip: '权衡赔付非对称：倾向放铳低损闲家，规避庄家/高副露大牌',
-    className: 'bg-sky-950/90 text-sky-100 ring-1 ring-sky-400/45',
+    className: 'bg-info/[.16] text-info ring-1 ring-info/45',
   }
 }
 
@@ -224,23 +224,23 @@ function defenseRows(item) {
 
 <template>
   <section
-    class="w-full max-w-2xl overflow-hidden rounded-2xl border border-amber-400/40 bg-teal-950/55 shadow-xl backdrop-blur-sm"
+    class="w-full max-w-2xl overflow-hidden rounded-2xl border border-accent-line/40 bg-ink-800/55 shadow-xl backdrop-blur-sm"
     aria-label="切牌推荐结果"
   >
     <!-- EV 推演中：固定高度占位，避免取消后高度坍塌闪烁 -->
     <div
       v-if="loading"
-      class="flex min-h-[7.5rem] flex-col items-center justify-center gap-2 border-b border-amber-400/20 bg-teal-950/40 px-4 py-6"
+      class="flex min-h-[7.5rem] flex-col items-center justify-center gap-2 border-b border-accent-line/20 bg-ink-800/40 px-4 py-6"
       aria-live="polite"
       aria-busy="true"
     >
       <div
-        class="h-7 w-7 animate-spin rounded-full border-2 border-amber-400/25 border-t-amber-300"
+        class="h-7 w-7 animate-spin rounded-full border-2 border-accent-line/25 border-t-gilt-400"
       />
-      <p class="text-center text-sm text-amber-100/90">
+      <p class="text-center text-sm text-gilt-200/90">
         正在推演切牌 EV…
       </p>
-      <p class="text-center text-[11px] text-teal-200/75">
+      <p class="text-center text-[11px] text-fog-300/75">
         也可直接点击手牌快速切出
       </p>
     </div>
@@ -248,14 +248,14 @@ function defenseRows(item) {
     <!-- ========== 暗杠 / 补杠决策条 ========== -->
     <div
       v-if="selfGangCandidates.length"
-      class="border-b border-violet-500/35 bg-violet-950/50"
+      class="border-b border-info/35 bg-info/50"
       :class="compact ? 'px-3 py-2' : 'px-4 py-3 sm:px-6'"
     >
-      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-200/80" :class="compact ? 'mb-1' : 'mb-2'">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-fog-300/80" :class="compact ? 'mb-1' : 'mb-2'">
         开杠决策
         <span
           v-if="gangBeatsBestDiscard"
-          class="ml-2 rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-amber-100"
+          class="ml-2 rounded bg-gilt-500/20 px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-gilt-200"
         >EV 高于最优切牌</span>
       </p>
       <ul class="flex flex-col" :class="compact ? 'gap-1' : 'gap-2'">
@@ -265,28 +265,28 @@ function defenseRows(item) {
         >
           <button
             type="button"
-            class="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-400/45 bg-violet-900/40 text-left transition hover:border-violet-300/70 hover:bg-violet-800/50 disabled:cursor-not-allowed disabled:opacity-50"
+            class="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-info/45 bg-info/40 text-left transition hover:border-accent-line/70 hover:bg-info/50 disabled:cursor-not-allowed disabled:opacity-50"
             :class="compact ? 'px-2 py-1.5' : 'px-3 py-2.5'"
             :disabled="!interactive"
             @click="interactive && emit('select-self-gang', g)"
           >
-            <span class="text-sm font-semibold text-violet-50">
+            <span class="text-sm font-semibold text-fog-100">
               执行{{ gangLabel(g) }}
-              <span class="ml-1 text-amber-100">[{{ tileLabel(g.tile) }}]</span>
-              <span v-if="bestAction?.action_type === g.action_type && bestAction?.tile === g.tile" class="ml-2 rounded bg-amber-400/25 px-1.5 py-0.5 text-[10px] text-amber-100">本巡首选</span>
+              <span class="ml-1 text-gilt-200">[{{ tileLabel(g.tile) }}]</span>
+              <span v-if="bestAction?.action_type === g.action_type && bestAction?.tile === g.tile" class="ml-2 rounded bg-gilt-500/25 px-1.5 py-0.5 text-[10px] text-gilt-200">本巡首选</span>
             </span>
             <span class="flex items-center gap-2 text-xs">
-              <span class="rounded bg-amber-500/25 px-1.5 py-0.5 font-bold text-amber-100">
+              <span class="rounded bg-gilt-500/25 px-1.5 py-0.5 font-bold text-gilt-200">
                 +{{ g.est_hu_bonus }} 胡
               </span>
-              <span class="font-semibold tabular-nums text-violet-100">
+              <span class="font-semibold tabular-nums text-fog-100">
                 净 EV {{ formatEv(g.ev_score) }}
               </span>
             </span>
           </button>
           <p
             v-if="g.note && !compact"
-            class="mt-1 px-1 text-[11px] text-violet-200/65"
+            class="mt-1 px-1 text-[11px] text-fog-300/65"
           >
             {{ g.note }}
           </p>
@@ -297,14 +297,14 @@ function defenseRows(item) {
     <!-- ========== 冠军位 ========== -->
     <div
       v-if="!loading || bestTile"
-      class="ev-winner relative bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500"
+      class="ev-winner relative bg-paper"
       :class="compact ? 'px-3 py-3 sm:px-4' : 'px-5 py-8 sm:px-8 sm:py-10'"
     >
       <div
-        class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.35),_transparent_55%)]"
+        class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgb(var(--paper)_/_0.35),_transparent_55%)]"
       />
       <p
-        class="relative text-center font-medium uppercase tracking-[0.2em] text-amber-950/70"
+        class="relative text-center font-medium uppercase tracking-[0.2em] text-fg-on-paper/70"
         :class="compact ? 'mb-1 text-[10px]' : 'mb-2 text-xs'"
       >
         净 EV 推荐切牌
@@ -317,7 +317,7 @@ function defenseRows(item) {
       >
         <span
           v-if="canSelfWinHint"
-          class="inline-flex items-center rounded-full bg-rose-700/90 px-3 py-1 text-xs font-bold text-amber-50 ring-1 ring-amber-200/60"
+          class="inline-flex items-center rounded-full bg-danger/[.16] px-3 py-1 text-xs font-bold text-danger ring-1 ring-accent-line/60"
         >
           亦可宣告自摸
         </span>
@@ -341,7 +341,7 @@ function defenseRows(item) {
             tileSuitClass(bestTile),
             compact ? 'h-12 w-9 sm:h-14 sm:w-10' : 'h-20 w-14 sm:h-24 sm:w-16',
             interactive
-              ? 'cursor-pointer ring-2 ring-amber-950/30 hover:scale-105 active:scale-95'
+              ? 'cursor-pointer ring-2 ring-highlight/60 hover:scale-105 active:scale-95'
               : 'cursor-default',
           ]"
           :disabled="!interactive"
@@ -355,17 +355,17 @@ function defenseRows(item) {
 
         <div class="w-full max-w-md text-center sm:text-left">
           <h2
-            class="font-bold tracking-wide text-amber-950"
+            class="font-bold tracking-wide text-fg-on-paper"
             :class="compact ? 'text-xl' : 'text-2xl sm:text-3xl'"
           >
             {{ bestAction?.action_type && bestAction.action_type !== 'discard' ? '不杠时打出：' : '打出：' }}{{ tileLabel(bestTile) }}
           </h2>
-          <p v-if="!compact" class="mt-1 text-sm text-amber-950/70">
+          <p v-if="!compact" class="mt-1 text-sm text-fg-on-paper/70">
             编码 {{ bestTile }}
             <button
               v-if="interactive"
               type="button"
-              class="ml-2 rounded-lg bg-amber-950/15 px-2 py-0.5 text-xs font-semibold text-amber-950 underline-offset-2 hover:bg-amber-950/25 hover:underline"
+              class="ml-2 rounded-lg bg-ink-900/15 px-2 py-0.5 text-xs font-semibold text-fg-on-paper underline-offset-2 hover:bg-ink-900/25 hover:underline"
               @click="emit('select-tile', bestTile)"
             >
               确认切出
@@ -375,60 +375,60 @@ function defenseRows(item) {
           <template v-if="bestMeta">
             <!-- Net EV 公式 -->
             <div
-              class="rounded-xl border border-amber-950/15 bg-amber-950/10 text-amber-950"
+              class="rounded-xl border border-accent-line/15 bg-ink-900/10 text-fg-on-paper"
               :class="compact ? 'mt-1 px-2 py-1.5 text-xs' : 'mt-4 px-3 py-3 text-sm'"
             >
-              <p v-if="!compact" class="text-[11px] font-medium uppercase tracking-wider text-amber-950/55">
+              <p v-if="!compact" class="text-[11px] font-medium uppercase tracking-wider text-fg-on-paper/55">
                 得分拆解
               </p>
               <p class="font-semibold tabular-nums leading-relaxed" :class="compact ? 'flex flex-wrap items-center gap-x-1' : 'mt-1'">
                 Net EV
-                <span class="text-amber-950">{{ formatEv(bestMeta.ev_score) }}</span>
-                <span class="mx-1 font-normal text-amber-950/50">=</span>
+                <span class="text-fg-on-paper">{{ formatEv(bestMeta.ev_score) }}</span>
+                <span class="mx-1 font-normal text-fg-on-paper/50">=</span>
                 进攻
-                <span class="text-emerald-900">{{
+                <span class="text-fg-on-accent">{{
                   formatEv(bestMeta.attack_ev ?? 0)
                 }}</span>
-                <span class="mx-1 font-normal text-amber-950/50">−</span>
+                <span class="mx-1 font-normal text-fg-on-paper/50">−</span>
                 防守损
-                <span class="text-rose-800">{{
+                <span class="text-danger">{{
                   formatEv(-(bestMeta.defense_loss ?? 0))
                 }}</span>
               </p>
-              <p v-if="!compact" class="mt-1 text-[11px] text-amber-950/55">
+              <p v-if="!compact" class="mt-1 text-[11px] text-fg-on-paper/55">
                 另含向听×120 惩罚（已折入净 EV）；无包牌 · 庄全额 / 闲对闲半额
               </p>
             </div>
 
             <dl
-              class="text-left text-amber-950"
+              class="text-left text-fg-on-paper"
               :class="compact ? 'mt-1.5 flex flex-wrap gap-1 text-[11px]' : 'mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm'"
             >
-              <div :class="compact ? 'flex items-center gap-1 rounded-md bg-amber-950/10 px-1.5 py-1' : ''">
-                <dt class="text-amber-950/60" :class="compact ? 'text-[11px]' : 'text-xs'">有效进张</dt>
+              <div :class="compact ? 'flex items-center gap-1 rounded-md bg-ink-900/10 px-1.5 py-1' : ''">
+                <dt class="text-fg-on-paper/60" :class="compact ? 'text-[11px]' : 'text-xs'">有效进张</dt>
                 <dd class="font-semibold tabular-nums">
                   {{ bestMeta.effective_count }}
                 </dd>
               </div>
-              <div :class="compact ? 'flex items-center gap-1 rounded-md bg-amber-950/10 px-1.5 py-1' : ''">
-                <dt class="text-amber-950/60" :class="compact ? 'text-[11px]' : 'text-xs'">最大放铳率</dt>
+              <div :class="compact ? 'flex items-center gap-1 rounded-md bg-ink-900/10 px-1.5 py-1' : ''">
+                <dt class="text-fg-on-paper/60" :class="compact ? 'text-[11px]' : 'text-xs'">最大放铳率</dt>
                 <dd class="font-semibold tabular-nums">
                   {{ formatPct(maxDealInRisk(bestMeta)) }}
                 </dd>
               </div>
-              <div :class="compact ? 'flex items-center gap-1 rounded-md bg-amber-950/10 px-1.5 py-1' : ''">
-                <dt class="text-amber-950/60" :class="compact ? 'text-[11px]' : 'text-xs'">预估结算胡</dt>
+              <div :class="compact ? 'flex items-center gap-1 rounded-md bg-ink-900/10 px-1.5 py-1' : ''">
+                <dt class="text-fg-on-paper/60" :class="compact ? 'text-[11px]' : 'text-xs'">预估结算胡</dt>
                 <dd class="font-semibold tabular-nums">
                   {{ bestMeta.est_final_points }}
                   <span
                     v-if="bestMeta.is_hard_hu"
-                    class="ml-1 text-[10px] font-bold text-amber-900/80"
+                    class="ml-1 text-[10px] font-bold text-fg-on-paper/80"
                     >硬胡</span
                   >
                 </dd>
               </div>
-              <div :class="compact ? 'flex items-center gap-1 rounded-md bg-amber-950/10 px-1.5 py-1' : ''">
-                <dt class="text-amber-950/60" :class="compact ? 'text-[11px]' : 'text-xs'">全场现物</dt>
+              <div :class="compact ? 'flex items-center gap-1 rounded-md bg-ink-900/10 px-1.5 py-1' : ''">
+                <dt class="text-fg-on-paper/60" :class="compact ? 'text-[11px]' : 'text-xs'">全场现物</dt>
                 <dd class="font-semibold">
                   {{ bestMeta.is_safe_all ? '是' : '否' }}
                 </dd>
@@ -436,7 +436,7 @@ function defenseRows(item) {
             </dl>
             <p
               v-if="bestStrategy.tip && !compact"
-              class="mt-2 text-xs text-amber-950/65"
+              class="mt-2 text-xs text-fg-on-paper/65"
             >
               {{ bestStrategy.tip }}
             </p>
@@ -459,16 +459,16 @@ function defenseRows(item) {
       class="ev-candidates"
       :class="[{ 'mobile-ev-open': mobileDetailsOpen }, compact ? 'px-3 py-2' : 'px-4 py-5 sm:px-6 sm:py-6']"
     >
-      <h3 class="mb-1 text-sm font-semibold tracking-wide text-amber-50">
+      <h3 class="mb-1 text-sm font-semibold tracking-wide text-fg-on-paper">
         候选对比
       </h3>
-      <p v-if="!compact" class="mb-3 text-xs text-teal-300/70">
+      <p v-if="!compact" class="mb-3 text-xs text-fog-300/70">
         点击行展开三家听牌率 / 放铳率 / 点炮赔付（庄全额 · 闲半额）
       </p>
 
       <p
         v-if="rankedCandidates.length === 0"
-        class="text-sm text-teal-300/70"
+        class="text-sm text-fog-300/70"
       >
         暂无候选切牌
       </p>
@@ -480,8 +480,8 @@ function defenseRows(item) {
           class="overflow-hidden rounded-xl border transition"
           :class="
             item.tile === bestTile
-              ? 'border-amber-400/50 bg-amber-500/10'
-              : 'border-teal-700/40 bg-emerald-950/45'
+              ? 'border-highlight bg-highlight/[.16]'
+              : 'border-line/40 bg-ink-900/45'
           "
         >
           <button
@@ -500,12 +500,12 @@ function defenseRows(item) {
 
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
-                <p class="text-sm font-medium text-amber-50">
+                <p class="text-sm font-medium text-fog-100">
                   {{ tileLabel(item.tile) }}
-                  <span class="text-xs text-teal-400/70">{{ item.tile }}</span>
+                  <span class="text-xs text-fog-400/70">{{ item.tile }}</span>
                   <span
                     v-if="item.tile === bestTile"
-                    class="ml-1 text-[10px] font-bold text-amber-300"
+                    class="ml-1 text-[10px] font-bold text-highlight"
                     >推荐</span
                   >
                 </p>
@@ -516,9 +516,9 @@ function defenseRows(item) {
                   {{ strategyTag(item).label }}
                 </span>
               </div>
-              <p class="text-teal-200/85" :class="compact ? 'text-[11px]' : 'mt-0.5 text-xs'">
+              <p class="text-fog-300/85" :class="compact ? 'text-[11px]' : 'mt-0.5 text-xs'">
                 净 EV
-                <span class="tabular-nums text-amber-200">{{
+                <span class="tabular-nums text-gilt-200">{{
                   formatEv(item.ev_score)
                 }}</span>
                 · 进张
@@ -531,7 +531,7 @@ function defenseRows(item) {
             </div>
 
             <span
-              class="shrink-0 text-teal-300/80 transition"
+              class="shrink-0 text-fog-300/80 transition"
               :class="expandedTile === item.tile ? 'rotate-180' : ''"
               aria-hidden="true"
               >▾</span
@@ -541,20 +541,20 @@ function defenseRows(item) {
           <!-- 展开抽屉 -->
           <div
             v-if="expandedTile === item.tile"
-            class="border-t border-teal-800/50 bg-teal-950/50 px-3 py-3 sm:px-4"
+            class="border-t border-line/50 bg-ink-800/50 px-3 py-3 sm:px-4"
           >
             <div
-              class="mb-3 flex flex-wrap gap-3 text-xs text-teal-200/90"
+              class="mb-3 flex flex-wrap gap-3 text-xs text-fog-300/90"
             >
               <span
                 >进攻
-                <strong class="tabular-nums text-emerald-300">{{
+                <strong class="tabular-nums text-ok">{{
                   formatEv(item.attack_ev ?? 0)
                 }}</strong></span
               >
               <span
                 >防守损
-                <strong class="tabular-nums text-rose-300">{{
+                <strong class="tabular-nums text-danger">{{
                   formatPlain(item.defense_loss ?? 0)
                 }}</strong></span
               >
@@ -568,7 +568,7 @@ function defenseRows(item) {
 
             <div
               v-if="defenseRows(item).length === 0"
-              class="text-xs text-teal-400/70"
+              class="text-xs text-fog-400/70"
             >
               未录入对手公开信息时，防守明细为空（零放铳期望）。
             </div>
@@ -578,7 +578,7 @@ function defenseRows(item) {
                 class="w-full min-w-[28rem] border-collapse text-left text-xs sm:text-sm"
               >
                 <thead>
-                  <tr class="border-b border-teal-700/50 text-teal-300/80">
+                  <tr class="border-b border-line/50 text-fog-300/80">
                     <th class="pb-2 pr-2 font-medium">座次</th>
                     <th class="pb-2 pr-2 font-medium tabular-nums">听牌率</th>
                     <th class="pb-2 pr-2 font-medium tabular-nums">放铳率</th>
@@ -592,16 +592,16 @@ function defenseRows(item) {
                   <tr
                     v-for="row in defenseRows(item)"
                     :key="row.seat_wind"
-                    class="border-b border-teal-800/40 text-amber-50/95 last:border-0"
+                    class="border-b border-line/40 text-fog-100/95 last:border-0"
                   >
                     <td class="py-2.5 pr-2">
                       <span class="font-medium">{{ row.role }}</span>
-                      <span class="ml-1 text-teal-400/80"
+                      <span class="ml-1 text-fog-400/80"
                         >{{ row.windName }}风</span
                       >
                       <span
                         v-if="row.is_dealer"
-                        class="ml-1 rounded bg-amber-500/20 px-1 py-0.5 text-[10px] font-bold text-amber-200"
+                        class="ml-1 rounded bg-gilt-500/20 px-1 py-0.5 text-[10px] font-bold text-gilt-200"
                         >庄</span
                       >
                     </td>
@@ -615,10 +615,10 @@ function defenseRows(item) {
                       {{ formatPlain(row.est_ron_points) }}
                     </td>
                     <td class="py-2.5">
-                      <span class="tabular-nums font-medium text-rose-200/95">
+                      <span class="tabular-nums font-medium text-danger/95">
                         {{ formatPlain(row.loss_if_deal_in) }}
                       </span>
-                      <span class="ml-1 text-[10px] text-teal-400/80">
+                      <span class="ml-1 text-[10px] text-fog-400/80">
                         {{ row.payment_label }}
                       </span>
                     </td>
@@ -636,7 +636,7 @@ function defenseRows(item) {
 <style scoped>
 .mobile-ev-toggle { display:none; }
 @media screen and (orientation: portrait) and (max-width: 768px) {
-  .mobile-ev-toggle { display:block; flex:0 0 auto; padding:5px; color:#fef3c7; font-size:10px; font-weight:700; }
+  .mobile-ev-toggle { display:block; flex:0 0 auto; padding:5px; color:rgb(var(--gilt-200)); font-size:10px; font-weight:700; }
   .ev-candidates { display:none; }
   .ev-candidates.mobile-ev-open {
     display:block;
@@ -647,10 +647,10 @@ function defenseRows(item) {
     bottom:calc(100% + 4px);
     max-height:min(50dvh,430px);
     overflow:auto;
-    border:1px solid #d9b65c88;
+    border:1px solid rgb(var(--accent-line) / .45);
     border-radius:12px;
-    background:#052e2b;
-    box-shadow:0 10px 25px #0009;
+    background:rgb(var(--ink-800));
+    box-shadow:0 10px 25px rgb(var(--ink-950) / .6);
   }
 }
 </style>

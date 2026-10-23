@@ -1,0 +1,14 @@
+/* P1 is opt-in: body keeps Tailwind preflight and the existing shell typography. */
+@layer base {
+  :where([class^="ui-"], [class*=" ui-"]) { font-family: var(--font-body); }
+  :where(.ui-heading, .ui-display, .ui-preview h1, .ui-preview h2, .ui-preview h3) { font-family: var(--font-display); }
+  .ui-num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+  :where([class^="ui-"], [class*=" ui-"]):focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 3px; }
+  /* Preserve legacy rounded utilities; token radii opt in at any ui boundary. */
+  :where([class^="ui-"], [class*=" ui-"]) {
+    --ui-r-xs: var(--r-xs); --ui-r-sm: var(--r-sm); --ui-r-md: var(--r-md); --ui-r-lg: var(--r-lg); --ui-r-xl: var(--r-xl);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where([class^="ui-"], [class*=" ui-"]) { transition: none !important; animation-timing-function: steps(1, end) !important; scroll-behavior: auto !important; }
+}

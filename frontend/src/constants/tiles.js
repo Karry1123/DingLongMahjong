@@ -73,20 +73,20 @@ export const HAND_SIZE = 14
 export function tileSuitClass(code) {
   if (!code) return ''
   if (code.endsWith('m')) {
-    return 'border-rose-400/50 bg-gradient-to-b from-rose-50 to-rose-100 text-rose-800'
+    return 'border-[rgb(var(--tile-edge))] bg-gradient-to-b from-tile-face to-tile-face-2 text-[rgb(var(--tile-wan))]'
   }
   if (code.endsWith('p')) {
-    return 'border-sky-400/50 bg-gradient-to-b from-sky-50 to-sky-100 text-sky-900'
+    return 'border-[rgb(var(--tile-edge))] bg-gradient-to-b from-tile-face to-tile-face-2 text-[rgb(var(--tile-tong))]'
   }
   if (code.endsWith('s')) {
-    return 'border-emerald-500/50 bg-gradient-to-b from-emerald-50 to-emerald-100 text-emerald-900'
+    return 'border-[rgb(var(--tile-edge))] bg-gradient-to-b from-tile-face to-tile-face-2 text-[rgb(var(--tile-tiao))]'
   }
   // 字牌
   if (code === 'C') {
-    return 'border-red-500/60 bg-gradient-to-b from-red-50 to-red-100 text-red-700'
+    return 'border-[rgb(var(--tile-edge))] bg-gradient-to-b from-tile-face to-tile-face-2 text-[rgb(var(--tile-zhong))]'
   }
   if (code === 'F') {
-    return 'border-green-600/50 bg-gradient-to-b from-green-50 to-green-100 text-green-800'
+    return 'border-[rgb(var(--tile-edge))] bg-gradient-to-b from-tile-face to-tile-face-2 text-[rgb(var(--tile-fa))]'
   }
-  return 'border-slate-400/50 bg-gradient-to-b from-slate-50 to-slate-200 text-slate-800'
+  return 'border-[rgb(var(--tile-edge))] bg-gradient-to-b from-tile-face to-tile-face-2 text-[rgb(var(--tile-ink))]'
 }

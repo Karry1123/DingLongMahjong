@@ -16,7 +16,8 @@
     "build:mobile": "node scripts/prepare-voice-data.mjs && vite build --mode mobile",
     "cap:sync": "npm run build:mobile && cap sync",
     "cap:android": "cap open android",
-    "cap:ios": "cap open ios"
+    "cap:ios": "cap open ios",
+    "lint:colors": "node scripts/lint-colors.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",

@@ -56,7 +56,7 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  /** 自家行动权聚焦：ring-emerald + shadow */
+  /** 自家行动权聚焦：highlight ring + shadow */
   turnFocused: {
     type: Boolean,
     default: false,
@@ -311,86 +311,86 @@ function tileButtonClass(item, { drawn = false } = {}) {
     'relative h-14 w-10 rounded-lg text-center transition select-none',
     isDiscardReady.value
       ? 'cursor-pointer shadow-md hover:-translate-y-1 hover:scale-105 hover:shadow-lg active:scale-95 active:translate-y-0'
-      : 'cursor-pointer shadow-md hover:scale-105 hover:ring-2 hover:ring-rose-400/50 active:scale-95',
-    drawn ? 'ring-2 ring-sky-400/60' : '',
+      : 'cursor-pointer shadow-md hover:scale-105 hover:ring-2 hover:ring-danger/50 active:scale-95',
+    drawn ? 'ring-2 ring-info/60' : '',
     isHighlight(item.code)
-      ? 'hand-champ-glow ring-2 ring-amber-300 scale-105 z-[1]'
+      ? 'hand-champ-glow ring-2 ring-highlight scale-105 z-[1]'
       : '',
     (isJoker(item.code) || isProxy(item.code))
-      ? 'ring-2 ring-fuchsia-400/70'
+      ? 'ring-2 ring-highlight/70'
       : '',
     canDragTile(item.code) ? 'cursor-grab active:cursor-grabbing' : '',
-    dropHover.value === item.index ? 'ring-2 ring-lime-300/80 scale-105' : '',
+    dropHover.value === item.index ? 'ring-2 ring-ok/80 scale-105' : '',
     pointerDrag.value?.allowed && pointerDrag.value?.active && pointerDrag.value.fromIndex === item.index ? 'hand-dragging' : '',
     pointerDrag.value?.active && pointerDrag.value.insertAt === item.index && pointerDrag.value.fromIndex !== item.index ? 'hand-insert-before' : '',
     pointerDrag.value?.active && pointerDrag.value.insertAt === tiles.value.length && item.index === tiles.value.length - 1 && pointerDrag.value.fromIndex !== item.index ? 'hand-insert-after' : '',
-    selectedTileIndex.value === item.index ? 'hand-tile-selected -translate-y-2 ring-2 ring-amber-200 z-[2]' : '',
+    selectedTileIndex.value === item.index ? 'hand-tile-selected -translate-y-2 ring-2 ring-accent z-[2]' : '',
   ]
 }
 </script>
 
 <template>
   <section
-    class="w-full rounded-2xl border border-teal-700/40 bg-teal-950/50 p-5 sm:p-6 shadow-xl backdrop-blur-sm transition-[box-shadow,opacity] duration-300"
+    class="w-full rounded-md border border-line/[.16] bg-ink-950/55 p-5 sm:p-6 shadow-xl backdrop-blur-sm transition-[box-shadow,opacity] duration-300"
     :class="[
       wallDriven ? 'max-w-none' : 'max-w-2xl',
       wallDriven ? 'pve-stable-hand' : '',
       turnFocused
-        ? 'ring-2 ring-emerald-500 shadow-lg opacity-100'
+        ? 'ring-2 ring-highlight shadow-lg opacity-100'
         : isDiscardReady
-          ? 'ring-1 ring-amber-400/35'
+          ? 'ring-1 ring-accent/35'
           : '',
       disabled && !turnFocused ? 'opacity-75' : '',
     ]"
   >
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <div>
-        <h2 class="text-lg font-semibold tracking-wide text-amber-50">
+        <h2 class="text-lg font-semibold tracking-wide text-fog-100">
           手牌（{{ tiles.length }}/{{ capacity }}）
         </h2>
-        <p v-if="wallDriven" class="pve-hand-caption mt-0.5 text-xs text-teal-300/80">
+        <p v-if="wallDriven" class="pve-hand-caption mt-0.5 text-xs text-fog-400/80">
           {{ isDiscardReady ? (disabled ? '等待响应 · 手牌只读' : '切牌阶段 · 点击手牌打出') : '等待摸牌 · 手牌只读' }}
         </p>
-        <p v-else class="mt-0.5 text-xs text-teal-300/70">
+        <p v-else class="mt-0.5 text-xs text-fog-400/80">
           <template v-if="setupMode">
             开局录入：点击牌面
-            <span class="font-medium text-amber-200/90">移除</span>
+            <span class="font-medium text-gilt-300">移除</span>
             该张 · 目标 {{ capacity }} 张（{{ tiles.length }}/{{ capacity }}）
           </template>
           <template v-else-if="disabled && isDiscardReady">
-            <span class="text-teal-400/80">非自家行动权 · 手牌只读</span>
+            <span class="text-fog-400/80">非自家行动权 · 手牌只读</span>
           </template>
           <template v-else-if="isDiscardReady">
-            <span class="font-medium text-amber-200/95">切牌阶段：</span>
+            <span class="font-medium text-gilt-300">切牌阶段：</span>
             点击任意一张打出至牌河
-            <span v-if="highlightTile" class="text-amber-200/90">
+            <span v-if="highlightTile" class="text-gilt-300">
               · 冠军高亮
             </span>
             <span
               v-if="canSelfWin"
-              class="ml-1 font-bold text-rose-200"
+              class="ml-1 font-bold text-danger"
             >
               · 亦可宣告自摸
             </span>
             <span
               v-if="evCalculating"
-              class="mt-1 block text-[11px] font-medium text-sky-200/90"
+              class="mt-1 block text-[11px] font-medium text-info"
             >
               正在推演切牌 EV… 也可直接点击手牌快速切出
             </span>
           </template>
           <template v-else-if="tiles.length < capacity">
-            <span class="font-medium text-sky-200/95">待摸 / 岭上补牌：</span>
+            <span class="font-medium text-info">待摸 / 岭上补牌：</span>
             目标暗手 {{ capacity }} 张（当前 {{ tiles.length }}）· {{ wallDriven ? '轮到自家时自动摸牌' : '用选牌键盘摸入' }}
           </template>
           <template v-else>点击牌面可移出（录入中）</template>
-          <span v-if="latestDrawnTile" class="text-sky-200/80">
+          <span v-if="latestDrawnTile" class="text-info">
             · 右侧为刚摸入
           </span>
-          <span v-if="layoutPinned" class="ml-1 text-fuchsia-300/90">
+          <span v-if="layoutPinned" class="ml-1 text-info">
             · 自定义牌序已保留
           </span>
-          <span v-else class="ml-1 text-fuchsia-300/70">
+          <span v-else class="ml-1 text-info/80">
             · 「得」可拖拽或 ◀▶ 插嵌
           </span>
         </p>
@@ -402,8 +402,8 @@ function tileButtonClass(item, { drawn = false } = {}) {
           class="rounded-lg border px-2.5 py-1 text-[11px] font-medium transition"
           :class="
             autoSort
-              ? 'border-amber-400/60 bg-amber-500/20 text-amber-100'
-              : 'border-teal-600/45 text-teal-200/80 hover:border-teal-400/50'
+              ? 'border-accent-line/45 bg-gilt-500/20 text-fog-100'
+              : 'border-accent-line/30 text-fog-400 hover:border-accent-line/45'
           "
           @click="toggleAutoSort"
         >
@@ -411,7 +411,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
         </button>
         <button
           type="button"
-          class="rounded-lg border border-teal-600/50 px-2.5 py-1 text-[11px] font-medium text-teal-100 transition hover:border-amber-400/50 hover:text-amber-100 disabled:opacity-40"
+          class="rounded-lg border border-accent-line/30 px-2.5 py-1 text-[11px] font-medium text-fog-100 transition hover:border-accent-line/45 hover:text-gilt-200 disabled:opacity-40"
           :disabled="!tiles.length || disabled"
           @click="manualSort"
         >
@@ -443,7 +443,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
           >
             <button
               type="button"
-              class="rounded bg-fuchsia-800/80 px-1 text-[9px] leading-none text-fuchsia-50 hover:bg-fuchsia-600 disabled:opacity-30"
+              class="rounded bg-info/80 px-1 text-[9px] leading-none text-ink-950 hover:bg-info disabled:opacity-30"
               :disabled="item.index <= 0"
               title="左移「得」"
               @click="nudge(item, -1, $event)"
@@ -452,7 +452,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
             </button>
             <button
               type="button"
-              class="rounded bg-fuchsia-800/80 px-1 text-[9px] leading-none text-fuchsia-50 hover:bg-fuchsia-600 disabled:opacity-30"
+              class="rounded bg-info/80 px-1 text-[9px] leading-none text-ink-950 hover:bg-info disabled:opacity-30"
               :disabled="item.index >= tiles.length - 1 - (splitHand.drawn ? 1 : 0)"
               title="右移「得」"
               @click="nudge(item, 1, $event)"
@@ -488,13 +488,13 @@ function tileButtonClass(item, { drawn = false } = {}) {
           >
             <span
               v-if="isJoker(item.code)"
-              class="absolute -left-1 -top-1 z-[2] rounded bg-fuchsia-500 px-1 py-px text-[8px] font-bold text-white shadow"
+              class="absolute -left-1 -top-1 z-[2] rounded bg-highlight px-1 py-px text-[8px] font-bold text-bronze-900 shadow"
             >
               得
             </span>
             <span
               v-else-if="isProxy(item.code)"
-              class="absolute -left-1 -top-1 z-[2] rounded bg-slate-600/90 px-1 py-px text-[8px] font-bold text-amber-100 shadow"
+              class="absolute -left-1 -top-1 z-[2] rounded bg-ink-700/90 px-1 py-px text-[8px] font-bold text-fog-100 shadow"
               :title="`白板替身 → ${dealerTile}`"
             >
               替
@@ -506,7 +506,7 @@ function tileButtonClass(item, { drawn = false } = {}) {
 
       <div
         v-if="splitHand.drawn"
-        class="pve-drawn-slot ml-2 flex border-l border-dashed border-sky-400/40 pl-3 sm:ml-3 sm:pl-4"
+        class="pve-drawn-slot ml-2 flex border-l border-dashed border-info/40 pl-3 sm:ml-3 sm:pl-4"
       >
         <button
           :key="splitHand.drawn.uid"
@@ -534,13 +534,13 @@ function tileButtonClass(item, { drawn = false } = {}) {
           @dragend="onDragEnd"
         >
           <span
-            class="absolute -right-1 -top-1 z-[2] rounded bg-sky-500 px-1 py-px text-[8px] font-bold text-white shadow"
+            class="absolute -right-1 -top-1 z-[2] rounded bg-info px-1 py-px text-[8px] font-bold text-ink-950 shadow"
           >
             摸
           </span>
           <span
             v-if="isJoker(splitHand.drawn.code)"
-            class="absolute -left-1 -top-1 z-[2] rounded bg-fuchsia-500 px-1 py-px text-[8px] font-bold text-white shadow"
+            class="absolute -left-1 -top-1 z-[2] rounded bg-highlight px-1 py-px text-[8px] font-bold text-bronze-900 shadow"
           >
             得
           </span>
@@ -551,11 +551,11 @@ function tileButtonClass(item, { drawn = false } = {}) {
       <div
         v-for="n in emptySlotCount"
         :key="`empty-${n}`"
-        class="aspect-[2/3] w-[2.65rem] min-h-[3.25rem] rounded-lg border border-dashed border-teal-700/40 bg-emerald-950/30 sm:w-11"
+        class="aspect-[2/3] w-[2.65rem] min-h-[3.25rem] rounded-lg border border-dashed border-accent-line/[.16] bg-ink-900/30 sm:w-11"
         aria-hidden="true"
       >
         <span
-          class="flex h-full items-center justify-center text-[10px] text-teal-700/60"
+          class="flex h-full items-center justify-center text-[10px] text-fog-600/60"
         >
           {{ tiles.length + n }}
         </span>
@@ -567,11 +567,12 @@ function tileButtonClass(item, { drawn = false } = {}) {
 <style scoped>
 .pve-stable-hand { position: relative; }
 .pve-stable-hand button[role="listitem"] { touch-action:none; user-select:none; }
-.pve-stable-hand button[role="listitem"].hand-dragging { z-index:5; opacity:.55; transform:translateY(-9px) scale(1.05); box-shadow:0 12px 22px #0008; }
-.pve-stable-hand button[role="listitem"].hand-insert-before { transform:translateX(9px); outline:3px solid #fcd34d; outline-offset:2px; }
-.pve-stable-hand button[role="listitem"].hand-insert-after { outline:3px solid #fcd34d; outline-offset:2px; }
+.pve-stable-hand button[role="listitem"].hand-dragging { z-index:5; opacity:.55; transform:translateY(-9px) scale(1.05); box-shadow:0 12px 22px rgb(var(--ink-950) / .5); }
+.pve-stable-hand button[role="listitem"].hand-insert-before { transform:translateX(9px); outline:3px solid rgb(var(--info)); outline-offset:2px; }
+.pve-stable-hand button[role="listitem"].hand-insert-after { outline:3px solid rgb(var(--info)); outline-offset:2px; }
 .pve-stable-hand button[role="listitem"].hand-insert-before::before,
-.pve-stable-hand button[role="listitem"].hand-insert-after::after { content:""; position:absolute; z-index:6; top:4px; bottom:4px; width:4px; border-radius:4px; background:#fcd34d; box-shadow:0 0 9px #fbbf24; pointer-events:none; }
+.pve-stable-hand button[role="listitem"].hand-insert-before::before,
+.pve-stable-hand button[role="listitem"].hand-insert-after::after { content:""; position:absolute; z-index:6; top:4px; bottom:4px; width:4px; border-radius:4px; background:rgb(var(--info)); box-shadow:0 0 9px rgb(var(--info)); pointer-events:none; }
 .pve-stable-hand button[role="listitem"].hand-insert-before::before { left:-11px; }
 .pve-stable-hand button[role="listitem"].hand-insert-after::after { right:-9px; }
 .pve-stable-hand .hand-move-move,
@@ -581,21 +582,21 @@ function tileButtonClass(item, { drawn = false } = {}) {
 .hand-champ-glow {
   animation: champ-glow 1.8s ease-in-out infinite;
   box-shadow:
-    0 0 0 2px rgba(252, 211, 77, 0.55),
-    0 0 18px 4px rgba(251, 191, 36, 0.45);
+    0 0 0 2px rgb(var(--highlight-400) / .55),
+    0 0 18px 4px rgb(var(--highlight) / .45);
 }
 
 @keyframes champ-glow {
   0%,
   100% {
     box-shadow:
-      0 0 0 2px rgba(252, 211, 77, 0.5),
-      0 0 14px 2px rgba(251, 191, 36, 0.35);
+      0 0 0 2px rgb(var(--highlight-400) / .5),
+      0 0 14px 2px rgb(var(--highlight) / .35);
   }
   50% {
     box-shadow:
-      0 0 0 3px rgba(253, 224, 71, 0.85),
-      0 0 22px 6px rgba(251, 191, 36, 0.55);
+      0 0 0 3px rgb(var(--highlight-300) / .85),
+      0 0 22px 6px rgb(var(--highlight) / .55);
   }
 }
 

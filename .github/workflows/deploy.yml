@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Design-system color lint
+        run: npm run lint:colors
+
       - name: Build production bundle
         run: npm run build
         env:

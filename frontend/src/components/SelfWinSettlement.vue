@@ -109,24 +109,24 @@ const transfers = computed(() => props.info?.transfers || [])
 
 <template>
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/75 p-4 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/75 p-4 backdrop-blur-sm"
     role="dialog"
     aria-modal="true"
     aria-label="终局结算"
   >
     <div
-      class="w-full max-w-md overflow-hidden rounded-2xl border border-amber-400/50 bg-teal-950 shadow-2xl"
+      class="w-full max-w-md overflow-hidden rounded-2xl border border-accent-line/50 bg-ink-800 shadow-2xl"
     >
       <header
-        class="bg-gradient-to-r from-rose-600 via-amber-500 to-yellow-400 px-5 py-6 text-center"
+        class="bg-paper px-5 py-6 text-center text-fg-on-paper"
       >
-        <p class="text-xs font-bold uppercase tracking-[0.2em] text-amber-950/70">
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-fg-on-paper/70">
           对局终结 · GAME_OVER · 无包牌
         </p>
-        <h2 class="mt-2 text-2xl font-black text-amber-950">
+        <h2 class="mt-2 text-2xl font-black text-cinnabar-600">
           {{ winTypeLabel }} {{ finalHu }} 胡
         </h2>
-        <p class="mt-1 text-sm text-amber-950/80">
+        <p class="mt-1 text-sm text-fg-on-paper/80">
           {{ windLabel(winnerSeat) }}风
           <span v-if="info.hard_hu_label"> · {{ info.hard_hu_label }}</span>
           <span v-if="info.win_tile">
@@ -136,27 +136,27 @@ const transfers = computed(() => props.info?.transfers || [])
         </p>
         <p
           v-if="info.payments?.label"
-          class="mt-1 text-xs text-amber-950/70"
+          class="mt-1 text-xs text-fg-on-paper/70"
         >
           {{ info.payments.label }}
         </p>
       </header>
 
       <div class="max-h-[50vh] overflow-y-auto px-5 py-4">
-        <h3 class="mb-2 text-sm font-semibold text-amber-50">四人净收支</h3>
+        <h3 class="mb-2 text-sm font-semibold text-fog-100">四人净收支</h3>
         <ul class="space-y-2">
           <li
             v-for="row in rows"
             :key="row.seat + row.role"
-            class="flex items-center justify-between rounded-xl border border-teal-700/40 bg-emerald-950/50 px-3 py-2 text-sm"
+            class="flex items-center justify-between rounded-xl border border-line/40 bg-ink-900/50 px-3 py-2 text-sm"
           >
-            <span class="text-teal-100">
+            <span class="text-fog-100">
               {{ row.role }}
-              <span class="ml-1 text-[11px] text-teal-300/70">{{ row.note }}</span>
+              <span class="ml-1 text-[11px] text-fog-300/70">{{ row.note }}</span>
             </span>
             <span
               class="font-bold tabular-nums"
-              :class="row.amount >= 0 ? 'text-amber-200' : 'text-rose-300'"
+              :class="row.amount >= 0 ? 'text-ok' : 'text-danger'"
             >
               {{ row.amount >= 0 ? '+' : '' }}{{ row.amount }}
             </span>
@@ -164,24 +164,24 @@ const transfers = computed(() => props.info?.transfers || [])
         </ul>
 
         <div v-if="transfers.length" class="mt-4">
-          <h3 class="mb-2 text-sm font-semibold text-amber-50">支付明细</h3>
-          <ul class="space-y-1.5 text-[11px] text-teal-200/85">
+          <h3 class="mb-2 text-sm font-semibold text-fog-100">支付明细</h3>
+          <ul class="space-y-1.5 text-[11px] text-fog-300/85">
             <li
               v-for="(t, i) in transfers"
               :key="i"
-              class="rounded-lg border border-teal-800/40 bg-teal-950/40 px-2 py-1.5"
+              class="rounded-lg border border-line/40 bg-ink-800/40 px-2 py-1.5"
             >
               {{ windLabel(t.from) }} → {{ windLabel(t.to) }}：{{ t.amount }}
-              <span class="text-teal-400/70">（{{ t.note }}）</span>
+              <span class="text-fog-400/70">（{{ t.note }}）</span>
             </li>
           </ul>
         </div>
       </div>
 
-      <footer class="border-t border-teal-800/50 px-5 py-4">
+      <footer class="border-t border-line/50 px-5 py-4">
         <button
           type="button"
-          class="w-full rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 px-4 py-3 text-base font-black text-amber-950 shadow-lg transition hover:brightness-105"
+          class="w-full rounded-xl bg-gilt-500 px-4 py-3 text-base font-black text-fg-on-accent shadow-lg transition hover:brightness-105"
           @click="emit('new-game')"
         >
           开始新一局

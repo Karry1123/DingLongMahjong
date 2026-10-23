@@ -1,0 +1,4 @@
+:root {
+  --z-stage-hud: 20; --z-stage-prompt: 50; --z-stage-ceremony: 80;
+  --z-tabs: 10; --z-fixed-action: 11; --z-banner: 30; --z-modal: 100; --z-fullscreen: 9999;
+}
