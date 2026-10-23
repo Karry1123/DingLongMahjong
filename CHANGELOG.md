@@ -1,5 +1,18 @@
 # 修改日志
 
+## v0.6.1-beta — 2026-10-23
+
+### 修复
+
+- **人机对战非出牌阶段切牌**：此前在 AI 思考、等待吃碰响应等阶段点击手牌，`HandBar` 会落入录入态的「移出一张」分支，本地删牌却没有任何对局事件，导致手牌少一张。现在非录入态下点击、拖拽、财神换位只在自家切牌态且未禁用时生效。
+- **会话层守卫**：新增 `canDiscard`（自家回合、`MY_TURN_DISCARD`、无在途请求、无响应窗口、暗手等于 14 减副露），`discardTile` 与手牌区的 `discard-mode / disabled` 统一使用，快速连点只发一次切牌。
+- **后端校验**：`/api/game/step` 的请求可携带 `current_turn_seat / current_phase / response_pending`，DISCARD 事件不匹配阶段或暗手不足 14 槽时返回 400 且不改状态。
+
+### 同步与验证
+
+- 版本号同步至 0.6.1-beta；`nativeBuild` 保持 1，App 走静默热更新。
+- 新增 `backend/tests/test_discard_phase.py`（7 例）与 `frontend/tests/discardPhase.test.js`（3 例）；后端全量 809 项通过，前端构建与颜色扫描通过；静音下在真实牌桌验证 AI 行动期间连点手牌数不变。
+
 ## v0.6.0-beta — 2026-10-23
 
 ### 设计系统 v1「墨绿 · 温玉 · 鎏金」
