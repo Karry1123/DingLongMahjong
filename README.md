@@ -7,7 +7,7 @@
 以现代 Web 技术复刻顶龙牌桌：人机磨砺、真人对战、残局推演，共用一套规则与算胡引擎。
 
 [![Build](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml/badge.svg)](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/badge/release-v0.5.0--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.5.0-beta)
+[![Release](https://img.shields.io/badge/release-v0.6.0--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.6.0-beta)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-184C43?style=flat-square)
@@ -18,7 +18,7 @@
 
 ---
 
-> **当前版本 v0.5.0-beta**（2026-10-21）：App 自动更新——界面与逻辑类更新在后台静默下载、下次启动（或回到大厅时）自动生效，坏包自动回退；需要原生改动时 App 内一键下载并拉起系统安装，不再需要进网页下载。本版本需手动安装一次，之后即可自动更新。上一版本 v0.4.4-beta 更换了「發」牌图标。详见 [更新日志](CHANGELOG.md#v050-beta--2026-10-21)。
+> **当前版本 v0.6.0-beta**（2026-10-23）：设计系统上线——「墨绿·温玉·鎏金」统一色彩令牌、宋体标题与牌字、回纹/云纹/龟甲/角线/印章纹样，网页与 App 的大厅和牌桌全部迁移到同一套标准；新增颜色扫描守则与设计规范文档，之后的功能改动都按此标准执行。本次为网页层更新，App 会静默热更新。上一版本 v0.5.0-beta 上线了 App 自动更新。详见 [更新日志](CHANGELOG.md#v060-beta--2026-10-23)。
 
 ## 目录
 
@@ -224,7 +224,8 @@ npm.cmd run build
 | v0.4.2-beta | 2026-10-18 | V4 调优收尾；敏感度扫描、杠专项、功效分析与序贯检验；三轮均未晋升，生产权重不变 |
 | v0.4.3-beta | 2026-10-18 | 修复 App 更新提示；正式版发布、后端版本接口、设置页检查更新 |
 | v0.4.4-beta | 2026-10-21 | 「發」牌 App 图标、启动画面与网页 favicon |
-| **v0.5.0-beta** | **2026-10-21** | **当前版本**：App 静默热更新与 App 内一键安装新 APK |
+| v0.5.0-beta | 2026-10-21 | App 静默热更新与 App 内一键安装新 APK |
+| **v0.6.0-beta** | **2026-10-23** | **当前版本**：设计系统 v1，统一令牌、国风纹样，大厅与牌桌全面迁移 |
 
 各版本完整记录见 [CHANGELOG.md](CHANGELOG.md)，发布摘要见 [docs/releases/](docs/releases/)。
 
