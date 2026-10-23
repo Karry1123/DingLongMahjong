@@ -618,6 +618,10 @@ class GameStepRequest(HandRequest):
     """
 
     event: StepEvent = Field(..., description="本步触发的事件")
+    # Optional for legacy analysis callers; PvE supplies the pre-event turn context.
+    current_turn_seat: SeatWind | None = None
+    current_phase: ActionPhase | None = None
+    response_pending: bool = False
 
 
 class GameStepResponse(BaseModel):

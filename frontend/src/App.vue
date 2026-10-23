@@ -123,6 +123,7 @@ const {
   errorMsg: sessionError,
   phaseLabel,
   isSelfTurn,
+  canDiscard,
   canUndo,
   historyDepth,
   dispatchStep,
@@ -502,6 +503,7 @@ const responseWindowOpen = computed(() => !!isResponseWindow.value)
 const callOrResponsePending = computed(
   () => showActionPrompt.value || responseWindowOpen.value,
 )
+const canHumanDiscard = computed(() => canDiscard.value && !callOrResponsePending.value)
 
 async function onPassAllCalls() {
   if (loading.value || !lastDiscardSeat.value) return
@@ -1157,6 +1159,7 @@ async function onTilePickerUpdate(nextHand) {
 }
 
 async function onDiscardTile(tile, index) {
+  if (!canHumanDiscard.value) return
   if (isSetup.value) {
     return
   }
@@ -1759,15 +1762,14 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
             : ''
         "
         :setup-mode="isSetup"
-        :discard-mode="
-          isPlaying && (handReadyToDiscard || isMyDiscardTurn)
-        "
+        :discard-mode="canHumanDiscard"
         :can-self-win="canSelfWin"
         :turn-focused="selfPanelFocused"
         :layout-pinned="!!handLayoutPinned?.[seatWind]"
         :disabled="
           stepLoading ||
           showActionPrompt ||
+          (isPlaying && !canHumanDiscard) ||
           (isPlaying && !isSelfTurn)
         "
         :ev-calculating="enableEV && isCalculatingEV && (handReadyToDiscard || isMyDiscardTurn)"

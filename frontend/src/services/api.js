@@ -212,6 +212,9 @@ export async function postGameStep(state, event, options = {}) {
     round_wind: state.round_wind ?? 'E',
     opponents: state.opponents ?? [],
     discarded_tiles: state.discarded_tiles ?? [],
+    current_turn_seat: state.current_turn_seat,
+    current_phase: state.current_phase,
+    response_pending: state.response_pending,
     event,
   }
 

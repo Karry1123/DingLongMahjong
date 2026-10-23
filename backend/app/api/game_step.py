@@ -36,6 +36,13 @@ def next_seat(seat: str) -> str:
 def process_game_step(request: GameStepRequest) -> GameStepResponse:
     """应用事件 → 更新局面 → 返回阶段与推荐。"""
     event = request.event
+    if event.event_type == "DISCARD":
+        if (
+            (request.current_turn_seat is not None and request.current_turn_seat != event.actor_seat)
+            or (request.current_phase is not None and request.current_phase != "DISCARD")
+            or request.response_pending
+        ):
+            raise ValueError("DISCARD rejected: actor must own the discard phase with no pending response")
     # 剥离 event，得到纯局面
     before = HandRequest.model_validate(
         request.model_dump(exclude={"event"})
@@ -247,6 +254,8 @@ def _apply_discard(
         raise ValueError("DISCARD 缺少 tile")
     if actor == self_seat:
         hand = list(data["hand_tiles"])
+        if len(hand) + 3 * len(data["melds"]) != 14:
+            raise ValueError("DISCARD rejected: hand must be discard-ready (14 slots) before discarding")
         if tile not in hand:
             raise ValueError(f"自家手牌中无 {tile!r}，无法切出")
         hand.remove(tile)

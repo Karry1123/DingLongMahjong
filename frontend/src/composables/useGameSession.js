@@ -2116,6 +2116,13 @@ export function useGameSession(initial = {}) {
         currentPhase.value === 'OPPONENT_DISCARD_ACTION'),
   )
 
+  const canDiscard = computed(() =>
+    tableLocked.value && isSelfTurn.value &&
+    currentPhase.value === 'MY_TURN_DISCARD' &&
+    !loading.value && !isResponseWindow.value &&
+    roundState.handTiles.length === 14 - 3 * (roundState.melds?.length || 0),
+  )
+
   /** 当前响应窗内可捉铳的座位 */
   const huResolutionBusy = ref(false)
   const pendingHuQueue = computed(() => isResponseWindow.value
@@ -2941,6 +2948,7 @@ export function useGameSession(initial = {}) {
    * 自家切牌（唯一入口）：按 clickedIndex 只删 1 张 → 入河 → 清 drawn 标记 → 理牌。
    */
   async function discardTile(tile, clickedIndex) {
+    if (!canDiscard.value) return null
     const epoch = sessionEpoch
     try {
       // 人为切牌优先：立刻打断后台 EV，不因 analyzeLoading 阻塞
@@ -3079,6 +3087,9 @@ export function useGameSession(initial = {}) {
               discards: [...(o.discards || [])],
             })),
             discarded_tiles: [],
+            current_turn_seat: snap.currentTurnSeat,
+            current_phase: 'DISCARD',
+            response_pending: false,
           }
 
           const result = await awaitCurrentSession(epoch, postGameStep(prePayload, {
@@ -4534,6 +4545,7 @@ export function useGameSession(initial = {}) {
     errorMsg,
     phaseLabel,
     isSelfTurn,
+    canDiscard,
     canUndo,
     historyDepth,
     PHASE_LABEL,

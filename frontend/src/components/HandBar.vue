@@ -148,6 +148,7 @@ const canArrangeJoker = computed(() => !!props.dealerTile)
 const canArrangeTile = computed(() => (props.wallDriven || !autoSort.value) && tiles.value.length > 1)
 
 function canDragTile(code) {
+  if (props.disabled || (!props.setupMode && !isDiscardReady.value)) return false
   return tiles.value.length > 1 && (!autoSort.value || isJoker(code) || isProxy(code))
 }
 
@@ -185,10 +186,11 @@ function handleTileClick(item) {
     return
   }
   // 编辑态：按索引移出一张（录入修正）
-  removeAt(item.index)
+  if (props.setupMode) removeAt(item.index)
 }
 
 function removeAt(index) {
+  if (!props.setupMode || props.disabled) return
   if (index < 0 || index >= tiles.value.length) return
   const next = tiles.value.slice()
   next.splice(index, 1)
@@ -200,6 +202,7 @@ function toggleAutoSort() {
 }
 
 function emitMoveJoker(fromIndex, toIndex) {
+  if (props.disabled || (!props.setupMode && !isDiscardReady.value)) return
   if (fromIndex === toIndex) return
   emit('move-joker', { fromIndex, toIndex })
 }
@@ -227,6 +230,7 @@ function insertionAt(clientX, clientY) {
 }
 
 function onTilePointerDown(event, item) {
+  if (props.disabled || (!props.setupMode && !isDiscardReady.value)) return
   if (!canArrangeTile.value || event.button !== 0) return
   pointerDrag.value = { id: event.pointerId, fromIndex: item.index, x: event.clientX, y: event.clientY, active: false, insertAt: null, allowed:canDragTile(item.code) }
   event.currentTarget.setPointerCapture?.(event.pointerId)
@@ -257,6 +261,10 @@ function onTilePointerCancel(event) {
 }
 
 function onDragStart(e, item) {
+  if (props.disabled || (!props.setupMode && !isDiscardReady.value)) {
+    e.preventDefault()
+    return
+  }
   if (autoSort.value && ((!isJoker(item.code) && !isProxy(item.code)) || !canArrangeJoker.value)) {
     e.preventDefault()
     return
