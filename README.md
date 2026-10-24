@@ -7,7 +7,7 @@
 以现代 Web 技术复刻顶龙牌桌：人机磨砺、真人对战、残局推演，共用一套规则与算胡引擎。
 
 [![Build](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml/badge.svg)](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/badge/release-v0.6.1--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.6.1-beta)
+[![Release](https://img.shields.io/badge/release-v0.7.0--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.7.0-beta)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-184C43?style=flat-square)
@@ -226,7 +226,8 @@ npm.cmd run build
 | v0.4.4-beta | 2026-10-21 | 「發」牌 App 图标、启动画面与网页 favicon |
 | v0.5.0-beta | 2026-10-21 | App 静默热更新与 App 内一键安装新 APK |
 | v0.6.0-beta | 2026-10-23 | 设计系统 v1，统一令牌、国风纹样，大厅与牌桌全面迁移 |
-| **v0.6.1-beta** | **2026-10-23** | **当前版本**：修复人机对战非出牌阶段点手牌导致牌数错误 |
+| v0.6.1-beta | 2026-10-23 | 修复人机对战非出牌阶段点手牌导致牌数错误 |
+| **v0.7.0-beta** | **2026-10-24** | **当前版本**：新增 23 页图文规则教学，首页入口与 PvE、沙盘并列 |
 
 各版本完整记录见 [CHANGELOG.md](CHANGELOG.md)，发布摘要见 [docs/releases/](docs/releases/)。
 
