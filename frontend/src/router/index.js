@@ -8,6 +8,7 @@ import { isLegacyPath, loginRedirect } from './guards.js'
 const view = name => () => import(`../views/${name}.vue`)
 const routes = [
  { path: '/', redirect: '/home' },
+ { path: '/rules', component: view('RulesGuideView'), meta: { public: true } },
  ...['Login','Register'].map(name => ({ path: `/${name.toLowerCase()}`, component: view(`${name}View`), meta: { public: true } })),
  ...[['/home','Home'],['/friends','Friends'],['/friends/requests','FriendRequests'],['/invite','InviteMatch'],['/records','Records'],['/settings','Settings']].map(([path,name]) => ({ path, component: view(`${name}View`) })),
  { path: '/matches/:id/:phase(waiting|play)', component: () => import('../components/PvpLobby.vue') },
