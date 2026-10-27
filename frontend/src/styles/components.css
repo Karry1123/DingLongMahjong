@@ -1,6 +1,12 @@
 @layer components {
   .ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--control-min-height); padding: 10px 20px; border: 1px solid transparent; border-radius: var(--r-md); font-weight: 500; cursor: pointer; transition: background-color var(--motion-fast), opacity var(--motion-fast); }
   .ui-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .ui-compact-select { min-width: 44px; min-height: 44px; padding: 8px; border: 1px solid rgb(var(--line) / .34); border-radius: var(--r-sm); background: rgb(var(--bg-sunken)); color: rgb(var(--fg)); font-family: var(--font-body); }
+  .ui-tile-key { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; padding: 4px; border: 1px solid rgb(var(--tile-edge)); border-radius: var(--r-sm); background: rgb(var(--tile-face)); color: rgb(var(--tile-ink)); font: 600 17px var(--font-display); cursor: pointer; touch-action: manipulation; }
+  .ui-tile-key:disabled { opacity: .38; cursor: not-allowed; }
+  .ui-tile-touch { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 52px; padding: 4px; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; cursor: pointer; touch-action: manipulation; }
+  .ui-tile-touch.is-selected { border-color: rgb(var(--accent)); background: rgb(var(--bg-selected)); }
+  .ui-tile-touch:disabled { cursor: default; }
   .ui-btn--primary { background: rgb(var(--btn-primary-bg)); color: rgb(var(--btn-primary-fg)); }
   .ui-btn--primary:hover:not(:disabled) { background: rgb(var(--accent-hover)); }
   .ui-btn--secondary { background: rgb(var(--bg-interactive)); color: rgb(var(--fg)); border-color: rgb(var(--line) / .16); }

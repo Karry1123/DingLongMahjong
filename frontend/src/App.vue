@@ -20,6 +20,7 @@ import TilePicker from './components/TilePicker.vue'
 import SelfWinBanner from './components/SelfWinBanner.vue'
 import GameOverModal from './components/GameOverModal.vue'
 import GodViewTable from './components/GodViewTable.vue'
+import SandboxQuickReference from './components/SandboxQuickReference.vue'
 import PvEBoard from './components/PvEBoard.vue'
 import GodOpeningCeremony from './components/GodOpeningCeremony.vue'
 import DiscardRiver from './components/DiscardRiver.vue'
@@ -196,6 +197,7 @@ const activeUiMode = ref('')
 const pvpPlaying = ref(false)
 const entryLayout = computed(() => route.path === '/pve' && gameMode.value !== 'PVE')
 const legacyTableRoute = computed(() => ['/pve','/sandbox'].includes(route.path))
+const quickSandbox = computed(() => route.path === '/sandbox' && route.query.view !== 'panorama')
 function choosePvpMode() { void router.push('/invite') }
 function closePvpMode() { void router.push('/home') }
 watch(() => route.path, (path, previous) => { if (previous === '/pve' && path !== '/pve') void onExitPve(false); activeUiMode.value = path === '/sandbox' ? 'SANDBOX' : path === '/pve' && gameMode.value === 'PVE' ? 'PVE' : ''; if (path === '/pve' && gameMode.value !== 'PVE') pveConfigOpen.value = true })
@@ -1458,7 +1460,8 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
 </script>
 
 <template>
-  <AppShell v-if="!legacyTableRoute"><RouterView v-slot="{ Component }"><component :is="Component" :key="route.params.id || route.path" :sound-muted="soundMuted" :sound-volume="soundVolume" @opening="soundEngine.stop(); soundEngine.playOpening()" @opening-end="soundEngine.stop()" @sound="soundEngine.playAction($event)" @mute="soundMuted = !soundMuted; if (!soundMuted) soundEngine.unlock()" @volume="soundVolume = $event" @fullscreen="enterFullscreenOnMobileStart" @playing="pvpPlaying = $event" /></RouterView><p v-if="socialError || lifecycleError" class="error" role="status">{{ socialError || lifecycleError }}</p></AppShell>
+  <SandboxQuickReference v-if="quickSandbox" @home="router.push('/home')" @advanced="router.replace({ path: '/sandbox', query: { view: 'panorama' } })" />
+  <AppShell v-else-if="!legacyTableRoute"><RouterView v-slot="{ Component }"><component :is="Component" :key="route.params.id || route.path" :sound-muted="soundMuted" :sound-volume="soundVolume" @opening="soundEngine.stop(); soundEngine.playOpening()" @opening-end="soundEngine.stop()" @sound="soundEngine.playAction($event)" @mute="soundMuted = !soundMuted; if (!soundMuted) soundEngine.unlock()" @volume="soundVolume = $event" @fullscreen="enterFullscreenOnMobileStart" @playing="pvpPlaying = $event" /></RouterView><p v-if="socialError || lifecycleError" class="error" role="status">{{ socialError || lifecycleError }}</p></AppShell>
   <TableShell v-else :active="stageActive" :leaving="sandboxLeaving" :entry="entryLayout">
     <GodOpeningCeremony v-if="openingRound" :key="openingRound.id" :dealer-tile="openingRound.tile" :reveal-until="openingRound.revealUntil || 0" @complete="completeGodOpening()" />
     <div v-if="dissolvedMessage" class="pvp-dissolved-overlay" @keydown.esc="dissolvedMessage = ''" @keydown.tab.prevent>
@@ -1474,6 +1477,7 @@ onUnmounted(() => { stopNativeBack?.(); stopBackDismiss?.() })
 
     <div v-else :class="gameMode === 'PVE' ? 'pve-session-view' : ''">
     <header class="mb-8 text-center">
+      <button v-if="route.path === '/sandbox'" class="ui-btn ui-btn--ghost" @click="router.replace('/sandbox')">← 返回实战参考（独立牌局）</button>
       <h1
         class="text-3xl font-semibold tracking-wide text-gilt-200 sm:text-4xl"
       >

@@ -4,7 +4,7 @@ defineEmits(['pve', 'pvp', 'sandbox', 'rules'])
 const modes = [
   { key: 'pve', number: '壹', title: '人机对战', tag: 'PvE', subtitle: '与智能 AI 磨砺牌技，支持实时切牌 EV 推荐与局势推演。', detail: '智能陪练 · 磨砺牌技' },
   { key: 'pvp', number: '贰', title: '玩家对战', tag: 'PvP', subtitle: '真人大战（2–4人），关闭 EV 辅助与提示，凭真实水平博弈。', detail: '以牌会友 · 真人较量' },
-  { key: 'sandbox', number: '叁', title: '全景沙盘', tag: 'Sandbox', subtitle: '自由摆牌、推演任意残局与算番验证。', detail: '自由推演 · 探索牌理' },
+  { key: 'sandbox', number: '叁', title: '实战参考', tag: '速查', subtitle: '录入自己的手牌，自动推荐出牌，随实战摸打跟进。', detail: '快速录牌 · 随摸随查' },
   { key: 'rules', number: '肆', title: '规则教学', tag: 'Guide', subtitle: '跟着示例牌逐页学习，从认牌、财神到算胡与四家结算。', detail: '图文入门 · 随时回看' },
 ]
 </script>
