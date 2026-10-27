@@ -7,7 +7,7 @@
 以现代 Web 技术复刻顶龙牌桌：人机磨砺、真人对战、残局推演，共用一套规则与算胡引擎。
 
 [![Build](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml/badge.svg)](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/badge/release-v0.7.0--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.7.0-beta)
+[![Release](https://img.shields.io/badge/release-v0.8.0--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.8.0-beta)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-184C43?style=flat-square)
@@ -38,7 +38,7 @@
 | --- | --- | --- |
 | **人机对战 · PvE** | 与 AI 同桌磨砺牌技，观察牌形与攻守转换 | 切牌／副露 EV、进张、动态局势推演 |
 | **玩家对战 · PvP** | 2～4 位真人同桌，空位由 AI 补齐 | 隐藏 EV、向听、进张、个人危险度；仅保留公开局势提示 |
-| **全景沙盘 · Sandbox** | 自由摆牌、推演残局、验证胡数 | 四家可见，与对局共用规则和算胡引擎 |
+| **实战参考 · Sandbox** | 现实牌桌旁录入自己的手牌，自动推荐出牌，随摸随查 | 只需自家手牌与可选已见牌；全景沙盘仍可从高级入口进入 |
 
 ## 项目亮点
 
@@ -227,7 +227,8 @@ npm.cmd run build
 | v0.5.0-beta | 2026-10-21 | App 静默热更新与 App 内一键安装新 APK |
 | v0.6.0-beta | 2026-10-23 | 设计系统 v1，统一令牌、国风纹样，大厅与牌桌全面迁移 |
 | v0.6.1-beta | 2026-10-23 | 修复人机对战非出牌阶段点手牌导致牌数错误 |
-| **v0.7.0-beta** | **2026-10-24** | **当前版本**：新增 23 页图文规则教学，首页入口与 PvE、沙盘并列 |
+| v0.7.0-beta | 2026-10-24 | 新增 23 页图文规则教学，首页入口与 PvE、沙盘并列 |
+| **v0.8.0-beta** | **2026-10-27** | **当前版本**：沙盒重做为「实战参考」，单屏录牌自动推荐，随实战摸打跟进 |
 
 各版本完整记录见 [CHANGELOG.md](CHANGELOG.md)，发布摘要见 [docs/releases/](docs/releases/)。
 
