@@ -6,12 +6,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { northDiscardDeal } from '../tests/pveFixture.js'
 import { checkPveVisuals } from './pve-visual-check.mjs'
+import { chromeEnv } from './chrome-env.mjs'
 
 const profile = await mkdtemp(join(tmpdir(), 'mahjong-pve-'))
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
   '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
   '--remote-debugging-port=9333', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
-], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+], { env: chromeEnv, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
 chrome.stderr.on('data', (data) => { if (process.env.CDP_DEBUG) process.stderr.write(data) })
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let socket, id = 0

@@ -3,13 +3,14 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { chromeEnv } from './chrome-env.mjs'
 
 // UI integration test: the recommendation endpoint is intentionally mocked.
 const profile = await mkdtemp(join(tmpdir(), 'sandbox-reference-'))
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
   '--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--no-default-browser-check',
   '--remote-debugging-pipe', `--user-data-dir=${profile}`, 'about:blank',
-], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] })
+], { env: chromeEnv, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] })
 let sequence = 0, buffer = '', sessionId
 let browserErrors = ''
 chrome.stderr.on('data', chunk => { browserErrors = (browserErrors + chunk).slice(-4000) })
