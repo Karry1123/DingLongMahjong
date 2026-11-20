@@ -1,17 +1,13 @@
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { northDiscardDeal } from '../tests/pveFixture.js'
-import { chromeEnv } from './chrome-env.mjs'
+import { launchChrome } from './chrome-launch.mjs'
 
 const port = 9342
 const profile = await mkdtemp(join(tmpdir(), 'mahjong-zoom-'))
-const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
-  '--headless=new', '--disable-extensions', '--no-proxy-server', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-  `--remote-debugging-port=${port}`, '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
-], { env: chromeEnv, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+const chrome = launchChrome({ profile, port, flags: ['--disable-extensions', '--no-proxy-server'], stdio: ['ignore', 'ignore', 'pipe'] })
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const pending = new Map()
 let socket, id = 0

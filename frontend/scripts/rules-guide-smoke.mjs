@@ -1,17 +1,13 @@
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { rulesGuide } from '../src/constants/rulesGuide.js'
-import { chromeEnv } from './chrome-env.mjs'
+import { launchChrome } from './chrome-launch.mjs'
 
 const base = process.env.RULES_URL || 'http://127.0.0.1:5178/'
 const profile = await mkdtemp(join(tmpdir(), 'mahjong-rules-'))
-const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
-  '--headless=new', '--disable-gpu', '--no-sandbox', '--no-first-run', '--no-default-browser-check',
-  '--remote-debugging-pipe', `--user-data-dir=${profile}`, 'about:blank',
-], { env: chromeEnv, windowsHide: true, stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] })
+const chrome = launchChrome({ profile, pipe: true, flags: ['--no-sandbox'], stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] })
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms))
 let sessionId, nextId = 0, buffer = ''
 const pending = new Map(), errors = []
