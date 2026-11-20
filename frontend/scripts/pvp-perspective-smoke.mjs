@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { chromeEnv } from './chrome-env.mjs'
+import { launchChrome } from './chrome-launch.mjs'
 
 const url = process.env.PVP_URL || 'http://127.0.0.1:5178/'
 const browsers = [], clients = [], errors = [], requests = []
@@ -11,7 +10,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 async function until(fn) { for (let i=0;i<220;i++) { const result=await fn(); if(result)return result; await sleep(80) } throw new Error('Browser test timed out') }
 async function launch(port) {
   const profile=await mkdtemp(join(tmpdir(),'dinglong-perspective-'))
-  const chrome=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--disable-gpu','--no-first-run','--no-default-browser-check',`--remote-debugging-port=${port}`,'--remote-allow-origins=*',`--user-data-dir=${profile}`,'about:blank'],{env:chromeEnv,windowsHide:true,stdio:'ignore'})
+  const chrome=launchChrome({ profile, port })
   browsers.push(chrome)
   const page=await until(async()=>{try{return(await(await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(p=>p.type==='page')}catch{return null}})
   const socket=new WebSocket(page.webSocketDebuggerUrl), pending=new Map();let id=0

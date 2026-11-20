@@ -1,15 +1,11 @@
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { chromeEnv } from './chrome-env.mjs'
+import { launchChrome } from './chrome-launch.mjs'
 
 const profile = await mkdtemp(join(tmpdir(), 'mahjong-hu-'))
-const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
-  '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-  '--remote-debugging-port=9350', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
-], { env: chromeEnv, windowsHide: true, stdio: 'ignore' })
+const chrome = launchChrome({ profile, port: 9350 })
 let socket, id = 0
 const pending = new Map()
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
