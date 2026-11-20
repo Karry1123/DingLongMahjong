@@ -23,7 +23,9 @@ export function chromeEnv(chromePath) {
 }
 
 // Headless Chrome for the smoke scripts: CDP on `port`, or on fds 3/4 with `pipe`.
-export function launchChrome({ profile, port, pipe = false, flags = [], stdio = 'ignore' }) {
+export function launchChrome({ profile, port, pipe = false, flags = [], stdio = pipe ? ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] : 'ignore' }) {
+  if (!profile) throw new Error('launchChrome needs a profile directory')
+  if (!pipe && port == null) throw new Error('launchChrome needs a CDP port, or pipe: true')
   const chromePath = process.env.CHROME_PATH || CHROME_PATH
   const debugging = pipe ? ['--remote-debugging-pipe'] : [`--remote-debugging-port=${port}`, '--remote-allow-origins=*']
   return spawn(chromePath, [
