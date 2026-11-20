@@ -1,5 +1,16 @@
 # 修改日志
 
+## v0.8.1-beta — 2026-11-19
+
+### 修复
+
+- **冒烟脚本改写任务栏固定图标**：Chrome 依据 `ProgramFiles` 等环境变量判断自己是否为系统级安装。冒烟脚本在缺少这些变量的精简环境中运行时，启动的 headless Chrome 会把自己当成用户级安装，并把用户任务栏上的 Chrome 固定图标改写为用户级 AppUserModelID，导致日常 Chrome 与固定图标分离、右键菜单缺少「新建窗口」等项。新增 `frontend/scripts/chrome-env.mjs`，29 个启动 Chrome 的冒烟脚本统一以 `env: chromeEnv` 启动。
+
+### 同步与验证
+
+- 版本号同步至 0.8.1-beta；只改开发脚本，网页与 App 行为不变，`nativeBuild` 保持 1。
+- 29 个脚本与新模块通过 `node --check`；在去掉 `ProgramFiles` 的环境中经 `chromeEnv` 启动 Chrome，固定图标的 AppUserModelID 保持 `Chrome`（未修复时 3 秒内被改为用户级 ID）。
+
 ## v0.8.0-beta — 2026-10-27
 
 ### 新增

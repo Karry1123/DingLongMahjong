@@ -7,7 +7,7 @@
 以现代 Web 技术复刻顶龙牌桌：人机磨砺、真人对战、残局推演，共用一套规则与算胡引擎。
 
 [![Build](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml/badge.svg)](https://github.com/Karry1123/DingLongMahjong/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/badge/release-v0.8.0--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.8.0-beta)
+[![Release](https://img.shields.io/badge/release-v0.8.1--beta-C7A555?style=flat-square)](https://github.com/Karry1123/DingLongMahjong/releases/tag/v0.8.1-beta)
 ![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/WebSocket-realtime-184C43?style=flat-square)
@@ -18,7 +18,7 @@
 
 ---
 
-> **当前版本 v0.6.1-beta**（2026-10-23）：修复人机对战中在非出牌阶段点击手牌会导致手牌数错误的问题——现在手牌点击、拖拽只在自家切牌阶段生效，会话层与后端同时校验轮次与阶段，连点只发一次切牌。网页层更新，App 会静默热更新。上一版本 v0.6.0-beta 上线了设计系统 v1。详见 [更新日志](CHANGELOG.md#v061-beta--2026-10-23)。
+> **当前版本 v0.8.1-beta**（2026-11-19）：开发工具修复——冒烟脚本启动的 headless Chrome 在缺少 `ProgramFiles` 环境变量时会把自己当成用户级安装，改写任务栏上的 Chrome 固定图标，使日常 Chrome 与图标分离；现在所有冒烟脚本都经 `frontend/scripts/chrome-env.mjs` 带上这些变量启动 Chrome。游戏功能与网页、App 均无变化。上一版本 v0.8.0-beta 把沙盒重做为「实战参考」。详见 [更新日志](CHANGELOG.md#v081-beta--2026-11-19)。
 
 ## 目录
 
@@ -228,7 +228,8 @@ npm.cmd run build
 | v0.6.0-beta | 2026-10-23 | 设计系统 v1，统一令牌、国风纹样，大厅与牌桌全面迁移 |
 | v0.6.1-beta | 2026-10-23 | 修复人机对战非出牌阶段点手牌导致牌数错误 |
 | v0.7.0-beta | 2026-10-24 | 新增 23 页图文规则教学，首页入口与 PvE、沙盘并列 |
-| **v0.8.0-beta** | **2026-10-27** | **当前版本**：沙盒重做为「实战参考」，单屏录牌自动推荐，随实战摸打跟进 |
+| v0.8.0-beta | 2026-10-27 | 沙盒重做为「实战参考」，单屏录牌自动推荐，随实战摸打跟进 |
+| **v0.8.1-beta** | **2026-11-19** | **当前版本**：修复冒烟脚本启动的 Chrome 改写任务栏固定图标 |
 
 各版本完整记录见 [CHANGELOG.md](CHANGELOG.md)，发布摘要见 [docs/releases/](docs/releases/)。
 
