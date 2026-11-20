@@ -4,13 +4,14 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { northDiscardDeal } from '../tests/pveFixture.js'
+import { chromeEnv } from './chrome-env.mjs'
 
 const port = 9337
 const profile = await mkdtemp(join(tmpdir(), 'mahjong-mobile-safe-'))
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
   '--headless=new', '--no-sandbox', '--disable-gpu-sandbox', '--in-process-gpu', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
   `--remote-debugging-port=${port}`, '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
-], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+], { env: chromeEnv, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
 const keepAlive=setInterval(()=>{},1000)
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const pending = new Map()

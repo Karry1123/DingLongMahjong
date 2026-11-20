@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { chromeEnv } from './chrome-env.mjs'
 
 // Uses the isolated loopback fixtures in backend/tests/pvp_phase4_server.py.
 const url = process.env.PVP_URL || 'http://127.0.0.1:5182/'
@@ -11,7 +12,7 @@ const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))
 async function until(fn) { for(let i=0;i<250;i++){const r=await fn();if(r)return r;await sleep(80)}throw new Error('Browser test timed out') }
 async function launch(port){
   const profile=await mkdtemp(join(tmpdir(),'dinglong-clocks-'))
-  const chrome=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--disable-gpu','--no-first-run','--no-default-browser-check',`--remote-debugging-port=${port}`,'--remote-allow-origins=*',`--user-data-dir=${profile}`,'about:blank'],{windowsHide:true,stdio:'ignore'})
+  const chrome=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new','--disable-gpu','--no-first-run','--no-default-browser-check',`--remote-debugging-port=${port}`,'--remote-allow-origins=*',`--user-data-dir=${profile}`,'about:blank'],{env:chromeEnv,windowsHide:true,stdio:'ignore'})
   browsers.push(chrome)
   const page=await until(async()=>{try{return(await(await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(p=>p.type==='page')}catch{return null}})
   const socket=new WebSocket(page.webSocketDebuggerUrl), pending=new Map();let id=0

@@ -4,13 +4,14 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { chromeEnv } from './chrome-env.mjs'
 
 const port = 9334
 const profile = await mkdtemp(join(tmpdir(), 'mahjong-worst-case-'))
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
   '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
   `--remote-debugging-port=${port}`, '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
-], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
+], { env: chromeEnv, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const pending = new Map()
 const browserErrors = []

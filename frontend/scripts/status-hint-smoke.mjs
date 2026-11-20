@@ -3,12 +3,13 @@ import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { chromeEnv } from './chrome-env.mjs'
 
 const profile = await mkdtemp(join(tmpdir(), 'mahjong-status-'))
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
   '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
   '--remote-debugging-port=9351', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
-], { windowsHide: true, stdio: 'ignore' })
+], { env: chromeEnv, windowsHide: true, stdio: 'ignore' })
 let socket, id = 0
 const pending = new Map()
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
