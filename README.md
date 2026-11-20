@@ -18,7 +18,7 @@
 
 ---
 
-> **当前版本 v0.8.1-beta**（2026-11-19）：开发工具修复——冒烟脚本启动的 headless Chrome 在缺少 `ProgramFiles` 环境变量时会把自己当成用户级安装，改写任务栏上的 Chrome 固定图标，使日常 Chrome 与图标分离；现在所有冒烟脚本都经 `frontend/scripts/chrome-env.mjs` 带上这些变量启动 Chrome。游戏功能与网页、App 均无变化。上一版本 v0.8.0-beta 把沙盒重做为「实战参考」。详见 [更新日志](CHANGELOG.md#v081-beta--2026-11-19)。
+> **当前版本 v0.8.1-beta**（2026-11-19）：开发工具修复——冒烟脚本启动的 headless Chrome 在缺少 `ProgramFiles` 环境变量时会把自己当成用户级安装，改写任务栏上的 Chrome 固定图标，使日常 Chrome 与图标分离；现在所有冒烟脚本都经 `frontend/scripts/chrome-launch.mjs` 的 `launchChrome` 带上这些变量启动 Chrome。游戏功能与网页、App 均无变化。上一版本 v0.8.0-beta 把沙盒重做为「实战参考」。详见 [更新日志](CHANGELOG.md#v081-beta--2026-11-19)。
 
 ## 目录
 
